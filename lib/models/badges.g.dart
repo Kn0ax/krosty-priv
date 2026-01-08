@@ -6,16 +6,6 @@ part of 'badges.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-BadgeInfoTwitch _$BadgeInfoTwitchFromJson(Map<String, dynamic> json) =>
-    BadgeInfoTwitch(
-      json['image_url_1x'] as String,
-      json['image_url_2x'] as String,
-      json['image_url_4x'] as String,
-      json['id'] as String,
-      json['title'] as String,
-      json['description'] as String,
-    );
-
 BadgeInfoFFZ _$BadgeInfoFFZFromJson(Map<String, dynamic> json) => BadgeInfoFFZ(
   (json['id'] as num).toInt(),
   json['title'] as String,

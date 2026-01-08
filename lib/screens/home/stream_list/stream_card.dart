@@ -10,7 +10,6 @@ import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/blurred_container.dart';
 import 'package:krosty/widgets/frosty_cached_network_image.dart';
 import 'package:krosty/widgets/frosty_photo_view_dialog.dart';
-import 'package:krosty/widgets/profile_picture.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:krosty/widgets/uptime.dart';
 import 'package:krosty/widgets/user_actions_modal.dart';
@@ -124,7 +123,21 @@ class StreamCard extends StatelessWidget {
           Row(
             spacing: 4,
             children: [
-              ProfilePicture(userLogin: streamInfo.channelSlug, radius: 10),
+              // Use profile picture from stream data, fallback to default Kick avatar
+              ClipOval(
+                child: FrostyCachedNetworkImage(
+                  width: 20,
+                  height: 20,
+                  imageUrl: streamInfo.channelProfilePic?.isNotEmpty == true
+                      ? streamInfo.channelProfilePic!
+                      : 'https://files.kick.com/images/profile_image/default2.jpeg',
+                  placeholder: (context, url) => Container(
+                    width: 20,
+                    height: 20,
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                  ),
+                ),
+              ),
               Flexible(
                 child: Tooltip(
                   message: streamerName,

@@ -2,13 +2,20 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'kick_user.g.dart';
 
+/// Helper to read profile pic from either 'profilepic' or 'profile_pic' field.
+Object? _readProfilePic(Map<dynamic, dynamic> json, String key) {
+  return json['profilepic'] ?? json['profile_pic'];
+}
+
 /// Kick user model from API responses.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickUser {
   final int id;
   final String username;
   final String? bio;
-  @JsonKey(name: 'profile_pic')
+  // API returns 'profilepic' (no underscore) from /user/livestreams
+  // and 'profile_pic' from other endpoints
+  @JsonKey(readValue: _readProfilePic)
   final String? profilePic;
   final String? instagram;
   final String? twitter;

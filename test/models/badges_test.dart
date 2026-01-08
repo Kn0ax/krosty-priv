@@ -2,61 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:krosty/models/badges.dart';
 
 void main() {
-  group('ChatBadge.fromTwitch', () {
-    test('creates badge with correct properties', () {
-      final twitchBadge = BadgeInfoTwitch(
-        'https://static-cdn.jtvnw.net/badges/v1/1x.png',
-        'https://static-cdn.jtvnw.net/badges/v1/2x.png',
-        'https://static-cdn.jtvnw.net/badges/v1/4x.png',
-        'subscriber',
-        'Subscriber',
-        '12 Month Subscriber',
-      );
-
-      final badge = ChatBadge.fromTwitch(twitchBadge);
-
-      expect(badge.name, 'Subscriber');
-      expect(badge.url, 'https://static-cdn.jtvnw.net/badges/v1/4x.png');
-      expect(badge.type, BadgeType.twitch);
-      expect(badge.color, isNull);
-    });
-
-    test('uses 4x image URL (largest)', () {
-      final twitchBadge = BadgeInfoTwitch(
-        'https://cdn/1x.png',
-        'https://cdn/2x.png',
-        'https://cdn/4x.png',
-        'mod',
-        'Moderator',
-        'A moderator',
-      );
-
-      final badge = ChatBadge.fromTwitch(twitchBadge);
-
-      expect(badge.url, 'https://cdn/4x.png');
-    });
-
-    test('uses title for badge name, not id', () {
-      final twitchBadge = BadgeInfoTwitch(
-        'url1',
-        'url2',
-        'url4',
-        'vip',
-        'VIP',
-        'Very Important Person',
-      );
-
-      final badge = ChatBadge.fromTwitch(twitchBadge);
-
-      expect(badge.name, 'VIP');
-    });
-  });
-
   group('ChatBadge.fromBTTV', () {
     test('creates badge with correct properties', () {
       final bttvBadge = BadgeInfoBTTV(
         '12345',
-        BadgeDetailsBTTV('BetterTTV Developer', 'https://cdn.bttv.net/badge.svg'),
+        BadgeDetailsBTTV(
+          'BetterTTV Developer',
+          'https://cdn.bttv.net/badge.svg',
+        ),
       );
 
       final badge = ChatBadge.fromBTTV(bttvBadge);
@@ -70,7 +23,10 @@ void main() {
     test('uses badge description as name', () {
       final bttvBadge = BadgeInfoBTTV(
         '67890',
-        BadgeDetailsBTTV('Custom Badge Description', 'https://example.com/badge.svg'),
+        BadgeDetailsBTTV(
+          'Custom Badge Description',
+          'https://example.com/badge.svg',
+        ),
       );
 
       final badge = ChatBadge.fromBTTV(bttvBadge);
@@ -182,15 +138,11 @@ void main() {
     });
 
     test('uses urls[2][1] for badge URL (3x size)', () {
-      final badge7TV = BadgeInfo7TV(
-        'Test Badge',
-        [
-          ['1x', 'https://cdn.7tv.app/1x.png'],
-          ['2x', 'https://cdn.7tv.app/2x.png'],
-          ['3x', 'https://cdn.7tv.app/3x.png'],
-        ],
-        [],
-      );
+      final badge7TV = BadgeInfo7TV('Test Badge', [
+        ['1x', 'https://cdn.7tv.app/1x.png'],
+        ['2x', 'https://cdn.7tv.app/2x.png'],
+        ['3x', 'https://cdn.7tv.app/3x.png'],
+      ], []);
 
       final badge = ChatBadge.from7TV(badge7TV);
 
@@ -199,15 +151,11 @@ void main() {
     });
 
     test('uses tooltip as badge name', () {
-      final badge7TV = BadgeInfo7TV(
-        'Custom Tooltip Text',
-        [
-          ['1x', 'url1'],
-          ['2x', 'url2'],
-          ['3x', 'url3'],
-        ],
-        [],
-      );
+      final badge7TV = BadgeInfo7TV('Custom Tooltip Text', [
+        ['1x', 'url1'],
+        ['2x', 'url2'],
+        ['3x', 'url3'],
+      ], []);
 
       final badge = ChatBadge.from7TV(badge7TV);
 
@@ -252,28 +200,6 @@ void main() {
       );
 
       expect(badge.color, '#FF0000');
-    });
-  });
-
-  group('BadgeInfoTwitch', () {
-    test('fromJson creates correct instance', () {
-      final json = {
-        'image_url_1x': 'https://cdn/1x.png',
-        'image_url_2x': 'https://cdn/2x.png',
-        'image_url_4x': 'https://cdn/4x.png',
-        'id': 'badge_id',
-        'title': 'Badge Title',
-        'description': 'Badge Description',
-      };
-
-      final badge = BadgeInfoTwitch.fromJson(json);
-
-      expect(badge.imageUrl1x, 'https://cdn/1x.png');
-      expect(badge.imageUrl2x, 'https://cdn/2x.png');
-      expect(badge.imageUrl4x, 'https://cdn/4x.png');
-      expect(badge.id, 'badge_id');
-      expect(badge.title, 'Badge Title');
-      expect(badge.description, 'Badge Description');
     });
   });
 

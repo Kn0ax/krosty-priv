@@ -339,6 +339,8 @@ class KickChannelSearch {
   final bool isVerified;
   @JsonKey(name: 'viewer_count')
   final int? viewerCount;
+  @JsonKey(name: 'start_time')
+  final String? startTime;
 
   const KickChannelSearch({
     required this.id,
@@ -348,6 +350,7 @@ class KickChannelSearch {
     this.isLive = false,
     this.isVerified = false,
     this.viewerCount,
+    this.startTime,
   });
 
   factory KickChannelSearch.fromJson(Map<String, dynamic> json) =>
@@ -359,6 +362,7 @@ class KickChannelSearch {
 /// Wrapper for paginated livestream responses.
 @JsonSerializable(createToJson: false)
 class KickLivestreamsResponse {
+  @JsonKey(name: 'data', defaultValue: <KickLivestreamItem>[])
   final List<KickLivestreamItem> data;
   @JsonKey(name: 'current_page')
   final int? currentPage;
@@ -369,7 +373,7 @@ class KickLivestreamsResponse {
   final int? total;
 
   const KickLivestreamsResponse({
-    required this.data,
+    this.data = const <KickLivestreamItem>[],
     this.currentPage,
     this.lastPage,
     this.perPage,
@@ -460,8 +464,8 @@ class KickLivestreamItem {
   String? get thumbnailUrl => thumbnail?.imageUrl;
 
   String get channelSlug => channel?.slug ?? '';
-  String get channelDisplayName => channel?.user?.username ?? '';
-  String? get channelProfilePic => channel?.user?.profilePic;
+  String get channelDisplayName => channel?.displayName ?? '';
+  String? get channelProfilePic => channel?.profilePicUrl;
 
   /// Get the best available time for uptime calculation.
   /// Prefers startTime, falls back to createdAt.
@@ -469,16 +473,35 @@ class KickLivestreamItem {
 }
 
 /// Minimal channel info included in livestream items.
+/// Featured endpoint has profile_pic/username directly on channel,
+/// while other endpoints may have them nested in a 'user' object.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickChannelInfo {
   final int? id;
   final String? slug;
+  // Direct fields from featured endpoint
+  @JsonKey(name: 'profile_pic')
+  final String? profilePic;
+  final String? username;
+  // Nested user object from other endpoints
   final KickUser? user;
 
-  const KickChannelInfo({this.id, this.slug, this.user});
+  const KickChannelInfo({
+    this.id,
+    this.slug,
+    this.profilePic,
+    this.username,
+    this.user,
+  });
 
   factory KickChannelInfo.fromJson(Map<String, dynamic> json) =>
       _$KickChannelInfoFromJson(json);
+
+  /// Get the display name - prefer direct username, fallback to user.username
+  String? get displayName => username ?? user?.username;
+
+  /// Get the profile picture URL - prefer direct profilePic, fallback to user.profilePic
+  String? get profilePicUrl => profilePic ?? user?.profilePic;
 }
 
 /// Wrapper for paginated category responses.
@@ -506,4 +529,96 @@ class KickCategoriesResponse {
 
   bool get hasMore =>
       currentPage != null && lastPage != null && currentPage! < lastPage!;
+}
+
+/// Response from /api/v2/channels/followed endpoint.
+/// This endpoint has a different structure than other livestream endpoints.
+@JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
+class KickFollowedChannelsResponse {
+  @JsonKey(name: 'channels', defaultValue: <KickFollowedChannel>[])
+  final List<KickFollowedChannel> channels;
+  @JsonKey(name: 'nextCursor')
+  final int? nextCursor;
+
+  const KickFollowedChannelsResponse({
+    this.channels = const <KickFollowedChannel>[],
+    this.nextCursor,
+  });
+
+  factory KickFollowedChannelsResponse.fromJson(Map<String, dynamic> json) =>
+      _$KickFollowedChannelsResponseFromJson(json);
+
+  /// Convert to standard KickLivestreamsResponse for compatibility.
+  KickLivestreamsResponse toLivestreamsResponse() {
+    final items = channels
+        .map((channel) => channel.toLivestreamItem())
+        .toList();
+    return KickLivestreamsResponse(data: items);
+  }
+
+  bool get hasMore => nextCursor != null;
+}
+
+/// Simplified channel info from /api/v2/channels/followed endpoint.
+@JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
+class KickFollowedChannel {
+  @JsonKey(name: 'is_live')
+  final bool isLive;
+  @JsonKey(name: 'profile_picture')
+  final String? profilePicture;
+  @JsonKey(name: 'channel_slug')
+  final String channelSlug;
+  @JsonKey(name: 'viewer_count')
+  final int? viewerCount;
+  @JsonKey(name: 'category_name')
+  final String? categoryName;
+  @JsonKey(name: 'user_username')
+  final String userUsername;
+  @JsonKey(name: 'session_title')
+  final String? sessionTitle;
+  @JsonKey(name: 'thumbnail_url')
+  final String? thumbnailUrl;
+
+  const KickFollowedChannel({
+    required this.isLive,
+    this.profilePicture,
+    required this.channelSlug,
+    this.viewerCount,
+    this.categoryName,
+    required this.userUsername,
+    this.sessionTitle,
+    this.thumbnailUrl,
+  });
+
+  factory KickFollowedChannel.fromJson(Map<String, dynamic> json) =>
+      _$KickFollowedChannelFromJson(json);
+
+  /// Convert to KickLivestreamItem for compatibility with existing UI.
+  KickLivestreamItem toLivestreamItem() {
+    return KickLivestreamItem(
+      id: channelSlug, // Use slug as ID since we don't have numeric ID
+      slug: channelSlug,
+      sessionTitle: sessionTitle,
+      isLive: isLive,
+      viewerCount: viewerCount,
+      // Add thumbnail if available
+      thumbnail: thumbnailUrl != null ? KickThumbnail(url: thumbnailUrl) : null,
+      channel: KickChannelInfo(
+        slug: channelSlug,
+        user: KickUser(
+          id: 0, // We don't have user ID from this endpoint
+          username: userUsername,
+          profilePic: profilePicture,
+        ),
+      ),
+      // Create a minimal category if we have a name
+      category: categoryName != null
+          ? KickCategory(
+              id: 0, // We don't have category ID
+              name: categoryName!,
+              slug: categoryName!.toLowerCase().replaceAll(' ', '-'),
+            )
+          : null,
+    );
+  }
 }

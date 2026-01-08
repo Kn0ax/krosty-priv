@@ -33,6 +33,12 @@ abstract class AuthBase with Store {
   /// Retry count for reconnection attempts.
   var _reconnectAttempts = 0;
 
+  /// Timer for periodically checking cookies during login flow.
+  Timer? _cookieCheckTimer;
+
+  /// Flag to track if login button has been auto-clicked.
+  var _loginButtonClicked = false;
+
   /// Maximum number of reconnection attempts before giving up.
   static const _maxReconnectAttempts = 5;
 
@@ -63,12 +69,21 @@ abstract class AuthBase with Store {
       'Content-Type': 'application/json',
     };
 
-    if (_xsrfToken != null) {
-      headers['X-XSRF-TOKEN'] = _xsrfToken!;
+    debugPrint(
+      '🏗️ Building headers - sessionToken: ${_sessionToken != null ? "SET (${_sessionToken!.substring(0, 10)}...)" : "NULL"}, xsrfToken: ${_xsrfToken != null ? "SET" : "NULL"}',
+    );
+
+    // Use Bearer token authorization (matching Moblin's implementation)
+    if (_sessionToken != null) {
+      headers['Authorization'] = 'Bearer $_sessionToken';
+      debugPrint('✅ Added Authorization header');
+    } else {
+      debugPrint('⚠️ No session token available for Authorization header');
     }
 
-    if (_sessionToken != null) {
-      headers['Cookie'] = 'kick_session=$_sessionToken';
+    // Also include XSRF token for state-changing operations
+    if (_xsrfToken != null) {
+      headers['X-XSRF-TOKEN'] = _xsrfToken!;
     }
 
     return headers;
@@ -132,18 +147,39 @@ abstract class AuthBase with Store {
     final webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted);
 
+    // Reset state for new login flow
+    _loginButtonClicked = false;
+    _stopCookieCheckTimer();
+
     return webViewController
       ..setNavigationDelegate(
         NavigationDelegate(
-          onNavigationRequest: (request) =>
-              _handleNavigation(request: request, routeAfter: routeAfter),
+          onNavigationRequest: (request) {
+            debugPrint('🔐 [AUTH] ' + 'Navigation request: ${request.url}');
+            return _handleNavigation(request: request, routeAfter: routeAfter);
+          },
           onWebResourceError: (error) {
-            debugPrint('Auth WebView error: ${error.description}');
+            debugPrint(
+              '🔐 [AUTH] ' +
+                  'WebView error: ${error.description} (${error.errorCode})',
+            );
+          },
+          onPageStarted: (url) {
+            debugPrint('🔐 [AUTH] ' + 'Page started loading: $url');
           },
           onPageFinished: (url) async {
-            // Check if we're on the main Kick page after login
-            if (url.contains('kick.com') && !url.contains('/login')) {
-              await _extractCookiesFromWebView(webViewController, routeAfter);
+            debugPrint('🔐 [AUTH] ' + 'Page finished loading: $url');
+
+            // Auto-click login button if we're on the login page
+            if (url.contains('kick.com/login') && !_loginButtonClicked) {
+              debugPrint(
+                '🔐 [AUTH] ' + 'On login page, attempting auto-click...',
+              );
+              await _autoClickLoginButton(webViewController);
+            }
+            // Start periodic cookie checking once page is loaded
+            if (url.contains('kick.com')) {
+              _startCookieCheckTimer(webViewController, routeAfter);
             }
           },
         ),
@@ -171,7 +207,125 @@ abstract class AuthBase with Store {
     return NavigationDecision.prevent;
   }
 
+  /// Auto-click the login button to advance to the login form.
+  /// Inspired by Moblin's approach for better UX.
+  Future<void> _autoClickLoginButton(WebViewController controller) async {
+    try {
+      final result = await controller.runJavaScriptReturningResult('''
+        (async function() {
+          try {
+            // Wait for 200ms for the page to load
+            await new Promise(resolve => setTimeout(resolve, 200));
+            var loginButton = document.querySelector('[data-testid="login"]');
+            if (loginButton) {
+              loginButton.click();
+              return true;
+            }
+            return false;
+          } catch (error) {
+            return false;
+          }
+        })();
+      ''');
+
+      final clicked = result.toString().toLowerCase() == 'true';
+      if (clicked) {
+        _loginButtonClicked = true;
+        debugPrint('Auto-clicked login button');
+      }
+    } catch (e) {
+      debugPrint('Failed to auto-click login button: $e');
+    }
+  }
+
+  /// Start periodic timer to check for authentication cookies.
+  /// Checks every 1 second, inspired by Moblin's implementation.
+  void _startCookieCheckTimer(
+    WebViewController controller,
+    Widget? routeAfter,
+  ) {
+    // Stop any existing timer
+    _stopCookieCheckTimer();
+
+    _cookieCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _checkForAuthCookies(controller, routeAfter);
+    });
+  }
+
+  /// Stop the periodic cookie check timer.
+  void _stopCookieCheckTimer() {
+    _cookieCheckTimer?.cancel();
+    _cookieCheckTimer = null;
+  }
+
+  /// Check for authentication cookies in the WebView.
+  Future<void> _checkForAuthCookies(
+    WebViewController controller,
+    Widget? routeAfter,
+  ) async {
+    try {
+      // Get cookies from document.cookie
+      final result = await controller.runJavaScriptReturningResult(
+        'document.cookie',
+      );
+
+      final cookieString = result.toString();
+      // Remove quotes if present (JS returns quoted string)
+      final cleanCookies = cookieString.replaceAll('"', '');
+
+      // Check for auth cookies
+      final hasSessionToken = cleanCookies.contains('session_token=');
+      final hasKickSession = cleanCookies.contains('kick_session=');
+
+      if (hasSessionToken || hasKickSession) {
+        debugPrint('🔐 [AUTH] ✅ Found auth cookie! Parsing...');
+
+        // Parse and store cookies
+        await _parseCookies(cleanCookies);
+
+        // Validate session by fetching user info
+        if (_sessionToken != null) {
+          try {
+            await user.init();
+
+            if (user.details != null) {
+              _isLoggedIn = true;
+              _error = null;
+              _stopCookieCheckTimer();
+
+              debugPrint(
+                '🔐 [AUTH] ✅ SUCCESS! User authenticated: ${user.details!.username}',
+              );
+
+              // Navigate away from login
+              if (routeAfter != null) {
+                navigatorKey.currentState?.pop();
+                navigatorKey.currentState?.push(
+                  MaterialPageRoute(builder: (context) => routeAfter),
+                );
+              } else {
+                navigatorKey.currentState?.pop();
+              }
+            } else {
+              debugPrint(
+                '🔐 [AUTH] ❌ User details is null after init - API call may have failed',
+              );
+            }
+          } catch (e, stack) {
+            debugPrint('🔐 [AUTH] ❌ Error during user.init(): $e');
+            debugPrint('🔐 [AUTH] Stack trace: $stack');
+          }
+        }
+      }
+    } catch (e, stack) {
+      debugPrint('🔐 [AUTH] ❌ Cookie check error: $e');
+      debugPrint('🔐 [AUTH] Stack: $stack');
+      // Continue checking, don't stop on errors
+    }
+  }
+
   /// Extract cookies from WebView after successful login.
+  /// This is now a fallback method, with periodic checking being primary.
   Future<void> _extractCookiesFromWebView(
     WebViewController controller,
     Widget? routeAfter,
@@ -206,8 +360,7 @@ abstract class AuthBase with Store {
 
       final jsonStr = result.toString();
       // Remove quotes if present (JavaScript returns quoted string)
-      final cleanJson =
-          jsonStr.startsWith('"') ? jsonDecode(jsonStr) : jsonStr;
+      final cleanJson = jsonStr.startsWith('"') ? jsonDecode(jsonStr) : jsonStr;
       final data = jsonDecode(cleanJson is String ? cleanJson : jsonStr);
 
       if (data['loggedIn'] == true) {
@@ -251,17 +404,35 @@ abstract class AuthBase with Store {
     final cookies = cookieString.split(';');
 
     for (final cookie in cookies) {
-      final parts = cookie.trim().split('=');
-      if (parts.length >= 2) {
-        final name = parts[0].trim();
-        final value = parts.sublist(1).join('=').trim();
+      final trimmed = cookie.trim();
+      if (trimmed.isEmpty) continue;
 
-        if (name == 'XSRF-TOKEN') {
+      final equalsIndex = trimmed.indexOf('=');
+      if (equalsIndex == -1) continue;
+
+      final name = trimmed.substring(0, equalsIndex).trim();
+      final value = trimmed.substring(equalsIndex + 1).trim();
+
+      if (name == 'XSRF-TOKEN') {
+        try {
           _xsrfToken = Uri.decodeComponent(value);
           await _storage.write(key: _xsrfTokenKey, value: _xsrfToken);
-        } else if (name == 'kick_session') {
-          _sessionToken = value;
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode XSRF token: $e');
+        }
+      } else if (name == 'session_token') {
+        try {
+          _sessionToken = Uri.decodeComponent(value);
           await _storage.write(key: _sessionTokenKey, value: _sessionToken);
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode session_token: $e');
+        }
+      } else if (name == 'kick_session') {
+        try {
+          _sessionToken = Uri.decodeComponent(value);
+          await _storage.write(key: _sessionTokenKey, value: _sessionToken);
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode kick_session: $e');
         }
       }
     }
@@ -299,6 +470,7 @@ abstract class AuthBase with Store {
   Future<void> logout() async {
     try {
       _stopReconnectLoop();
+      _stopCookieCheckTimer();
 
       // Clear stored tokens
       await _clearStoredTokens();
@@ -357,9 +529,7 @@ abstract class AuthBase with Store {
               Navigator.pop(context);
               // Navigate to login screen
               navigatorKey.currentState?.push(
-                MaterialPageRoute(
-                  builder: (context) => _buildLoginScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => _buildLoginScreen()),
               );
             },
             child: const Text('Login'),
@@ -415,9 +585,9 @@ abstract class AuthBase with Store {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
@@ -472,9 +642,4 @@ abstract class AuthBase with Store {
 }
 
 /// Connection state enum for UI feedback.
-enum ConnectionState {
-  none,
-  waiting,
-  active,
-  done,
-}
+enum ConnectionState { none, waiting, active, done }

@@ -92,19 +92,32 @@ class KickApi extends BaseApiClient {
     return KickLivestreamsResponse.fromJson(data);
   }
 
-  /// Returns followed channels' livestreams (requires auth).
-  /// Uses api/v2/channels/followed with cursor-based pagination.
-  Future<KickLivestreamsResponse> getFollowedLivestreams({int? cursor}) async {
-    final queryParams = <String, dynamic>{};
-    if (cursor != null) queryParams['cursor'] = cursor.toString();
-
+  /// Returns live streams from followed channels (requires auth).
+  /// Uses /api/v1/user/livestreams - returns full stream details with thumbnails.
+  Future<List<KickLivestreamItem>> getFollowedLivestreams() async {
     // This endpoint requires authentication
-    final data = await get<JsonMap>(
-      '$_internalV2Url/channels/followed',
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    final data = await get<List<dynamic>>(
+      'https://kick.com/api/v1/user/livestreams',
     );
 
-    return KickLivestreamsResponse.fromJson(data);
+    return data
+        .map(
+          (item) => KickLivestreamItem.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  /// Returns all followed channels with pagination (requires auth).
+  /// Uses /api/v2/channels/followed-page - returns basic channel info.
+  Future<KickFollowedChannelsResponse> getFollowedChannelsPage({
+    int cursor = 0,
+  }) async {
+    final data = await get<JsonMap>(
+      '$_internalV2Url/channels/followed-page',
+      queryParameters: {'cursor': cursor.toString()},
+    );
+
+    return KickFollowedChannelsResponse.fromJson(data);
   }
 
   // ============================================================
@@ -113,7 +126,8 @@ class KickApi extends BaseApiClient {
 
   /// Returns current authenticated user info.
   Future<KickUser> getCurrentUser() async {
-    final data = await get<JsonMap>('$_internalV1Url/user');
+    // Auth headers are automatically added by KickAuthInterceptor
+    final data = await get<JsonMap>('https://kick.com/api/v1/user');
     return KickUser.fromJson(data);
   }
 
@@ -199,7 +213,8 @@ class KickApi extends BaseApiClient {
           profilePic: doc['profile_pic'] as String?, // Might be null in search
           isLive: doc['is_live'] as bool? ?? false,
           isVerified: doc['verified'] as bool? ?? false,
-          viewerCount: null, // Not provided in search hits usually
+          viewerCount: doc['viewer_count'] as int?,
+          startTime: doc['start_time'] as String?,
         );
       }).toList();
     } catch (e) {

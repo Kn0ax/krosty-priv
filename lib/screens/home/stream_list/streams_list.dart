@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/apis/kick_api.dart';
-import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/home/stream_list/large_stream_card.dart';
+import 'package:krosty/screens/home/stream_list/offline_channel_card.dart';
 import 'package:krosty/screens/home/stream_list/stream_card.dart';
 import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
@@ -126,7 +126,13 @@ class _StreamsListState extends State<StreamsList>
             );
           }
 
-          if (_listStore.streams.isEmpty) {
+          // Check if we have any streams (live for followed, all for others)
+          final hasStreams = widget.listType == ListType.followed
+              ? _listStore.liveStreams.isNotEmpty ||
+                    _listStore.offlineChannels.isNotEmpty
+              : _listStore.streams.isNotEmpty;
+
+          if (!hasStreams) {
             if (_listStore.isLoading && _listStore.error == null) {
               // Show skeleton loaders while loading
               final settingsStore = context.watch<SettingsStore>();
@@ -250,45 +256,127 @@ class _StreamsListState extends State<StreamsList>
                         slivers: [
                           SliverTopPadding(extraTopPadding: extraTopPadding),
 
-                          SliverList.builder(
-                            itemCount: streams.length,
-                            itemBuilder: (context, index) {
-                              if (index > streams.length - 10 &&
-                                  _listStore.hasMore) {
-                                _listStore.getStreams();
-                              }
-                              return Observer(
-                                builder: (context) =>
-                                    settingsStore.largeStreamCard
+                          // For followed tab, show live streams first, then offline
+                          if (isFollowingTab) ...[
+                            // Live streams
+                            SliverList.builder(
+                              itemCount: _listStore.liveStreams.length,
+                              itemBuilder: (context, index) {
+                                final liveStreams = _listStore.liveStreams;
+                                if (index > liveStreams.length - 10 &&
+                                    _listStore.hasMore) {
+                                  _listStore.getStreams();
+                                }
+                                return Observer(
+                                  builder: (context) =>
+                                      settingsStore.largeStreamCard
                                       ? LargeStreamCard(
-                                          key: ValueKey(
-                                            streams[index].id,
-                                          ),
-                                          streamInfo: streams[index],
-                                        showThumbnail:
-                                            settingsStore.showThumbnails,
-                                        showCategory: widget.categorySlug == null,
-                                        showPinOption: isFollowingTab,
-                                        isPinned: false,
-                                      )
+                                          key: ValueKey(liveStreams[index].id),
+                                          streamInfo: liveStreams[index],
+                                          showThumbnail:
+                                              settingsStore.showThumbnails,
+                                          showCategory:
+                                              widget.categorySlug == null,
+                                          showPinOption: true,
+                                          isPinned: false,
+                                        )
                                       : StreamCard(
-                                          key: ValueKey(
-                                            streams[index].id,
-                                          ),
-                                          streamInfo: streams[index],
-                                        showThumbnail:
-                                            settingsStore.showThumbnails,
-                                        showCategory: widget.categorySlug == null,
-                                        showPinOption: isFollowingTab,
+                                          key: ValueKey(liveStreams[index].id),
+                                          streamInfo: liveStreams[index],
+                                          showThumbnail:
+                                              settingsStore.showThumbnails,
+                                          showCategory:
+                                              widget.categorySlug == null,
+                                          showPinOption: true,
+                                          isPinned: false,
+                                        ),
+                                );
+                              },
+                            ),
+                            // Offline channels section
+                            if (_listStore.offlineChannels.isNotEmpty) ...[
+                              SliverToBoxAdapter(
+                                child: Observer(
+                                  builder: (context) => ExpandableSectionHeader(
+                                    'Offline',
+                                    isFirst: true,
+                                    padding: EdgeInsets.fromLTRB(
+                                      16 + MediaQuery.of(context).padding.left,
+                                      16,
+                                      16 + MediaQuery.of(context).padding.right,
+                                      8,
+                                    ),
+                                    isExpanded:
+                                        _listStore.isOfflineChannelsExpanded,
+                                    onToggle: () =>
+                                        _listStore.isOfflineChannelsExpanded =
+                                            !_listStore
+                                                .isOfflineChannelsExpanded,
+                                  ),
+                                ),
+                              ),
+                              if (_listStore.isOfflineChannelsExpanded)
+                                SliverList.builder(
+                                  itemCount: _listStore.offlineChannels.length,
+                                  itemBuilder: (context, index) {
+                                    // Load more offline channels when nearing the end
+                                    if (index >
+                                            _listStore.offlineChannels.length -
+                                                5 &&
+                                        _listStore.hasMoreOfflineChannels) {
+                                      _listStore.loadMoreOfflineChannels();
+                                    }
+                                    return Observer(
+                                      builder: (context) => OfflineChannelCard(
+                                        key: ValueKey(
+                                          _listStore
+                                              .offlineChannels[index]
+                                              .channelSlug,
+                                        ),
+                                        channelInfo:
+                                            _listStore.offlineChannels[index],
+                                        showPinOption: false,
                                         isPinned: false,
                                       ),
-                              );
-                            },
-                          ),
-                          // Add offline followed channels section for following tab
-                          if (isFollowingTab) ...[
-                             // Offline channels support temporarily disabled for Kick migration
-                          ],
+                                    );
+                                  },
+                                ),
+                            ],
+                          ] else
+                            // For non-followed tabs, show all streams as before
+                            SliverList.builder(
+                              itemCount: streams.length,
+                              itemBuilder: (context, index) {
+                                if (index > streams.length - 10 &&
+                                    _listStore.hasMore) {
+                                  _listStore.getStreams();
+                                }
+                                return Observer(
+                                  builder: (context) =>
+                                      settingsStore.largeStreamCard
+                                      ? LargeStreamCard(
+                                          key: ValueKey(streams[index].id),
+                                          streamInfo: streams[index],
+                                          showThumbnail:
+                                              settingsStore.showThumbnails,
+                                          showCategory:
+                                              widget.categorySlug == null,
+                                          showPinOption: false,
+                                          isPinned: false,
+                                        )
+                                      : StreamCard(
+                                          key: ValueKey(streams[index].id),
+                                          streamInfo: streams[index],
+                                          showThumbnail:
+                                              settingsStore.showThumbnails,
+                                          showCategory:
+                                              widget.categorySlug == null,
+                                          showPinOption: false,
+                                          isPinned: false,
+                                        ),
+                                );
+                              },
+                            ),
                           // Add padding for bottom navigation bar
                           const SliverBottomPadding(),
                         ],

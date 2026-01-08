@@ -16,6 +16,14 @@ mixin _$ListStore on ListStoreBase, Store {
     () => super.hasMore,
     name: 'ListStoreBase.hasMore',
   )).value;
+  Computed<bool>? _$hasMoreOfflineChannelsComputed;
+
+  @override
+  bool get hasMoreOfflineChannels =>
+      (_$hasMoreOfflineChannelsComputed ??= Computed<bool>(
+        () => super.hasMoreOfflineChannels,
+        name: 'ListStoreBase.hasMoreOfflineChannels',
+      )).value;
   Computed<bool>? _$isLoadingComputed;
 
   @override
@@ -30,6 +38,22 @@ mixin _$ListStore on ListStoreBase, Store {
       (_$streamsComputed ??= Computed<ObservableList<KickLivestreamItem>>(
         () => super.streams,
         name: 'ListStoreBase.streams',
+      )).value;
+  Computed<List<KickLivestreamItem>>? _$liveStreamsComputed;
+
+  @override
+  List<KickLivestreamItem> get liveStreams =>
+      (_$liveStreamsComputed ??= Computed<List<KickLivestreamItem>>(
+        () => super.liveStreams,
+        name: 'ListStoreBase.liveStreams',
+      )).value;
+  Computed<List<KickFollowedChannel>>? _$offlineChannelsComputed;
+
+  @override
+  List<KickFollowedChannel> get offlineChannels =>
+      (_$offlineChannelsComputed ??= Computed<List<KickFollowedChannel>>(
+        () => super.offlineChannels,
+        name: 'ListStoreBase.offlineChannels',
       )).value;
 
   late final _$_allStreamsAtom = Atom(
@@ -52,6 +76,31 @@ mixin _$ListStore on ListStoreBase, Store {
     });
   }
 
+  late final _$_offlineFollowedChannelsAtom = Atom(
+    name: 'ListStoreBase._offlineFollowedChannels',
+    context: context,
+  );
+
+  ObservableList<KickFollowedChannel> get offlineFollowedChannels {
+    _$_offlineFollowedChannelsAtom.reportRead();
+    return super._offlineFollowedChannels;
+  }
+
+  @override
+  ObservableList<KickFollowedChannel> get _offlineFollowedChannels =>
+      offlineFollowedChannels;
+
+  @override
+  set _offlineFollowedChannels(ObservableList<KickFollowedChannel> value) {
+    _$_offlineFollowedChannelsAtom.reportWrite(
+      value,
+      super._offlineFollowedChannels,
+      () {
+        super._offlineFollowedChannels = value;
+      },
+    );
+  }
+
   late final _$_isAllStreamsLoadingAtom = Atom(
     name: 'ListStoreBase._isAllStreamsLoading',
     context: context,
@@ -72,6 +121,30 @@ mixin _$ListStore on ListStoreBase, Store {
       super._isAllStreamsLoading,
       () {
         super._isAllStreamsLoading = value;
+      },
+    );
+  }
+
+  late final _$_isOfflineChannelsLoadingAtom = Atom(
+    name: 'ListStoreBase._isOfflineChannelsLoading',
+    context: context,
+  );
+
+  bool get isOfflineChannelsLoading {
+    _$_isOfflineChannelsLoadingAtom.reportRead();
+    return super._isOfflineChannelsLoading;
+  }
+
+  @override
+  bool get _isOfflineChannelsLoading => isOfflineChannelsLoading;
+
+  @override
+  set _isOfflineChannelsLoading(bool value) {
+    _$_isOfflineChannelsLoadingAtom.reportWrite(
+      value,
+      super._isOfflineChannelsLoading,
+      () {
+        super._isOfflineChannelsLoading = value;
       },
     );
   }
@@ -138,6 +211,28 @@ mixin _$ListStore on ListStoreBase, Store {
     });
   }
 
+  late final _$isOfflineChannelsExpandedAtom = Atom(
+    name: 'ListStoreBase.isOfflineChannelsExpanded',
+    context: context,
+  );
+
+  @override
+  bool get isOfflineChannelsExpanded {
+    _$isOfflineChannelsExpandedAtom.reportRead();
+    return super.isOfflineChannelsExpanded;
+  }
+
+  @override
+  set isOfflineChannelsExpanded(bool value) {
+    _$isOfflineChannelsExpandedAtom.reportWrite(
+      value,
+      super.isOfflineChannelsExpanded,
+      () {
+        super.isOfflineChannelsExpanded = value;
+      },
+    );
+  }
+
   late final _$_errorAtom = Atom(
     name: 'ListStoreBase._error',
     context: context,
@@ -168,6 +263,30 @@ mixin _$ListStore on ListStoreBase, Store {
     return _$getStreamsAsyncAction.run(() => super.getStreams());
   }
 
+  late final _$_loadOfflineChannelsAsyncAction = AsyncAction(
+    'ListStoreBase._loadOfflineChannels',
+    context: context,
+  );
+
+  @override
+  Future<void> _loadOfflineChannels() {
+    return _$_loadOfflineChannelsAsyncAction.run(
+      () => super._loadOfflineChannels(),
+    );
+  }
+
+  late final _$loadMoreOfflineChannelsAsyncAction = AsyncAction(
+    'ListStoreBase.loadMoreOfflineChannels',
+    context: context,
+  );
+
+  @override
+  Future<void> loadMoreOfflineChannels() {
+    return _$loadMoreOfflineChannelsAsyncAction.run(
+      () => super.loadMoreOfflineChannels(),
+    );
+  }
+
   late final _$refreshStreamsAsyncAction = AsyncAction(
     'ListStoreBase.refreshStreams',
     context: context,
@@ -194,9 +313,13 @@ mixin _$ListStore on ListStoreBase, Store {
   String toString() {
     return '''
 showJumpButton: ${showJumpButton},
+isOfflineChannelsExpanded: ${isOfflineChannelsExpanded},
 hasMore: ${hasMore},
+hasMoreOfflineChannels: ${hasMoreOfflineChannels},
 isLoading: ${isLoading},
-streams: ${streams}
+streams: ${streams},
+liveStreams: ${liveStreams},
+offlineChannels: ${offlineChannels}
     ''';
   }
 }

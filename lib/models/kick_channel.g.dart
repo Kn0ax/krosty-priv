@@ -138,9 +138,11 @@ KickChannelSearch _$KickChannelSearchFromJson(Map<String, dynamic> json) =>
 KickLivestreamsResponse _$KickLivestreamsResponseFromJson(
   Map<String, dynamic> json,
 ) => KickLivestreamsResponse(
-  data: (json['data'] as List<dynamic>)
-      .map((e) => KickLivestreamItem.fromJson(e as Map<String, dynamic>))
-      .toList(),
+  data:
+      (json['data'] as List<dynamic>?)
+          ?.map((e) => KickLivestreamItem.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
   currentPage: (json['current_page'] as num?)?.toInt(),
   lastPage: (json['last_page'] as num?)?.toInt(),
   perPage: (json['per_page'] as num?)?.toInt(),
@@ -183,6 +185,8 @@ KickChannelInfo _$KickChannelInfoFromJson(Map<String, dynamic> json) =>
     KickChannelInfo(
       id: (json['id'] as num?)?.toInt(),
       slug: json['slug'] as String?,
+      profilePic: json['profile_pic'] as String?,
+      username: json['username'] as String?,
       user: json['user'] == null
           ? null
           : KickUser.fromJson(json['user'] as Map<String, dynamic>),
@@ -199,3 +203,26 @@ KickCategoriesResponse _$KickCategoriesResponseFromJson(
   perPage: (json['per_page'] as num?)?.toInt(),
   total: (json['total'] as num?)?.toInt(),
 );
+
+KickFollowedChannelsResponse _$KickFollowedChannelsResponseFromJson(
+  Map<String, dynamic> json,
+) => KickFollowedChannelsResponse(
+  channels:
+      (json['channels'] as List<dynamic>?)
+          ?.map((e) => KickFollowedChannel.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
+  nextCursor: (json['nextCursor'] as num?)?.toInt(),
+);
+
+KickFollowedChannel _$KickFollowedChannelFromJson(Map<String, dynamic> json) =>
+    KickFollowedChannel(
+      isLive: json['is_live'] as bool,
+      profilePicture: json['profile_picture'] as String?,
+      channelSlug: json['channel_slug'] as String,
+      viewerCount: (json['viewer_count'] as num?)?.toInt(),
+      categoryName: json['category_name'] as String?,
+      userUsername: json['user_username'] as String,
+      sessionTitle: json['session_title'] as String?,
+      thumbnailUrl: json['thumbnail_url'] as String?,
+    );

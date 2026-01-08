@@ -145,9 +145,7 @@ class UserActionsModal extends StatelessWidget {
                             controller: WebViewController()
                               ..setJavaScriptMode(JavaScriptMode.unrestricted)
                               ..loadRequest(
-                                Uri.parse(
-                                  'https://www.twitch.tv/$userLogin/report',
-                                ),
+                                Uri.parse('https://kick.com/$userLogin/report'),
                               )
                               ..setNavigationDelegate(
                                 NavigationDelegate(

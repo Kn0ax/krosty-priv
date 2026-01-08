@@ -147,7 +147,8 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                               spacing: 6,
                               children: [
                                 const LiveIndicator(),
-                                Uptime(startTime: DateTime.now().toIso8601String()), // Placeholder or hidden as start_time missing
+                                if (channel.startTime != null)
+                                  Uptime(startTime: channel.startTime!),
                               ],
                             )
                           : null,

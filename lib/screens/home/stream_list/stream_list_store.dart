@@ -30,15 +30,15 @@ abstract class ListStoreBase with Store {
   /// The scroll controller used for handling scroll to top (if provided).
   final ScrollController? scrollController;
 
-  /// The current page/cursor for pagination.
-  /// For featured/category streams: page-based (1, 2, 3...)
-  /// For followed streams: cursor-based (null for first, then value from response)
+  /// The current page for pagination (featured/category only).
   int? _currentPage;
-  int? _cursor;
 
   /// The last page number (for knowing when there are no more results).
   int? _lastPage;
-  bool _hasMoreCursor = true;
+
+  /// Cursor for offline channels pagination.
+  int _offlineChannelsCursor = 0;
+  bool _hasMoreOfflineChannels = true;
 
   /// The last time the streams were refreshed/updated.
   var lastTimeRefreshed = DateTime.now();
@@ -48,20 +48,36 @@ abstract class ListStoreBase with Store {
   bool get hasMore {
     if (isLoading) return false;
     if (listType == ListType.followed) {
-      return _hasMoreCursor;
+      // Live streams from /user/livestreams don't have pagination
+      return false;
     }
     return _lastPage != null && (_currentPage ?? 1) < _lastPage!;
   }
 
+  /// Whether there are more offline channels to load.
   @computed
-  bool get isLoading => _isAllStreamsLoading || _isCategoryDetailsLoading;
+  bool get hasMoreOfflineChannels =>
+      !_isOfflineChannelsLoading && _hasMoreOfflineChannels;
 
-  /// The list of the fetched streams.
+  @computed
+  bool get isLoading =>
+      _isAllStreamsLoading ||
+      _isCategoryDetailsLoading ||
+      _isOfflineChannelsLoading;
+
+  /// The list of the fetched streams (for non-followed tabs and live followed).
   @readonly
   var _allStreams = ObservableList<KickLivestreamItem>();
 
+  /// The list of offline followed channels (for followed tab).
+  @readonly
+  var _offlineFollowedChannels = ObservableList<KickFollowedChannel>();
+
   @readonly
   bool _isAllStreamsLoading = false;
+
+  @readonly
+  bool _isOfflineChannelsLoading = false;
 
   @readonly
   KickCategory? _categoryDetails;
@@ -73,9 +89,24 @@ abstract class ListStoreBase with Store {
   @observable
   var showJumpButton = false;
 
-  /// The list of the fetched streams (no filtering for now - Kick user model may differ).
+  /// Whether the offline channels section is expanded.
+  @observable
+  var isOfflineChannelsExpanded = false;
+
+  /// The list of the fetched streams.
   @computed
   ObservableList<KickLivestreamItem> get streams => _allStreams;
+
+  /// Live streams (for followed tab, same as streams).
+  @computed
+  List<KickLivestreamItem> get liveStreams => _allStreams;
+
+  /// Offline followed channels (for followed tab).
+  @computed
+  List<KickFollowedChannel> get offlineChannels {
+    if (listType != ListType.followed) return [];
+    return _offlineFollowedChannels;
+  }
 
   /// The error message to show if any. Will be non-null if there is an error.
   @readonly
@@ -113,45 +144,44 @@ abstract class ListStoreBase with Store {
     _isAllStreamsLoading = true;
 
     try {
-      final KickLivestreamsResponse response;
-      switch (listType) {
-        case ListType.followed:
-          response = await kickApi.getFollowedLivestreams(cursor: _cursor);
-          break;
-        case ListType.top:
-          response = await kickApi.getFeaturedLivestreams(
-            page: _currentPage ?? 1,
-          );
-          break;
-        case ListType.category:
-          response = await kickApi.getLivestreamsByCategory(
-            categorySlug: categorySlug!,
-            page: _currentPage ?? 1,
-          );
-          break;
-      }
-
-      final isFirstLoad = listType == ListType.followed
-          ? _cursor == null
-          : (_currentPage ?? 1) == 1;
-
-      if (isFirstLoad) {
-        _allStreams = response.data.asObservable();
-      } else {
-        _allStreams.addAll(response.data);
-      }
-
-      // Update pagination state
       if (listType == ListType.followed) {
-        // Cursor-based: check if we got data, if empty or less than expected, no more
-        _hasMoreCursor = response.data.isNotEmpty;
-        // The cursor for next page would be provided in response, 
-        // typically the last item's ID or a specific cursor field
-        if (response.data.isNotEmpty) {
-          _cursor = (_cursor ?? 0) + response.data.length;
+        // Use /api/v1/user/livestreams for live streams with full details
+        final liveStreams = await kickApi.getFollowedLivestreams();
+        _allStreams = liveStreams.asObservable();
+
+        // Also fetch offline channels if not already loaded
+        if (_offlineFollowedChannels.isEmpty) {
+          _loadOfflineChannels();
         }
       } else {
-        // Page-based
+        // For top/category, use the standard response
+        final KickLivestreamsResponse response;
+        switch (listType) {
+          case ListType.followed:
+            // This case is handled above
+            throw StateError('Unreachable');
+          case ListType.top:
+            response = await kickApi.getFeaturedLivestreams(
+              page: _currentPage ?? 1,
+            );
+            break;
+          case ListType.category:
+            response = await kickApi.getLivestreamsByCategory(
+              categorySlug: categorySlug!,
+              page: _currentPage ?? 1,
+            );
+            break;
+        }
+
+        final isFirstLoad = (_currentPage ?? 1) == 1;
+
+        if (isFirstLoad) {
+          _allStreams = response.data.asObservable();
+        } else {
+          _allStreams.addAll(response.data);
+        }
+
+        // Page-based pagination
         _lastPage = response.lastPage;
         _currentPage = (_currentPage ?? 1) + 1;
       }
@@ -171,13 +201,56 @@ abstract class ListStoreBase with Store {
     _isAllStreamsLoading = false;
   }
 
+  /// Loads offline channels from /api/v2/channels/followed-page
+  @action
+  Future<void> _loadOfflineChannels() async {
+    if (_isOfflineChannelsLoading || !_hasMoreOfflineChannels) return;
+
+    _isOfflineChannelsLoading = true;
+
+    try {
+      final response = await kickApi.getFollowedChannelsPage(
+        cursor: _offlineChannelsCursor,
+      );
+
+      // Filter to only offline channels
+      final offlineChannels = response.channels
+          .where((c) => !c.isLive)
+          .toList();
+
+      if (_offlineChannelsCursor == 0) {
+        _offlineFollowedChannels = offlineChannels.asObservable();
+      } else {
+        _offlineFollowedChannels.addAll(offlineChannels);
+      }
+
+      // Update pagination
+      if (response.nextCursor != null) {
+        _offlineChannelsCursor = response.nextCursor!;
+      } else {
+        _hasMoreOfflineChannels = false;
+      }
+    } catch (e) {
+      debugPrint('Failed to load offline channels: $e');
+    }
+
+    _isOfflineChannelsLoading = false;
+  }
+
+  /// Loads more offline channels (called when scrolling).
+  @action
+  Future<void> loadMoreOfflineChannels() async {
+    await _loadOfflineChannels();
+  }
+
   /// Resets the page/cursor and then fetches the streams.
   @action
   Future<void> refreshStreams() async {
     _currentPage = null;
-    _cursor = null;
     _lastPage = null;
-    _hasMoreCursor = true;
+    _offlineChannelsCursor = 0;
+    _hasMoreOfflineChannels = true;
+    _offlineFollowedChannels.clear();
     await getStreams();
   }
 

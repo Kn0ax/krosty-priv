@@ -10,7 +10,7 @@ KickUser _$KickUserFromJson(Map<String, dynamic> json) => KickUser(
   id: (json['id'] as num).toInt(),
   username: json['username'] as String,
   bio: json['bio'] as String?,
-  profilePic: json['profile_pic'] as String?,
+  profilePic: _readProfilePic(json, 'profile_pic') as String?,
   instagram: json['instagram'] as String?,
   twitter: json['twitter'] as String?,
   youtube: json['youtube'] as String?,

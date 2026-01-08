@@ -335,16 +335,15 @@ abstract class VideoStoreBase with Store {
     // Disabled for Kick migration
   }
 
-  /// Hides the default Twitch overlay elements using CSS injection.
+  /// Hides the default overlay elements using CSS injection.
   ///
   /// This approach is far more efficient than JavaScript DOM manipulation:
   /// - CSS rules are applied by the browser's native rendering engine
   /// - No MutationObserver overhead watching the entire DOM tree
   /// - Handles dynamically added elements automatically via CSS cascade
   /// - Single one-time observer that disconnects immediately after player loads
-  /// Hides the default overlay elements using CSS injection.
   Future<void> _hideDefaultOverlay() async {
-     // Disabled for Kick migration - Kick overlay selectors unknown
+    // Disabled for Kick migration - Kick overlay selectors unknown
   }
 
   Future<void> _acceptContentWarning() async {
@@ -782,7 +781,7 @@ abstract class VideoStoreBase with Store {
     }
   }
 
-  /// Updates the stream info from the Twitch API.
+  /// Updates the stream info from the Kick API.
   ///
   /// If the stream is offline, fetches channel information to show offline details.
   /// Set [forceUpdate] to true to bypass the rate limiting check.
@@ -801,7 +800,7 @@ abstract class VideoStoreBase with Store {
 
     try {
       final channel = await kickApi.getChannel(channelSlug: userLogin);
-      
+
       if (channel.isLive) {
         // Create a synthetic KickLivestreamItem from the channel data
         final livestream = channel.livestream!;
@@ -830,7 +829,7 @@ abstract class VideoStoreBase with Store {
         _streamInfo = null;
         _offlineChannelInfo = channel;
         _paused = true;
-        
+
         // Restart overlay timer in chat-only mode even on error/offline
         if (!settingsStore.showVideo) {
           _scheduleOverlayHide();
@@ -851,7 +850,7 @@ abstract class VideoStoreBase with Store {
 
   /// Handles the toggle overlay options.
   ///
-  /// The toggle overlay option allows switching between the custom and Twitch's overlay by long-pressing the overlay.
+  /// The toggle overlay option allows switching between the custom and default overlay by long-pressing the overlay.
   @action
   void handleToggleOverlay() {
     if (settingsStore.toggleableOverlay) {

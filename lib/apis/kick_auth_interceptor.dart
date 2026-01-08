@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 
 /// Interceptor that automatically adds Kick authorization headers to API requests.
@@ -12,7 +13,13 @@ class KickAuthInterceptor extends Interceptor {
     // Add auth headers if user is logged in and request is to Kick API
     if (_shouldAddKickHeaders(options.uri)) {
       final kickHeaders = _authStore.headersKick;
+
+      debugPrint('🔐 Adding auth headers to: ${options.uri}');
+      debugPrint('🔑 Headers: ${kickHeaders.keys.join(", ")}');
+
       options.headers.addAll(kickHeaders);
+    } else {
+      debugPrint('⏭️ Skipping auth headers for: ${options.uri}');
     }
     handler.next(options);
   }

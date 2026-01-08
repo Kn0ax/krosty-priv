@@ -23,6 +23,9 @@ class _ProfilePictureState extends State<ProfilePicture> {
     super.initState();
   }
 
+  static const _defaultProfilePic =
+      'https://files.kick.com/images/profile_image/default2.jpeg';
+
   Future<String> _getProfileImageUrl() async {
     final userLogin = widget.userLogin;
 
@@ -40,7 +43,11 @@ class _ProfilePictureState extends State<ProfilePicture> {
     final future = context
         .read<KickApi>()
         .getUser(username: userLogin)
-        .then((user) => user.profilePic ?? '');
+        .then(
+          (user) => user.profilePic?.isNotEmpty == true
+              ? user.profilePic!
+              : _defaultProfilePic,
+        );
     _pendingRequests[userLogin] = future;
 
     try {
@@ -50,7 +57,8 @@ class _ProfilePictureState extends State<ProfilePicture> {
       return url;
     } catch (e) {
       _pendingRequests.remove(userLogin);
-      rethrow;
+      // Return default on error
+      return _defaultProfilePic;
     }
   }
 

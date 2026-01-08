@@ -153,8 +153,6 @@ abstract class _SettingsStoreBase with Store {
   // Recent messages defaults
   static const defaultShowRecentMessages = true;
 
-
-
   // Chat tabs defaults
   static const defaultPersistChatTabs = true;
   static const defaultSecondaryTabs = <PersistedChatTab>[];
@@ -259,8 +257,6 @@ abstract class _SettingsStoreBase with Store {
   @observable
   bool showRecentMessages = defaultShowRecentMessages;
 
-
-
   // Chat tabs
   @JsonKey(defaultValue: defaultPersistChatTabs)
   @observable
@@ -313,8 +309,6 @@ abstract class _SettingsStoreBase with Store {
     show7TVEmotes = defaultShow7TVEmotes;
 
     showRecentMessages = defaultShowRecentMessages;
-
-
 
     persistChatTabs = defaultPersistChatTabs;
     secondaryTabs = defaultSecondaryTabs;
