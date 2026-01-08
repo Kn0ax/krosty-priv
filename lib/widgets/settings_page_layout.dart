@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/animated_scroll_border.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/animated_scroll_border.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
 
 /// A reusable layout for settings pages that handles common functionality:
 /// - Orientation detection

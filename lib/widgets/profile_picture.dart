@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePicture extends StatefulWidget {
@@ -38,9 +38,9 @@ class _ProfilePictureState extends State<ProfilePicture> {
 
     // Make new request and cache it
     final future = context
-        .read<TwitchApi>()
-        .getUser(userLogin: userLogin)
-        .then((user) => user.profileImageUrl);
+        .read<KickApi>()
+        .getUser(username: userLogin)
+        .then((user) => user.profilePic ?? '');
     _pendingRequests[userLogin] = future;
 
     try {

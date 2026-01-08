@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/models/emotes.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/models/emotes.dart';
 
 /// The 7TV service for making API calls.
 /// Updated for Kick platform support.

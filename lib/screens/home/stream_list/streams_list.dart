@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/stream.dart';
-import 'package:frosty/screens/home/stream_list/large_stream_card.dart';
-import 'package:frosty/screens/home/stream_list/offline_channel_card.dart';
-import 'package:frosty/screens/home/stream_list/stream_card.dart';
-import 'package:frosty/screens/home/stream_list/stream_list_store.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/expandable_section_header.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
-import 'package:frosty/widgets/scroll_to_top_button.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/home/stream_list/large_stream_card.dart';
+import 'package:krosty/screens/home/stream_list/stream_card.dart';
+import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/expandable_section_header.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/scroll_to_top_button.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:provider/provider.dart';
 
 /// A widget that displays a list of followed or top streams based on the provided [listType].
@@ -23,7 +22,7 @@ class StreamsList extends StatefulWidget {
   /// The type of list to display.
   final ListType listType;
 
-  final String? categoryId;
+  final String? categorySlug;
 
   /// The scroll controller to use for scroll to top functionality.
   final ScrollController? scrollController;
@@ -33,7 +32,7 @@ class StreamsList extends StatefulWidget {
   const StreamsList({
     super.key,
     required this.listType,
-    this.categoryId,
+    this.categorySlug,
     this.scrollController,
     this.showJumpButton = false,
   });
@@ -62,9 +61,9 @@ class _StreamsListState extends State<StreamsList>
     _listStore = ListStore(
       authStore: context.read<AuthStore>(),
       settingsStore: context.read<SettingsStore>(),
-      twitchApi: context.read<TwitchApi>(),
+      kickApi: context.read<KickApi>(),
       listType: widget.listType,
-      categoryId: widget.categoryId,
+      categorySlug: widget.categorySlug,
       scrollController: widget.scrollController ?? _scrollController,
     );
   }
@@ -227,15 +226,7 @@ class _StreamsListState extends State<StreamsList>
 
           final settingsStore = context.watch<SettingsStore>();
 
-          final unpinnedStreams = widget.listType == ListType.followed
-              ? _listStore.streams
-                    .where(
-                      (stream) => !settingsStore.pinnedChannelIds.contains(
-                        stream.userId,
-                      ),
-                    )
-                    .toList()
-              : _listStore.streams;
+          final streams = _listStore.streams;
 
           final isFollowingTab = widget.listType == ListType.followed;
 
@@ -258,108 +249,36 @@ class _StreamsListState extends State<StreamsList>
                         controller: _listStore.scrollController,
                         slivers: [
                           SliverTopPadding(extraTopPadding: extraTopPadding),
-                          if (isFollowingTab &&
-                              _listStore.allPinnedChannels.isNotEmpty) ...[
-                            SliverToBoxAdapter(
-                              child: Builder(
-                                builder: (context) => SectionHeader(
-                                  'Pinned',
-                                  isFirst: true,
-                                  padding: EdgeInsets.fromLTRB(
-                                    16 + MediaQuery.of(context).padding.left,
-                                    8,
-                                    16 + MediaQuery.of(context).padding.right,
-                                    8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Observer(
-                              builder: (context) {
-                                // Show actual pinned channels (live streams only)
-                                return SliverList.builder(
-                                  itemCount:
-                                      _listStore.allPinnedChannels.length,
-                                  itemBuilder: (context, index) {
-                                    final stream =
-                                        _listStore.allPinnedChannels[index]
-                                            as StreamTwitch;
-                                    return Observer(
-                                      builder: (context) {
-                                        // Only live stream cards since we removed offline pinned channels
-                                        return settingsStore.largeStreamCard
-                                            ? LargeStreamCard(
-                                                key: ValueKey(stream.userId),
-                                                streamInfo: stream,
-                                                showThumbnail: context
-                                                    .read<SettingsStore>()
-                                                    .showThumbnails,
-                                                showCategory:
-                                                    widget.categoryId == null,
-                                                showPinOption: true,
-                                                isPinned: true,
-                                              )
-                                            : StreamCard(
-                                                key: ValueKey(stream.userId),
-                                                streamInfo: stream,
-                                                showThumbnail: context
-                                                    .read<SettingsStore>()
-                                                    .showThumbnails,
-                                                showCategory:
-                                                    widget.categoryId == null,
-                                                showPinOption: true,
-                                                isPinned: true,
-                                              );
-                                      },
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            SliverToBoxAdapter(
-                              child: Builder(
-                                builder: (context) => SectionHeader(
-                                  'All',
-                                  isFirst: true,
-                                  padding: EdgeInsets.fromLTRB(
-                                    16 + MediaQuery.of(context).padding.left,
-                                    8,
-                                    16 + MediaQuery.of(context).padding.right,
-                                    8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+
                           SliverList.builder(
-                            itemCount: unpinnedStreams.length,
+                            itemCount: streams.length,
                             itemBuilder: (context, index) {
-                              if (index > unpinnedStreams.length - 10 &&
+                              if (index > streams.length - 10 &&
                                   _listStore.hasMore) {
                                 _listStore.getStreams();
                               }
                               return Observer(
                                 builder: (context) =>
                                     settingsStore.largeStreamCard
-                                    ? LargeStreamCard(
-                                        key: ValueKey(
-                                          unpinnedStreams[index].userId,
-                                        ),
-                                        streamInfo: unpinnedStreams[index],
+                                      ? LargeStreamCard(
+                                          key: ValueKey(
+                                            streams[index].id,
+                                          ),
+                                          streamInfo: streams[index],
                                         showThumbnail:
                                             settingsStore.showThumbnails,
-                                        showCategory: widget.categoryId == null,
+                                        showCategory: widget.categorySlug == null,
                                         showPinOption: isFollowingTab,
                                         isPinned: false,
                                       )
-                                    : StreamCard(
-                                        key: ValueKey(
-                                          unpinnedStreams[index].userId,
-                                        ),
-                                        streamInfo: unpinnedStreams[index],
+                                      : StreamCard(
+                                          key: ValueKey(
+                                            streams[index].id,
+                                          ),
+                                          streamInfo: streams[index],
                                         showThumbnail:
                                             settingsStore.showThumbnails,
-                                        showCategory: widget.categoryId == null,
+                                        showCategory: widget.categorySlug == null,
                                         showPinOption: isFollowingTab,
                                         isPinned: false,
                                       ),
@@ -368,52 +287,7 @@ class _StreamsListState extends State<StreamsList>
                           ),
                           // Add offline followed channels section for following tab
                           if (isFollowingTab) ...[
-                            SliverToBoxAdapter(
-                              child: Observer(
-                                builder: (context) => ExpandableSectionHeader(
-                                  'Offline',
-                                  isFirst: true,
-                                  padding: EdgeInsets.fromLTRB(
-                                    16 + MediaQuery.of(context).padding.left,
-                                    16,
-                                    16 + MediaQuery.of(context).padding.right,
-                                    8,
-                                  ),
-                                  isExpanded:
-                                      _listStore.isOfflineChannelsExpanded,
-                                  onToggle: () =>
-                                      _listStore.isOfflineChannelsExpanded =
-                                          !_listStore.isOfflineChannelsExpanded,
-                                ),
-                              ),
-                            ),
-                            if (_listStore.isOfflineChannelsExpanded)
-                              SliverList.builder(
-                                itemCount: _listStore.offlineChannels.length,
-                                itemBuilder: (context, index) {
-                                  // Load more offline channels when nearing the end
-                                  if (index >
-                                          _listStore.offlineChannels.length -
-                                              5 &&
-                                      _listStore.hasMoreOfflineChannels) {
-                                    _listStore.getOfflineChannels();
-                                  }
-
-                                  return Observer(
-                                    builder: (context) => OfflineChannelCard(
-                                      key: ValueKey(
-                                        _listStore
-                                            .offlineChannels[index]
-                                            .broadcasterId,
-                                      ),
-                                      channelInfo:
-                                          _listStore.offlineChannels[index],
-                                      showPinOption: false,
-                                      isPinned: false,
-                                    ),
-                                  );
-                                },
-                              ),
+                             // Offline channels support temporarily disabled for Kick migration
                           ],
                           // Add padding for bottom navigation bar
                           const SliverBottomPadding(),

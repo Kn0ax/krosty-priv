@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 
 class FrostyNotification extends StatelessWidget {
   final String message;

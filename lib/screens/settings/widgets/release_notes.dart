@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 

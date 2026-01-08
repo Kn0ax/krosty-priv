@@ -9,24 +9,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:frosty/apis/bttv_api.dart';
-import 'package:frosty/apis/dio_client.dart';
-import 'package:frosty/apis/ffz_api.dart';
-import 'package:frosty/apis/seventv_api.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/apis/twitch_auth_interceptor.dart';
-import 'package:frosty/apis/unauthorized_interceptor.dart';
-import 'package:frosty/cache_manager.dart';
-import 'package:frosty/firebase_options.dart';
-import 'package:frosty/screens/channel/channel.dart';
-import 'package:frosty/screens/home/home.dart';
-import 'package:frosty/screens/onboarding/onboarding_intro.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/stores/global_assets_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/widgets/alert_message.dart';
+import 'package:krosty/apis/dio_client.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/kick_auth_interceptor.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/cache_manager.dart';
+import 'package:krosty/firebase_options.dart';
+import 'package:krosty/screens/channel/channel.dart';
+import 'package:krosty/screens/home/home.dart';
+import 'package:krosty/screens/onboarding/onboarding_intro.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/stores/global_assets_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/widgets/alert_message.dart';
 import 'package:mobx/mobx.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -85,27 +82,20 @@ void main() async {
   final dioClient = DioClient.createClient();
 
   // Create API services
-  final twitchApiService = TwitchApi(dioClient);
-  final bttvApiService = BTTVApi(dioClient);
-  final ffzApiService = FFZApi(dioClient);
+  final kickApiService = KickApi(dioClient);
   final sevenTVApiService = SevenTVApi(dioClient);
 
-  // Create global assets store (shared cache for global emotes/badges)
+  // Create global assets store (shared cache for global emotes)
   final globalAssetsStore = GlobalAssetsStore(
-    twitchApi: twitchApiService,
-    bttvApi: bttvApiService,
-    ffzApi: ffzApiService,
+    kickApi: kickApiService,
     sevenTVApi: sevenTVApiService,
   );
 
   // Create and initialize the authentication store
-  final authStore = AuthStore(twitchApi: twitchApiService);
+  final authStore = AuthStore(kickApi: kickApiService);
 
-  // Add the auth interceptor to the Dio client after AuthStore creation
-  dioClient.interceptors.add(TwitchAuthInterceptor(authStore));
-
-  // Add the unauthorized interceptor to catch 401 errors
-  dioClient.interceptors.add(UnauthorizedInterceptor(authStore));
+  // Add the Kick auth interceptor to the Dio client after AuthStore creation
+  dioClient.interceptors.add(KickAuthInterceptor(authStore));
 
   await authStore.init();
 
@@ -114,9 +104,7 @@ void main() async {
       providers: [
         Provider<AuthStore>.value(value: authStore),
         Provider<SettingsStore>.value(value: settingsStore),
-        Provider<TwitchApi>.value(value: twitchApiService),
-        Provider<BTTVApi>.value(value: bttvApiService),
-        Provider<FFZApi>.value(value: ffzApiService),
+        Provider<KickApi>.value(value: kickApiService),
         Provider<SevenTVApi>.value(value: sevenTVApiService),
         Provider<GlobalAssetsStore>.value(value: globalAssetsStore),
       ],
@@ -167,7 +155,7 @@ class _MyAppState extends State<MyApp> {
         return Provider<FrostyThemes>(
           create: (_) => themes,
           child: MaterialApp(
-            title: 'Frosty',
+            title: 'Krosty',
             theme: themes.light,
             darkTheme: themes.dark,
             themeMode: settingsStore.themeType == ThemeType.system
@@ -225,15 +213,15 @@ class _MyAppState extends State<MyApp> {
       final channelName = uri.pathSegments.first;
 
       try {
-        final twitchApi = context.read<TwitchApi>();
+        final kickApi = context.read<KickApi>();
 
-        final user = await twitchApi.getUser(userLogin: channelName);
+        final channel = await kickApi.getChannel(channelSlug: channelName);
 
         final route = MaterialPageRoute(
           builder: (context) => VideoChat(
-            userId: user.id,
-            userName: user.displayName,
-            userLogin: user.login,
+            userId: channel.id.toString(),
+            userName: channel.displayName,
+            userLogin: channel.slug,
           ),
         );
 
@@ -243,7 +231,7 @@ class _MyAppState extends State<MyApp> {
           (_) => navigatorKey.currentState?.push(route),
         );
       } catch (e) {
-        // If we get here, there was most likely an error with the Twitch API call and/or this isn't really a channel link
+        // If we get here, there was most likely an error with the Kick API call and/or this isn't really a channel link
         debugPrint('Failed to open link $uri due to error: $e');
 
         if (navigatorKey.currentContext == null) return;

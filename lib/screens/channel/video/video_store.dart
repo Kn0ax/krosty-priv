@@ -4,11 +4,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/channel.dart';
-import 'package:frosty/models/stream.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:mobx/mobx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
@@ -21,7 +20,7 @@ part 'video_store.g.dart';
 class VideoStore = VideoStoreBase with _$VideoStore;
 
 abstract class VideoStoreBase with Store {
-  final TwitchApi twitchApi;
+  final KickApi kickApi;
 
   /// The userlogin of the current channel.
   final String userLogin;
@@ -182,11 +181,11 @@ abstract class VideoStoreBase with Store {
 
   /// The current stream info, used for displaying relevant info on the overlay.
   @readonly
-  StreamTwitch? _streamInfo;
+  KickLivestreamItem? _streamInfo;
 
   /// The offline channel info, used for displaying channel details when offline.
   @readonly
-  Channel? _offlineChannelInfo;
+  KickChannel? _offlineChannelInfo;
 
   @readonly
   List<String> _availableStreamQualities = [];
@@ -209,12 +208,12 @@ abstract class VideoStoreBase with Store {
 
   /// The video URL to use for the webview.
   String get videoUrl =>
-      'https://player.twitch.tv/?channel=$userLogin&muted=false&parent=frosty';
+      'https://player.kick.com/$userLogin?autoplay=true&muted=false';
 
   VideoStoreBase({
     required this.userLogin,
     required this.userId,
-    required this.twitchApi,
+    required this.kickApi,
     required this.authStore,
     required this.settingsStore,
   }) {
@@ -318,34 +317,8 @@ abstract class VideoStoreBase with Store {
 
   @action
   Future<void> updateStreamQualities() async {
-    try {
-      await videoWebViewController.runJavaScript(r'''
-      _queuePromise(async () => {
-        // Open the settings → quality submenu
-        (await _asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
-        (await _asyncQuerySelector('[data-a-target="player-settings-menu-item-quality"]')).click();
-
-        // Wait until at least one quality option is rendered
-        await _asyncQuerySelector(
-          '[data-a-target="player-settings-menu"] input[name="player-settings-submenu-quality-option"] + label'
-        );
-
-        // Grab every label, normalise whitespace, return as array
-        const qualities = Array.from(
-          document.querySelectorAll(
-            '[data-a-target="player-settings-menu"] input[name="player-settings-submenu-quality-option"] + label'
-          )
-        ).map(l => l.textContent.replace(/\s+/g, ' ').trim());
-
-        StreamQualities.postMessage(JSON.stringify(qualities));
-
-        // Close the settings panel again
-        (await _asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
-      });
-    ''');
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    // Disabled for Kick migration as player controls differ
+    _availableStreamQualities = [];
   }
 
   @action
@@ -359,20 +332,7 @@ abstract class VideoStoreBase with Store {
 
   @action
   Future<void> _setStreamQualityIndex(int newStreamQualityIndex) async {
-    try {
-      await videoWebViewController.runJavaScript('''
-        _queuePromise(async () => {
-          (await _asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
-          (await _asyncQuerySelector('[data-a-target="player-settings-menu-item-quality"]')).click();
-          await _asyncQuerySelector('[data-a-target="player-settings-submenu-quality-option"] input');
-          [...document.querySelectorAll('[data-a-target="player-settings-submenu-quality-option"] input')][$newStreamQualityIndex].click();
-          (await _asyncQuerySelector('[data-a-target="player-settings-button"]')).click();
-        });
-      ''');
-      _streamQualityIndex = newStreamQualityIndex;
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    // Disabled for Kick migration
   }
 
   /// Hides the default Twitch overlay elements using CSS injection.
@@ -382,61 +342,13 @@ abstract class VideoStoreBase with Store {
   /// - No MutationObserver overhead watching the entire DOM tree
   /// - Handles dynamically added elements automatically via CSS cascade
   /// - Single one-time observer that disconnects immediately after player loads
+  /// Hides the default overlay elements using CSS injection.
   Future<void> _hideDefaultOverlay() async {
-    try {
-      await videoWebViewController.runJavaScript('''
-        {
-          if (!document.getElementById('frosty-overlay-styles')) {
-            const style = document.createElement('style');
-            style.id = 'frosty-overlay-styles';
-            style.textContent = `
-              .top-bar,
-              .player-controls,
-              #channel-player-disclosures,
-              [data-a-target="player-overlay-preview-background"],
-              [data-a-target="player-overlay-video-stats"] {
-                display: none !important;
-                visibility: hidden !important;
-                pointer-events: none !important;
-              }
-            `;
-            document.head.appendChild(style);
-          }
-
-          // Single one-time observer just to detect when player loads
-          // Disconnects immediately - CSS handles everything after
-          const observer = new MutationObserver((_, obs) => {
-            if (document.querySelector('.video-player__overlay')) {
-              obs.disconnect();
-            }
-          });
-          observer.observe(document.body, { childList: true, subtree: true });
-
-          // Safety timeout: disconnect observer if player never loads
-          setTimeout(() => observer.disconnect(), 30000);
-        }
-      ''');
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+     // Disabled for Kick migration - Kick overlay selectors unknown
   }
 
   Future<void> _acceptContentWarning() async {
-    try {
-      await videoWebViewController.runJavaScript('''
-        {
-          (async () => {
-            const warningBtn = await _asyncQuerySelector('button[data-a-target*="content-classification-gate"]', 10000);
-
-            if (warningBtn) {
-              warningBtn.click();
-            }
-          })();
-        }
-      ''');
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    // Disabled for Kick migration; check if Kick has similar warnings
   }
 
   /// Sets up visibility-aware latency tracking.
@@ -888,20 +800,47 @@ abstract class VideoStoreBase with Store {
     _lastStreamInfoUpdate = now;
 
     try {
-      _streamInfo = await twitchApi.getStream(userLogin: userLogin);
-      // Clear offline info when stream is live
-      _offlineChannelInfo = null;
+      final channel = await kickApi.getChannel(channelSlug: userLogin);
+      
+      if (channel.isLive) {
+        // Create a synthetic KickLivestreamItem from the channel data
+        final livestream = channel.livestream!;
+        _streamInfo = KickLivestreamItem(
+          id: livestream.id,
+          slug: livestream.slug,
+          channelId: channel.id,
+          createdAt: livestream.createdAt,
+          startTime: livestream.startTime,
+          sessionTitle: livestream.sessionTitle,
+          isLive: true,
+          viewerCount: livestream.viewerCount,
+          thumbnail: livestream.thumbnail,
+          categories: livestream.categories,
+          tags: livestream.tags,
+          isMature: livestream.isMature,
+          language: livestream.language,
+          channel: KickChannelInfo(
+            id: channel.id,
+            slug: channel.slug,
+            user: channel.user,
+          ),
+        );
+        _offlineChannelInfo = null;
+      } else {
+        _streamInfo = null;
+        _offlineChannelInfo = channel;
+        _paused = true;
+        
+        // Restart overlay timer in chat-only mode even on error/offline
+        if (!settingsStore.showVideo) {
+          _scheduleOverlayHide();
+        }
+      }
     } catch (e) {
       _overlayTimer?.cancel();
       _streamInfo = null;
+      _offlineChannelInfo = null;
       _paused = true;
-
-      // Try to fetch offline channel information
-      try {
-        _offlineChannelInfo = await twitchApi.getChannel(userId: userId);
-      } catch (channelError) {
-        _offlineChannelInfo = null;
-      }
 
       // Restart overlay timer in chat-only mode even on error
       if (!settingsStore.showVideo) {

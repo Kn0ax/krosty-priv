@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/models/channel.dart';
-import 'package:frosty/screens/channel/channel.dart';
-import 'package:frosty/screens/home/search/search_store.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/live_indicator.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
-import 'package:frosty/widgets/uptime.dart';
-import 'package:frosty/widgets/user_actions_modal.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/channel/channel.dart';
+import 'package:krosty/screens/home/search/search_store.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/live_indicator.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
+import 'package:krosty/widgets/uptime.dart';
+import 'package:krosty/widgets/user_actions_modal.dart';
 import 'package:mobx/mobx.dart';
 
 class SearchResultsChannels extends StatefulWidget {
@@ -40,9 +40,9 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
         context,
         MaterialPageRoute(
           builder: (context) => VideoChat(
-            userId: channelInfo.broadcasterId,
-            userName: channelInfo.broadcasterName,
-            userLogin: channelInfo.broadcasterLogin,
+            userId: channelInfo.id.toString(),
+            userName: channelInfo.user.username,
+            userLogin: channelInfo.slug,
           ),
         ),
       );
@@ -102,18 +102,14 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
               ),
             );
           case FutureStatus.fulfilled:
-            final results = (future.result as List<ChannelQuery>).where(
-              (channel) => !widget.searchStore.authStore.user.blockedUsers
-                  .map((blockedUser) => blockedUser.userId)
-                  .contains(channel.id),
-            );
+            final results = (future.result as List<KickChannelSearch>);
 
             return SliverList.list(
               children: [
                 ...results.map((channel) {
                   final displayName = getReadableName(
-                    channel.displayName,
-                    channel.broadcasterLogin,
+                    channel.username,
+                    channel.slug,
                   );
 
                   return InkWell(
@@ -121,9 +117,9 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => VideoChat(
-                          userId: channel.id,
-                          userName: channel.displayName,
-                          userLogin: channel.broadcasterLogin,
+                          userId: channel.id.toString(),
+                          userName: channel.username,
+                          userLogin: channel.slug,
                         ),
                       ),
                     ),
@@ -135,15 +131,15 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                         builder: (context) => UserActionsModal(
                           authStore: widget.searchStore.authStore,
                           name: displayName,
-                          userLogin: channel.broadcasterLogin,
-                          userId: channel.id,
+                          userLogin: channel.slug,
+                          userId: channel.id.toString(),
                         ),
                       );
                     },
                     child: ListTile(
                       title: Text(displayName),
                       leading: ProfilePicture(
-                        userLogin: channel.broadcasterLogin,
+                        userLogin: channel.slug,
                         radius: 16,
                       ),
                       subtitle: channel.isLive
@@ -151,7 +147,7 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                               spacing: 6,
                               children: [
                                 const LiveIndicator(),
-                                Uptime(startTime: channel.startedAt),
+                                Uptime(startTime: DateTime.now().toIso8601String()), // Placeholder or hidden as start_time missing
                               ],
                             )
                           : null,

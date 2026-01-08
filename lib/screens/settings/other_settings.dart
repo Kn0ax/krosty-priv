@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:frosty/cache_manager.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/screens/settings/widgets/release_notes.dart';
-import 'package:frosty/screens/settings/widgets/settings_list_switch.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
+import 'package:krosty/cache_manager.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/screens/settings/widgets/release_notes.dart';
+import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/frosty_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 

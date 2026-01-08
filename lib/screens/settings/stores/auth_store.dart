@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/apis/kick_api.dart';
-import 'package:frosty/main.dart';
-import 'package:frosty/screens/settings/stores/user_store.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/main.dart';
+import 'package:krosty/screens/settings/stores/user_store.dart';
+import 'package:krosty/widgets/frosty_dialog.dart';
 import 'package:mobx/mobx.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -383,17 +383,45 @@ abstract class AuthBase with Store {
     required String targetUser,
     required String targetUserId,
   }) {
-    // TODO: Implement blocking for Kick
-    // Kick's blocking API may differ from Twitch
     return showDialog(
       context: context,
       builder: (context) => FrostyDialog(
         title: 'Block User',
-        message: 'Blocking is not yet implemented for Kick.',
+        message: 'Are you sure you want to block $targetUser?',
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final success = await kickApi.blockUser(username: targetUser);
+                if (success) {
+                  // Refresh global blocked list
+                  await user.fetchBlockedUsers();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Blocked $targetUser')),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to block $targetUser')),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Block'),
           ),
         ],
       ),

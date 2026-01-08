@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -48,6 +49,39 @@ class UserActionsModal extends StatelessWidget {
               }
 
               Navigator.pop(context);
+            },
+          ),
+        if (authStore.isLoggedIn)
+          Observer(
+            builder: (context) {
+              return FutureBuilder<bool>(
+                future: authStore.user.isFollowing(channelSlug: userLogin),
+                builder: (context, snapshot) {
+                  final isFollowing = snapshot.data ?? false;
+                  return ListTile(
+                    leading: Icon(
+                      isFollowing
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_outline_rounded,
+                      color: isFollowing ? Colors.red : null,
+                    ),
+                    title: Text(
+                      isFollowing ? 'Unfollow $name' : 'Follow $name',
+                    ),
+                    onTap: () async {
+                      if (isFollowing) {
+                        await authStore.user.unfollow(channelSlug: userLogin);
+                      } else {
+                        await authStore.user.follow(channelSlug: userLogin);
+                      }
+                      // Refresh the modal state
+                      if (context.mounted) {
+                        (context as Element).markNeedsBuild();
+                      }
+                    },
+                  );
+                },
+              );
             },
           ),
         if (authStore.isLoggedIn)

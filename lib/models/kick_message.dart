@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:frosty/models/kick_user.dart';
+import 'package:krosty/models/kick_user.dart';
 
 /// Kick chat message model from Pusher WebSocket events.
 ///
@@ -208,6 +208,24 @@ class KickSenderIdentity {
       badges: badgesList
           .map((b) => KickBadgeInfo.fromJson(b as Map<String, dynamic>))
           .toList(),
+    );
+  }
+}
+
+/// Kick badge info (type and text).
+class KickBadgeInfo {
+  final String type;
+  final String? text;
+
+  const KickBadgeInfo({
+    required this.type,
+    this.text,
+  });
+
+  factory KickBadgeInfo.fromJson(Map<String, dynamic> json) {
+    return KickBadgeInfo(
+      type: json['type'] as String? ?? '',
+      text: json['text'] as String?,
     );
   }
 }

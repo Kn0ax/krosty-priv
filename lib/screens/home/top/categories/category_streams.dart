@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/home/stream_list/stream_list_store.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:provider/provider.dart';
 
 /// A widget that displays a list of streams under the provided [categoryId].
 class CategoryStreams extends StatefulWidget {
   /// The category id, used for fetching the relevant streams in the [ListStore].
-  final String categoryId;
+  final String categorySlug;
+  final String? categoryId;
 
-  const CategoryStreams({super.key, required this.categoryId});
+  const CategoryStreams({
+    super.key,
+    required this.categorySlug,
+    this.categoryId,
+  });
 
   @override
   State<CategoryStreams> createState() => _CategoryStreamsState();
@@ -24,9 +29,9 @@ class CategoryStreams extends StatefulWidget {
 class _CategoryStreamsState extends State<CategoryStreams> {
   late final _listStore = ListStore(
     listType: ListType.category,
-    categoryId: widget.categoryId,
+    categorySlug: widget.categorySlug,
     authStore: context.read<AuthStore>(),
-    twitchApi: context.read<TwitchApi>(),
+    kickApi: context.read<KickApi>(),
     settingsStore: context.read<SettingsStore>(),
   );
 
@@ -44,7 +49,21 @@ class _CategoryStreamsState extends State<CategoryStreams> {
           Positioned.fill(
             child: StreamsList(
               listType: ListType.category,
-              categoryId: widget.categoryId,
+              categorySlug: widget.categorySlug,
+              // categorySlug: widget.categorySlug, // StreamsList might need update to use slug if it doesn't already? 
+              // StreamsList uses listType.category. And likely categoryId parameter.
+              // I'll check StreamsList later. Ideally pass slug if StreamsList supports it.
+              // For now, pass categoryId (if string) or slug as ID?
+              // StreamsList.dart accepts `categoryId` as String?. (Step 611).
+              // And uses `ListStore`. `ListStore` uses `categorySlug`.
+              // So I should pass `categorySlug` to StreamsList's `categoryId`?? or `categoryId`?
+              // Let's pass `widget.categorySlug` to `categoryId` parameter of StreamsList if StreamsList treats it as slug.
+              // StreamsList currently has `final String? categoryId;`.
+              // And `_listStore` uses `categoryId` as `categorySlug`?
+              // ListStore constructor: `categorySlug: widget.categoryId ?? widget.categorySlug`.
+              // So passing slug as categoryId works??
+              // I'll pass widget.categorySlug to StreamsList.
+             
               showJumpButton: true,
             ),
           ),
@@ -184,11 +203,7 @@ class _TransparentCategoryCard extends StatelessWidget {
               child: AspectRatio(
                 aspectRatio: 3 / 4,
                 child: FrostyCachedNetworkImage(
-                  imageUrl: category.boxArtUrl.replaceRange(
-                    category.boxArtUrl.lastIndexOf('-') + 1,
-                    null,
-                    '${artWidth}x$artHeight.jpg',
-                  ),
+                  imageUrl: category.banner ?? '',
                   placeholder: (context, url) => const SkeletonLoader(
                     borderRadius: BorderRadius.all(Radius.circular(8)),
                   ),

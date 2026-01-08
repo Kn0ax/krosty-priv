@@ -9,11 +9,11 @@ part of 'chat_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$ChatStore on ChatStoreBase, Store {
-  Computed<List<IRCMessage>>? _$renderMessagesComputed;
+  Computed<List<KickChatMessage>>? _$renderMessagesComputed;
 
   @override
-  List<IRCMessage> get renderMessages =>
-      (_$renderMessagesComputed ??= Computed<List<IRCMessage>>(
+  List<KickChatMessage> get renderMessages =>
+      (_$renderMessagesComputed ??= Computed<List<KickChatMessage>>(
         () => super.renderMessages,
         name: 'ChatStoreBase.renderMessages',
       )).value;
@@ -84,16 +84,16 @@ mixin _$ChatStore on ChatStoreBase, Store {
     context: context,
   );
 
-  ObservableList<IRCMessage> get messages {
+  ObservableList<KickChatMessage> get messages {
     _$_messagesAtom.reportRead();
     return super._messages;
   }
 
   @override
-  ObservableList<IRCMessage> get _messages => messages;
+  ObservableList<KickChatMessage> get _messages => messages;
 
   @override
-  set _messages(ObservableList<IRCMessage> value) {
+  set _messages(ObservableList<KickChatMessage> value) {
     _$_messagesAtom.reportWrite(value, super._messages, () {
       super._messages = value;
     });
@@ -207,26 +207,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
   }
 
-  late final _$_isInSharedChatModeAtom = Atom(
-    name: 'ChatStoreBase._isInSharedChatMode',
-    context: context,
-  );
-
-  bool get isInSharedChatMode {
-    _$_isInSharedChatModeAtom.reportRead();
-    return super._isInSharedChatMode;
-  }
-
-  @override
-  bool get _isInSharedChatMode => isInSharedChatMode;
-
-  @override
-  set _isInSharedChatMode(bool value) {
-    _$_isInSharedChatModeAtom.reportWrite(value, super._isInSharedChatMode, () {
-      super._isInSharedChatMode = value;
-    });
-  }
-
   late final _$_isWaitingForAckAtom = Atom(
     name: 'ChatStoreBase._isWaitingForAck',
     context: context,
@@ -287,26 +267,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     });
   }
 
-  late final _$_userStateAtom = Atom(
-    name: 'ChatStoreBase._userState',
-    context: context,
-  );
-
-  USERSTATE get userState {
-    _$_userStateAtom.reportRead();
-    return super._userState;
-  }
-
-  @override
-  USERSTATE get _userState => userState;
-
-  @override
-  set _userState(USERSTATE value) {
-    _$_userStateAtom.reportWrite(value, super._userState, () {
-      super._userState = value;
-    });
-  }
-
   late final _$expandChatAtom = Atom(
     name: 'ChatStoreBase.expandChat',
     context: context,
@@ -331,13 +291,13 @@ mixin _$ChatStore on ChatStoreBase, Store {
   );
 
   @override
-  IRCMessage? get replyingToMessage {
+  KickChatMessage? get replyingToMessage {
     _$replyingToMessageAtom.reportRead();
     return super.replyingToMessage;
   }
 
   @override
-  set replyingToMessage(IRCMessage? value) {
+  set replyingToMessage(KickChatMessage? value) {
     _$replyingToMessageAtom.reportWrite(value, super.replyingToMessage, () {
       super.replyingToMessage = value;
     });
@@ -365,14 +325,14 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
   }
 
-  late final _$getRecentMessageAsyncAction = AsyncAction(
-    'ChatStoreBase.getRecentMessage',
+  late final _$sendMessageAsyncAction = AsyncAction(
+    'ChatStoreBase.sendMessage',
     context: context,
   );
 
   @override
-  Future<void> getRecentMessage() {
-    return _$getRecentMessageAsyncAction.run(() => super.getRecentMessage());
+  Future<void> sendMessage(String message) {
+    return _$sendMessageAsyncAction.run(() => super.sendMessage(message));
   }
 
   late final _$ChatStoreBaseActionController = ActionController(
@@ -393,12 +353,96 @@ mixin _$ChatStore on ChatStoreBase, Store {
   }
 
   @override
-  void _handleIRCData(String data) {
+  void _handlePusherEvent(String rawData) {
     final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase._handleIRCData',
+      name: 'ChatStoreBase._handlePusherEvent',
     );
     try {
-      return super._handleIRCData(data);
+      return super._handlePusherEvent(rawData);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _onConnected() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._onConnected',
+    );
+    try {
+      return super._onConnected();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatMessage(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatMessage',
+    );
+    try {
+      return super._handleChatMessage(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleMessageDeleted(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleMessageDeleted',
+    );
+    try {
+      return super._handleMessageDeleted(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleUserBanned(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleUserBanned',
+    );
+    try {
+      return super._handleUserBanned(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleUserUnbanned(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleUserUnbanned',
+    );
+    try {
+      return super._handleUserUnbanned(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatroomUpdated(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatroomUpdated',
+    );
+    try {
+      return super._handleChatroomUpdated(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatroomClear() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatroomClear',
+    );
+    try {
+      return super._handleChatroomClear();
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }
@@ -411,18 +455,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
     try {
       return super.resumeScroll();
-    } finally {
-      _$ChatStoreBaseActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void listenToSevenTVEmoteSet({required String emoteSetId}) {
-    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase.listenToSevenTVEmoteSet',
-    );
-    try {
-      return super.listenToSevenTVEmoteSet(emoteSetId: emoteSetId);
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }
@@ -459,18 +491,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
     try {
       return super._startChatDelayCountdown();
-    } finally {
-      _$ChatStoreBaseActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void sendMessage(String message) {
-    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase.sendMessage',
-    );
-    try {
-      return super.sendMessage(message);
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }

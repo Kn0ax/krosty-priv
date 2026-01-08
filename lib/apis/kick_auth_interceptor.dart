@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
 
 /// Interceptor that automatically adds Kick authorization headers to API requests.
 class KickAuthInterceptor extends Interceptor {

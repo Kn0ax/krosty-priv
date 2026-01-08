@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/models/kick_channel.dart';
-import 'package:frosty/models/kick_user.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/models/kick_user.dart';
+import 'package:krosty/models/kick_silenced_user.dart';
 
 /// The Kick API service for making API calls.
 ///
@@ -11,22 +12,21 @@ import 'package:frosty/models/kick_user.dart';
 /// - Internal API (kick.com/api): Channel data, livestreams, categories
 class KickApi extends BaseApiClient {
   // Internal API base URLs (reverse-engineered, more complete data)
-  static const String _internalBaseUrl = 'https://kick.com/api';
-  static const String _internalV1Url = 'https://kick.com/api/v1';
+  static const String _internalV1Url = 'https://web.kick.com/api/v1';
   static const String _internalV2Url = 'https://kick.com/api/v2';
 
   // Official API base URL (documented, OAuth endpoints)
   static const String _officialBaseUrl = 'https://api.kick.com/public/v1';
   static const String _oauthBaseUrl = 'https://id.kick.com/oauth';
 
-  KickApi(Dio dio) : super(dio, _internalBaseUrl);
+  KickApi(Dio dio) : super(dio, _internalV1Url);
 
   // ============================================================
   // CHANNEL ENDPOINTS (Internal API - more complete data)
   // ============================================================
 
   /// Returns detailed channel info including chatroom_id.
-  /// Uses internal API v2 for complete data.
+  /// Uses internal API v2 for channel data.
   Future<KickChannel> getChannel({required String channelSlug}) async {
     final data = await get<JsonMap>('$_internalV2Url/channels/$channelSlug');
     return KickChannel.fromJson(data);
@@ -42,17 +42,38 @@ class KickApi extends BaseApiClient {
   // LIVESTREAM ENDPOINTS (Internal API)
   // ============================================================
 
-  /// Returns a list of top/featured livestreams.
-  Future<KickLivestreamsResponse> getTopLivestreams({int? page}) async {
+  /// Returns a list of featured livestreams.
+  Future<KickLivestreamsResponse> getFeaturedLivestreams({
+    int? page,
+    String lang = 'en', // TODO: switch to locale
+  }) async {
     final queryParams = <String, dynamic>{};
     if (page != null) queryParams['page'] = page.toString();
 
     final data = await get<JsonMap>(
-      '$_internalV1Url/livestreams',
+      '$_internalV1Url/livestreams/featured?language=$lang',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    return KickLivestreamsResponse.fromJson(data);
+    // Featured endpoint has structure: { data: { livestreams: [...] } }
+    // Unlike others which are { data: [...] }
+    final livestreamsData = data['data'];
+    List<KickLivestreamItem> livestreams = [];
+
+    if (livestreamsData is Map && livestreamsData['livestreams'] is List) {
+      livestreams = (livestreamsData['livestreams'] as List)
+          .map((e) => KickLivestreamItem.fromJson(e))
+          .toList();
+    } else if (livestreamsData is List) {
+      // Fallback in case structure changes
+      livestreams = livestreamsData
+          .map((e) => KickLivestreamItem.fromJson(e))
+          .toList();
+    }
+
+    // Featured response doesn't seem to include standard pagination meta
+    // So we return a wrapper with just the data
+    return KickLivestreamsResponse(data: livestreams);
   }
 
   /// Returns livestreams for a specific category.
@@ -64,7 +85,7 @@ class KickApi extends BaseApiClient {
     if (page != null) queryParams['page'] = page.toString();
 
     final data = await get<JsonMap>(
-      '$_internalV1Url/categories/$categorySlug/streams',
+      '$_internalV2Url/categories/$categorySlug/streams',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
@@ -72,14 +93,14 @@ class KickApi extends BaseApiClient {
   }
 
   /// Returns followed channels' livestreams (requires auth).
-  /// Note: This may need to be implemented via Official API when available.
-  Future<KickLivestreamsResponse> getFollowedLivestreams({int? page}) async {
+  /// Uses api/v2/channels/followed with cursor-based pagination.
+  Future<KickLivestreamsResponse> getFollowedLivestreams({int? cursor}) async {
     final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page.toString();
+    if (cursor != null) queryParams['cursor'] = cursor.toString();
 
     // This endpoint requires authentication
     final data = await get<JsonMap>(
-      '$_internalV1Url/channels/followed',
+      '$_internalV2Url/channels/followed',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
@@ -97,9 +118,15 @@ class KickApi extends BaseApiClient {
   }
 
   /// Returns user info by username.
+  /// Uses V2 API via getChannel since /api/v1/users/{username} is deprecated/broken.
   Future<KickUser> getUser({required String username}) async {
-    final data = await get<JsonMap>('$_internalV1Url/users/$username');
-    return KickUser.fromJson(data);
+    try {
+      final channel = await getChannel(channelSlug: username);
+      return channel.user;
+    } catch (e) {
+      debugPrint('Failed to get user by calling getChannel: $e');
+      rethrow;
+    }
   }
 
   // ============================================================
@@ -112,7 +139,7 @@ class KickApi extends BaseApiClient {
     if (page != null) queryParams['page'] = page.toString();
 
     final data = await get<JsonMap>(
-      '$_internalV1Url/categories/top',
+      '$_internalV2Url/subcategories',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
@@ -127,9 +154,7 @@ class KickApi extends BaseApiClient {
 
   /// Returns category info by slug.
   Future<KickCategory> getCategory({required String categorySlug}) async {
-    final data = await get<JsonMap>(
-      '$_internalV1Url/categories/$categorySlug',
-    );
+    final data = await get<JsonMap>('$_internalV1Url/categories/$categorySlug');
     return KickCategory.fromJson(data);
   }
 
@@ -141,24 +166,89 @@ class KickApi extends BaseApiClient {
   Future<List<KickChannelSearch>> searchChannels({
     required String query,
   }) async {
-    final data = await get<JsonMap>(
-      '$_internalBaseUrl/search',
-      queryParameters: {'query': query},
-    );
+    try {
+      final data = await post<JsonMap>(
+        'https://search.kick.com/multi_search',
+        data: {
+          'searches': [
+            {'preset': 'channel_search', 'q': query},
+          ],
+        },
+        headers: {'x-typesense-api-key': 'nXIMW0iEN6sMujFYjFuhdrSwVow3pDQu'},
+      );
 
-    final channels = data['channels'] as JsonList? ?? [];
-    return channels.map((c) => KickChannelSearch.fromJson(c)).toList();
+      // Response structure: { results: [ { hits: [ { document: {...} } ] } ] }
+      final results = data['results'] as List<dynamic>?;
+      if (results == null || results.isEmpty) return [];
+
+      final hits = results[0]['hits'] as List<dynamic>?;
+      if (hits == null) return [];
+
+      return hits.map((hit) {
+        final doc = hit['document'] as Map<String, dynamic>;
+        // Map search document to KickChannelSearch
+        // Note: Search API might return string IDs, handle parsing
+        final id = doc['id'] is int
+            ? doc['id'] as int
+            : int.tryParse(doc['id'].toString()) ?? 0;
+
+        return KickChannelSearch(
+          id: id,
+          slug: doc['slug'] as String? ?? '',
+          username: doc['username'] as String? ?? '',
+          profilePic: doc['profile_pic'] as String?, // Might be null in search
+          isLive: doc['is_live'] as bool? ?? false,
+          isVerified: doc['verified'] as bool? ?? false,
+          viewerCount: null, // Not provided in search hits usually
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Search channels failed: $e');
+      return [];
+    }
   }
 
   /// Search for categories by query.
   Future<List<KickCategory>> searchCategories({required String query}) async {
-    final data = await get<JsonMap>(
-      '$_internalBaseUrl/search',
-      queryParameters: {'query': query},
-    );
+    try {
+      final data = await post<JsonMap>(
+        'https://search.kick.com/multi_search',
+        data: {
+          'searches': [
+            {'preset': 'category_search', 'q': query},
+          ],
+        },
+        headers: {'x-typesense-api-key': 'nXIMW0iEN6sMujFYjFuhdrSwVow3pDQu'},
+      );
 
-    final categories = data['categories'] as JsonList? ?? [];
-    return categories.map((c) => KickCategory.fromJson(c)).toList();
+      final results = data['results'] as List<dynamic>?;
+      if (results == null || results.isEmpty) return [];
+
+      final hits = results[0]['hits'] as List<dynamic>?;
+      if (hits == null) return [];
+
+      return hits.map((hit) {
+        final doc = hit['document'] as Map<String, dynamic>;
+        final id = doc['id'] is int
+            ? doc['id'] as int
+            : int.tryParse(doc['id'].toString()) ?? 0;
+
+        // Map search document to KickCategory
+        // Search doc has 'src' for banner, map to KickCategoryBanner
+        return KickCategory(
+          id: id,
+          categoryId: doc['category_id'] as int?,
+          name: doc['name'] as String? ?? '',
+          slug: doc['slug'] as String? ?? '',
+          banner: doc['src'] != null
+              ? KickCategoryBanner(url: doc['src'] as String)
+              : null,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Search categories failed: $e');
+      return [];
+    }
   }
 
   // ============================================================
@@ -172,10 +262,7 @@ class KickApi extends BaseApiClient {
     String? replyToMessageId,
   }) async {
     try {
-      final data = <String, dynamic>{
-        'content': content,
-        'type': 'message',
-      };
+      final data = <String, dynamic>{'content': content, 'type': 'message'};
 
       if (replyToMessageId != null) {
         data['metadata'] = {
@@ -209,31 +296,34 @@ class KickApi extends BaseApiClient {
   // EMOTE ENDPOINTS
   // ============================================================
 
-  /// Get global Kick emotes.
-  Future<List<KickEmoteData>> getGlobalEmotes() async {
+  /// Get all emotes for a channel (Global, Channel, Emoji).
+  /// Uses https://kick.com/emotes/{slug}
+  Future<List<KickEmoteData>> getEmotes({required String channelSlug}) async {
     try {
-      final data = await get<JsonList>('$_internalV1Url/emotes/global');
+      // Direct call to main domain endpoint
+      final data = await get<JsonList>('https://kick.com/emotes/$channelSlug');
       return data.map((e) => KickEmoteData.fromJson(e)).toList();
     } on ApiException catch (e) {
-      debugPrint('Failed to get global emotes: $e');
+      debugPrint('Failed to get emotes for $channelSlug: $e');
       return [];
     }
   }
 
-  /// Get channel-specific emotes.
+  /// Get global Kick emotes. (Deprecated: Use getEmotes)
+  @Deprecated('Use getEmotes')
+  Future<List<KickEmoteData>> getGlobalEmotes() async {
+    return [];
+  }
+
+  /// Get channel-specific emotes. (Deprecated: Use getEmotes)
+  @Deprecated('Use getEmotes')
   Future<List<KickEmoteData>> getChannelEmotes({
     required String channelSlug,
   }) async {
-    try {
-      final data = await get<JsonList>(
-        '$_internalV1Url/channels/$channelSlug/emotes',
-      );
-      return data.map((e) => KickEmoteData.fromJson(e)).toList();
-    } on ApiException catch (e) {
-      debugPrint('Failed to get channel emotes: $e');
-      return [];
-    }
+    return getEmotes(channelSlug: channelSlug);
   }
+
+  // ...
 
   // ============================================================
   // OAUTH ENDPOINTS (Official API)
@@ -280,10 +370,7 @@ class KickApi extends BaseApiClient {
   /// Revoke a token (logout).
   Future<bool> revokeToken({required String token}) async {
     try {
-      await post<dynamic>(
-        '$_oauthBaseUrl/revoke',
-        data: {'token': token},
-      );
+      await post<dynamic>('$_oauthBaseUrl/revoke', data: {'token': token});
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to revoke token: $e');
@@ -312,11 +399,10 @@ class KickApi extends BaseApiClient {
   // ============================================================
 
   /// Follow a channel (requires authentication).
-  Future<bool> followChannel({required int channelId}) async {
+  /// Uses V2 API: POST /api/v2/channels/{slug}/follow
+  Future<bool> followChannel({required String channelSlug}) async {
     try {
-      await post<dynamic>(
-        '$_internalV1Url/channels/$channelId/follow',
-      );
+      await post<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to follow channel: $e');
@@ -325,11 +411,10 @@ class KickApi extends BaseApiClient {
   }
 
   /// Unfollow a channel (requires authentication).
-  Future<bool> unfollowChannel({required int channelId}) async {
+  /// Uses V2 API: DELETE /api/v2/channels/{slug}/follow
+  Future<bool> unfollowChannel({required String channelSlug}) async {
     try {
-      await delete<dynamic>(
-        '$_internalV1Url/channels/$channelId/follow',
-      );
+      await delete<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to unfollow channel: $e');
@@ -338,15 +423,84 @@ class KickApi extends BaseApiClient {
   }
 
   /// Check if user is following a channel.
-  Future<bool> isFollowing({required int channelId}) async {
+  /// Uses V2 API: GET /api/v2/channels/{slug}/follow
+  Future<bool> isFollowing({required String channelSlug}) async {
     try {
-      await get<dynamic>('$_internalV1Url/channels/$channelId/follow');
+      await get<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
       return true;
     } on NotFoundException {
       return false;
     } on ApiException catch (e) {
       debugPrint('Failed to check follow status: $e');
       return false;
+    }
+  }
+
+  // ============================================================
+  // BLOCK/SILENCE ENDPOINTS
+  // ============================================================
+
+  /// Get list of silenced (blocked) users.
+  Future<List<KickSilencedUser>> getSilencedUsers() async {
+    try {
+      final data = await get<JsonMap>('$_internalV2Url/silenced-users');
+      final response = KickSilencedUsersResponse.fromJson(data);
+      return response.data;
+    } on ApiException catch (e) {
+      debugPrint('Failed to get silenced users: $e');
+      return [];
+    }
+  }
+
+  /// Block (silence) a user by username.
+  Future<bool> blockUser({required String username}) async {
+    try {
+      // First fetching user to get ID might be safer, but the prompt says
+      // post to same endpoint with {"data": {"id": ..., "username": ...}}.
+      // We need the ID. So let's fetch user first.
+
+      final user = await getUser(username: username);
+
+      final body = {
+        'data': {'id': user.id, 'username': username},
+      };
+
+      await post<dynamic>('$_internalV2Url/silenced-users', data: body);
+      return true;
+    } on ApiException catch (e) {
+      debugPrint('Failed to mute user $username: $e');
+      return false;
+    }
+  }
+
+  /// Unblock (unsilence) a user by ID.
+  Future<bool> unblockUser({required int userId}) async {
+    try {
+      await delete<dynamic>('$_internalV2Url/silenced-users/$userId');
+      return true;
+    } on ApiException catch (e) {
+      debugPrint('Failed to unmute user $userId: $e');
+      return false;
+    }
+  }
+
+  // ============================================================
+  // HISTORY ENDPOINTS
+  // ============================================================
+
+  /// Get chat history for a chatroom.
+  Future<List<dynamic>> getChatHistory({required int chatroomId}) async {
+    try {
+      final data = await get<JsonMap>(
+        '$_internalV1Url/chat/$chatroomId/history',
+      );
+
+      // Expected structure: { data: { messages: [...] }, ... }
+      final messages = data['data']['messages'] as List<dynamic>? ?? [];
+      return messages;
+    } on ApiException catch (e) {
+      debugPrint('Failed to get chat history: $e');
+      return [];
     }
   }
 }
@@ -384,27 +538,46 @@ class KickTokenResponse {
 
 /// Kick emote data from API.
 class KickEmoteData {
-  final int id;
+  final dynamic id; // Can be int or string
   final String name;
-  final List<String> subscribers;
+  final bool subscribersOnly;
+  final String? type; // 'global', 'channel', 'emoji' if provided
 
   const KickEmoteData({
     required this.id,
     required this.name,
-    required this.subscribers,
+    this.subscribersOnly = false,
+    this.type,
   });
 
   factory KickEmoteData.fromJson(Map<String, dynamic> json) {
     return KickEmoteData(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      subscribers: (json['subscribers'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      id: json['id'], // dynamic
+      name: json['name'] as String? ?? 'emote',
+      subscribersOnly: json['subscribers_only'] as bool? ?? false,
+      type: json['type'] as String?,
     );
   }
 
   /// Get emote URL.
   String get url => 'https://files.kick.com/emotes/$id/fullsize';
+}
+
+/// Kick silenced user pagination response.
+class KickSilencedUsersResponse {
+  final List<KickSilencedUser> data;
+  final String? nextCursor; // Using path or explicit cursor if available
+
+  const KickSilencedUsersResponse({required this.data, this.nextCursor});
+
+  factory KickSilencedUsersResponse.fromJson(Map<String, dynamic> json) {
+    final data =
+        (json['data'] as List<dynamic>?)
+            ?.map((e) => KickSilencedUser.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    // Pagination structure in provided sample: links: { next: url }, meta: { ... }
+    // We might extract page/cursor logic if needed, but simple list for now.
+    return KickSilencedUsersResponse(data: data);
+  }
 }

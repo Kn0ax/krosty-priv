@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/onboarding/onboarding_login.dart';
-import 'package:frosty/screens/onboarding/onboarding_scaffold.dart';
+import 'package:krosty/screens/onboarding/onboarding_login.dart';
+import 'package:krosty/screens/onboarding/onboarding_scaffold.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class OnboardingIntro extends StatelessWidget {

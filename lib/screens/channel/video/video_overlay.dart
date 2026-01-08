@@ -3,18 +3,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/details/chat_users_list.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/video/stream_info_bar.dart';
-import 'package:frosty/screens/channel/video/video_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/live_indicator.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/uptime.dart';
+
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/video/stream_info_bar.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/live_indicator.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/uptime.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -302,8 +302,7 @@ class VideoOverlay extends StatelessWidget {
                                     showOfflineIndicator: false,
                                     textColor: surfaceColor,
                                     isOffline: true,
-                                    isInSharedChatMode:
-                                        chatStore.isInSharedChatMode,
+                                    isInSharedChatMode: false,
                                   ),
                                 ),
                             ],
@@ -372,8 +371,7 @@ class VideoOverlay extends StatelessWidget {
                                   showUptime: false,
                                   showViewerCount: false,
                                   textColor: surfaceColor,
-                                  isInSharedChatMode:
-                                      chatStore.isInSharedChatMode,
+                                  isInSharedChatMode: false,
                                 ),
                               ),
                             ),
@@ -433,7 +431,7 @@ class VideoOverlay extends StatelessWidget {
                                   children: [
                                     const LiveIndicator(),
                                     Uptime(
-                                      startTime: streamInfo.startedAt,
+                                      startTime: streamInfo.uptimeStartTime ?? '',
                                       style: TextStyle(
                                         color: surfaceColor,
                                         fontWeight: FontWeight.w500,
@@ -451,15 +449,16 @@ class VideoOverlay extends StatelessWidget {
                                       showModalBottomSheetWithProperFocus(
                                         isScrollControlled: true,
                                         context: context,
-                                        builder: (context) => GestureDetector(
-                                          onTap: FocusScope.of(context).unfocus,
-                                          child: ChattersList(
-                                            chatDetailsStore:
-                                                chatStore.chatDetailsStore,
-                                            chatStore: chatStore,
-                                            userLogin: streamInfo.userLogin,
-                                          ),
-                                        ),
+                                        //                                     builder: (context) => GestureDetector(
+                                        //                                       onTap: FocusScope.of(context).unfocus,
+                                        //                                       child: ChattersList(
+                                        //                                         chatDetailsStore:
+                                        //                                             chatStore.chatDetailsStore,
+                                        //                                         chatStore: chatStore,
+                                        //                                         userLogin: streamInfo.userLogin,
+                                        //                                       ),
+                                        //                                     ),
+                                        builder: (context) => const SizedBox(), // Placeholder/Removed
                                       ),
                                   child: Row(
                                     spacing: 4,
@@ -472,7 +471,7 @@ class VideoOverlay extends StatelessWidget {
                                       ),
                                       Text(
                                         NumberFormat().format(
-                                          videoStore.streamInfo?.viewerCount,
+                                          (videoStore.streamInfo?.viewerCount ?? 0),
                                         ),
                                         style: TextStyle(
                                           color: surfaceColor,

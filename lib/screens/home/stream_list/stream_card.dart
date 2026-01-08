@@ -1,27 +1,25 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/models/stream.dart';
-import 'package:frosty/screens/channel/channel.dart';
-import 'package:frosty/screens/home/top/categories/category_streams.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/frosty_photo_view_dialog.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
-import 'package:frosty/widgets/uptime.dart';
-import 'package:frosty/widgets/user_actions_modal.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/channel/channel.dart';
+import 'package:krosty/screens/home/top/categories/category_streams.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/frosty_photo_view_dialog.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
+import 'package:krosty/widgets/uptime.dart';
+import 'package:krosty/widgets/user_actions_modal.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 /// A tappable card widget that displays a stream's thumbnail and details.
 class StreamCard extends StatelessWidget {
-  final StreamTwitch streamInfo;
+  final KickLivestreamItem streamInfo;
   final bool showThumbnail;
   final bool showCategory;
   final bool showPinOption;
@@ -44,20 +42,15 @@ class StreamCard extends StatelessWidget {
     final cacheKey =
         '${streamInfo.thumbnailUrl}-${time.day}-${time.hour}-${time.minute ~/ 5}';
 
-    // Calculate the width and height of the thumbnail based on the device width and the stream card size setting.
-    // Constraint the resolution to 1920x1080 since that's the max resolution of the Twitch API.
-    final size = MediaQuery.of(context).size;
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final thumbnailWidth = min((size.width * pixelRatio) ~/ 3, 1920);
-    final thumbnailHeight = min((thumbnailWidth * (9 / 16)).toInt(), 1080);
+    // Append width and height query parameters to get lower quality thumbnails
+    final thumbnailUrl = streamInfo.thumbnailUrl != null
+        ? '${streamInfo.thumbnailUrl}'
+        : '';
 
     final thumbnail = AspectRatio(
       aspectRatio: 16 / 9,
       child: FrostyCachedNetworkImage(
-        imageUrl: streamInfo.thumbnailUrl.replaceFirst(
-          '-{width}x{height}',
-          '-${thumbnailWidth}x$thumbnailHeight',
-        ),
+        imageUrl: thumbnailUrl,
         cacheKey: cacheKey,
         placeholder: (context, url) => const SkeletonLoader(
           borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -67,13 +60,13 @@ class StreamCard extends StatelessWidget {
     );
 
     final streamerName = getReadableName(
-      streamInfo.userName,
-      streamInfo.userLogin,
+      streamInfo.channelDisplayName,
+      streamInfo.channelSlug,
     );
 
-    final streamTitle = streamInfo.title.trim();
-    final category = streamInfo.gameName.isNotEmpty
-        ? streamInfo.gameName
+    final streamTitle = streamInfo.streamTitle.trim();
+    final category = streamInfo.categoryName.isNotEmpty
+        ? streamInfo.categoryName
         : 'No Category';
 
     const subFontSize = 14.0;
@@ -89,8 +82,7 @@ class StreamCard extends StatelessWidget {
             onLongPress: () => showDialog(
               context: context,
               builder: (context) => FrostyPhotoViewDialog(
-                imageUrl: streamInfo
-                    .thumbnailUrl, // Pass original URL with {width}x{height} placeholder
+                imageUrl: streamInfo.thumbnailUrl ?? '',
                 cacheKey: cacheKey,
               ),
             ),
@@ -106,7 +98,7 @@ class StreamCard extends StatelessWidget {
               sigmaY: 8.0, // Less blur for subtlety
               forceDarkMode: true,
               child: Uptime(
-                startTime: streamInfo.startedAt,
+                startTime: streamInfo.uptimeStartTime ?? '',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -132,7 +124,7 @@ class StreamCard extends StatelessWidget {
           Row(
             spacing: 4,
             children: [
-              ProfilePicture(userLogin: streamInfo.userLogin, radius: 10),
+              ProfilePicture(userLogin: streamInfo.channelSlug, radius: 10),
               Flexible(
                 child: Tooltip(
                   message: streamerName,
@@ -164,12 +156,13 @@ class StreamCard extends StatelessWidget {
           ),
           if (showCategory) ...[
             InkWell(
-              onTap: streamInfo.gameName.isNotEmpty
+              onTap: streamInfo.categoryName.isNotEmpty
                   ? () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            CategoryStreams(categoryId: streamInfo.gameId),
+                        builder: (context) => CategoryStreams(
+                          categorySlug: streamInfo.categories?.first.slug ?? '',
+                        ),
                       ),
                     )
                   : null,
@@ -188,7 +181,7 @@ class StreamCard extends StatelessWidget {
             ),
           ],
           Text(
-            '${NumberFormat().format(streamInfo.viewerCount)} viewers',
+            '${NumberFormat().format(streamInfo.viewerCount ?? 0)} viewers',
             style: TextStyle(
               fontSize: subFontSize,
               color: fontColor?.withValues(alpha: 0.8),
@@ -204,9 +197,9 @@ class StreamCard extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (context) => VideoChat(
-            userId: streamInfo.userId,
-            userName: streamInfo.userName,
-            userLogin: streamInfo.userLogin,
+            userId: (streamInfo.channelId ?? 0).toString(),
+            userName: streamInfo.channelDisplayName,
+            userLogin: streamInfo.channelSlug,
           ),
         ),
       ),
@@ -218,8 +211,8 @@ class StreamCard extends StatelessWidget {
           builder: (context) => UserActionsModal(
             authStore: context.read<AuthStore>(),
             name: streamerName,
-            userLogin: streamInfo.userLogin,
-            userId: streamInfo.userId,
+            userLogin: streamInfo.channelSlug,
+            userId: (streamInfo.channelId ?? 0).toString(),
             showPinOption: showPinOption,
             isPinned: isPinned,
           ),

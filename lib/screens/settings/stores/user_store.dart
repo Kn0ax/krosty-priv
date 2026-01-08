@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/apis/kick_api.dart';
-import 'package:frosty/models/kick_user.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_user.dart';
 import 'package:mobx/mobx.dart';
 
 part 'user_store.g.dart';
@@ -18,6 +18,10 @@ abstract class UserStoreBase with Store {
   @readonly
   var _followedChannels = ObservableList<String>();
 
+  /// The user's list of blocked usernames (for chat filtering).
+  @readonly
+  var _blockedUsernames = ObservableSet<String>();
+
   ReactionDisposer? _disposeReaction;
 
   UserStoreBase({required this.kickApi});
@@ -28,6 +32,9 @@ abstract class UserStoreBase with Store {
       // Get and update the current user's info.
       _details = await kickApi.getCurrentUser();
 
+      // Fetch blocked users for chat filtering
+      await fetchBlockedUsers();
+
       debugPrint('User initialized: ${_details?.username}');
     } catch (e) {
       debugPrint('Failed to initialize user: $e');
@@ -35,10 +42,22 @@ abstract class UserStoreBase with Store {
     }
   }
 
-  /// Check if the user is following a specific channel.
-  Future<bool> isFollowing({required int channelId}) async {
+  /// Fetch blocked users and update the local list.
+  @action
+  Future<void> fetchBlockedUsers() async {
     try {
-      return await kickApi.isFollowing(channelId: channelId);
+      final blocked = await kickApi.getSilencedUsers();
+      _blockedUsernames.clear();
+      _blockedUsernames.addAll(blocked.map((u) => u.username.toLowerCase()));
+    } catch (e) {
+      debugPrint('Failed to fetch blocked users: $e');
+    }
+  }
+
+  /// Check if the user is following a specific channel.
+  Future<bool> isFollowing({required String channelSlug}) async {
+    try {
+      return await kickApi.isFollowing(channelSlug: channelSlug);
     } catch (e) {
       debugPrint('Failed to check follow status: $e');
       return false;
@@ -47,11 +66,11 @@ abstract class UserStoreBase with Store {
 
   /// Follow a channel.
   @action
-  Future<bool> follow({required int channelId}) async {
+  Future<bool> follow({required String channelSlug}) async {
     try {
-      final success = await kickApi.followChannel(channelId: channelId);
+      final success = await kickApi.followChannel(channelSlug: channelSlug);
       if (success) {
-        _followedChannels.add(channelId.toString());
+        _followedChannels.add(channelSlug);
       }
       return success;
     } catch (e) {
@@ -62,11 +81,11 @@ abstract class UserStoreBase with Store {
 
   /// Unfollow a channel.
   @action
-  Future<bool> unfollow({required int channelId}) async {
+  Future<bool> unfollow({required String channelSlug}) async {
     try {
-      final success = await kickApi.unfollowChannel(channelId: channelId);
+      final success = await kickApi.unfollowChannel(channelSlug: channelSlug);
       if (success) {
-        _followedChannels.remove(channelId.toString());
+        _followedChannels.remove(channelSlug);
       }
       return success;
     } catch (e) {
@@ -79,6 +98,7 @@ abstract class UserStoreBase with Store {
   void dispose() {
     _details = null;
     _followedChannels.clear();
+    _blockedUsernames.clear();
     if (_disposeReaction != null) _disposeReaction!();
   }
 }

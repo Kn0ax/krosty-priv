@@ -54,16 +54,16 @@ mixin _$VideoStore on VideoStoreBase, Store {
     context: context,
   );
 
-  StreamTwitch? get streamInfo {
+  KickLivestreamItem? get streamInfo {
     _$_streamInfoAtom.reportRead();
     return super._streamInfo;
   }
 
   @override
-  StreamTwitch? get _streamInfo => streamInfo;
+  KickLivestreamItem? get _streamInfo => streamInfo;
 
   @override
-  set _streamInfo(StreamTwitch? value) {
+  set _streamInfo(KickLivestreamItem? value) {
     _$_streamInfoAtom.reportWrite(value, super._streamInfo, () {
       super._streamInfo = value;
     });
@@ -74,16 +74,16 @@ mixin _$VideoStore on VideoStoreBase, Store {
     context: context,
   );
 
-  Channel? get offlineChannelInfo {
+  KickChannel? get offlineChannelInfo {
     _$_offlineChannelInfoAtom.reportRead();
     return super._offlineChannelInfo;
   }
 
   @override
-  Channel? get _offlineChannelInfo => offlineChannelInfo;
+  KickChannel? get _offlineChannelInfo => offlineChannelInfo;
 
   @override
-  set _offlineChannelInfo(Channel? value) {
+  set _offlineChannelInfo(KickChannel? value) {
     _$_offlineChannelInfoAtom.reportWrite(value, super._offlineChannelInfo, () {
       super._offlineChannelInfo = value;
     });

@@ -1,7 +1,16 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:frosty/models/kick_user.dart';
+import 'package:krosty/models/kick_user.dart';
 
 part 'kick_channel.g.dart';
+
+/// Helper to parse 'verified' field which can be bool or Map.
+KickVerifiedInfo? _verifiedFromJson(dynamic json) {
+  if (json == null || json == false) return null;
+  if (json is Map<String, dynamic>) {
+    return KickVerifiedInfo.fromJson(json);
+  }
+  return null;
+}
 
 /// Kick channel model from /api/v2/channels/{slug} endpoint.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
@@ -11,7 +20,7 @@ class KickChannel {
   final KickUser user;
   final KickChatroom chatroom;
   final KickLivestream? livestream;
-  @JsonKey(name: 'verified')
+  @JsonKey(name: 'verified', fromJson: _verifiedFromJson)
   final KickVerifiedInfo? verifiedInfo;
   @JsonKey(name: 'banner_image')
   final KickBannerImage? bannerImage;
@@ -21,6 +30,18 @@ class KickChannel {
   final bool? canHost;
   @JsonKey(name: 'subscriber_badges')
   final List<KickSubscriberBadge>? subscriberBadges;
+  @JsonKey(name: 'followers_count')
+  final int? followersCount;
+  @JsonKey(name: 'following')
+  final bool? following;
+  @JsonKey(name: 'subscription_enabled')
+  final bool? subscriptionEnabled;
+  @JsonKey(name: 'vod_enabled')
+  final bool? vodEnabled;
+  @JsonKey(name: 'is_affiliate')
+  final bool? isAffiliate;
+  @JsonKey(name: 'playback_url')
+  final String? playbackUrl;
 
   const KickChannel({
     required this.id,
@@ -33,6 +54,12 @@ class KickChannel {
     this.recentCategories,
     this.canHost,
     this.subscriberBadges,
+    this.followersCount,
+    this.following,
+    this.subscriptionEnabled,
+    this.vodEnabled,
+    this.isAffiliate,
+    this.playbackUrl,
   });
 
   factory KickChannel.fromJson(Map<String, dynamic> json) =>
@@ -109,16 +136,16 @@ class KickChatroom {
 /// Kick livestream model.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickLivestream {
-  final int id;
-  final String slug;
+  final dynamic id;
+  final String? slug;
   @JsonKey(name: 'channel_id')
-  final int channelId;
+  final int? channelId;
   @JsonKey(name: 'created_at')
-  final String createdAt;
+  final String? createdAt;
   @JsonKey(name: 'session_title')
-  final String sessionTitle;
+  final String? sessionTitle;
   @JsonKey(name: 'is_live')
-  final bool isLive;
+  final bool? isLive;
   @JsonKey(name: 'risk_level_id')
   final int? riskLevelId;
   @JsonKey(name: 'start_time')
@@ -129,9 +156,9 @@ class KickLivestream {
   final int? duration;
   final String? language;
   @JsonKey(name: 'is_mature')
-  final bool isMature;
+  final bool? isMature;
   @JsonKey(name: 'viewer_count')
-  final int viewerCount;
+  final int? viewerCount;
   final KickThumbnail? thumbnail;
   final List<KickCategory>? categories;
   final List<String>? tags;
@@ -139,18 +166,18 @@ class KickLivestream {
   const KickLivestream({
     required this.id,
     required this.slug,
-    required this.channelId,
-    required this.createdAt,
-    required this.sessionTitle,
-    required this.isLive,
+    this.channelId,
+    this.createdAt,
+    this.sessionTitle,
+    this.isLive,
     this.riskLevelId,
     this.startTime,
     this.source,
     this.twitchChannel,
     this.duration,
     this.language,
-    this.isMature = false,
-    this.viewerCount = 0,
+    this.isMature,
+    this.viewerCount,
     this.thumbnail,
     this.categories,
     this.tags,
@@ -160,7 +187,7 @@ class KickLivestream {
       _$KickLivestreamFromJson(json);
 
   /// Get stream title.
-  String get title => sessionTitle;
+  String get title => sessionTitle ?? '';
 
   /// Get category name (first category).
   String get categoryName =>
@@ -171,18 +198,23 @@ class KickLivestream {
       categories?.isNotEmpty == true ? categories!.first.id : null;
 
   /// Get thumbnail URL.
-  String? get thumbnailUrl => thumbnail?.url;
+  String? get thumbnailUrl => thumbnail?.imageUrl;
 }
 
 /// Kick thumbnail model.
+/// API returns 'src' for featured endpoint and 'url' for channel endpoint.
 @JsonSerializable(createToJson: false)
 class KickThumbnail {
   final String? url;
+  final String? src;
 
-  const KickThumbnail({this.url});
+  const KickThumbnail({this.url, this.src});
 
   factory KickThumbnail.fromJson(Map<String, dynamic> json) =>
       _$KickThumbnailFromJson(json);
+
+  /// Get the best available thumbnail URL.
+  String? get imageUrl => src ?? url;
 }
 
 /// Kick category model.
@@ -352,18 +384,24 @@ class KickLivestreamsResponse {
 }
 
 /// Kick livestream item from list endpoints (includes channel info).
+/// Featured endpoint uses: title, category (singular), thumbnail.src
+/// Other endpoints may use: session_title, categories (array), thumbnail.url
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickLivestreamItem {
-  final int id;
-  final String slug;
+  final dynamic id;
+  final String? slug;
   @JsonKey(name: 'channel_id')
-  final int channelId;
+  final int? channelId;
   @JsonKey(name: 'created_at')
-  final String createdAt;
+  final String? createdAt;
+  @JsonKey(name: 'start_time')
+  final String? startTime;
+  // Featured endpoint uses 'title', other endpoints use 'session_title'
+  final String? title;
   @JsonKey(name: 'session_title')
-  final String sessionTitle;
+  final String? sessionTitle;
   @JsonKey(name: 'is_live')
-  final bool isLive;
+  final bool? isLive;
   @JsonKey(name: 'risk_level_id')
   final int? riskLevelId;
   final String? source;
@@ -372,10 +410,12 @@ class KickLivestreamItem {
   final int? duration;
   final String? language;
   @JsonKey(name: 'is_mature')
-  final bool isMature;
+  final bool? isMature;
   @JsonKey(name: 'viewer_count')
-  final int viewerCount;
+  final int? viewerCount;
   final KickThumbnail? thumbnail;
+  // Featured endpoint uses 'category' (singular), other endpoints use 'categories' (array)
+  final KickCategory? category;
   final List<KickCategory>? categories;
   final List<String>? tags;
   final KickChannelInfo? channel;
@@ -383,18 +423,21 @@ class KickLivestreamItem {
   const KickLivestreamItem({
     required this.id,
     required this.slug,
-    required this.channelId,
-    required this.createdAt,
-    required this.sessionTitle,
-    required this.isLive,
+    this.channelId,
+    this.createdAt,
+    this.startTime,
+    this.title,
+    this.sessionTitle,
+    this.isLive = false,
     this.riskLevelId,
     this.source,
     this.twitchChannel,
     this.duration,
     this.language,
     this.isMature = false,
-    this.viewerCount = 0,
+    this.viewerCount,
     this.thumbnail,
+    this.category,
     this.categories,
     this.tags,
     this.channel,
@@ -403,27 +446,36 @@ class KickLivestreamItem {
   factory KickLivestreamItem.fromJson(Map<String, dynamic> json) =>
       _$KickLivestreamItemFromJson(json);
 
-  String get title => sessionTitle;
-  String get categoryName =>
-      categories?.isNotEmpty == true ? categories!.first.name : '';
-  String? get thumbnailUrl => thumbnail?.url;
+  /// Get stream title - prefers 'title' (featured), falls back to 'session_title'
+  String get streamTitle => title ?? sessionTitle ?? '';
+
+  /// Get category name - prefers 'category' (featured), falls back to 'categories' array
+  String get categoryName {
+    if (category != null) return category!.name;
+    if (categories?.isNotEmpty == true) return categories!.first.name;
+    return '';
+  }
+
+  /// Get thumbnail URL - uses imageUrl getter which handles both src and url
+  String? get thumbnailUrl => thumbnail?.imageUrl;
+
   String get channelSlug => channel?.slug ?? '';
   String get channelDisplayName => channel?.user?.username ?? '';
   String? get channelProfilePic => channel?.user?.profilePic;
+
+  /// Get the best available time for uptime calculation.
+  /// Prefers startTime, falls back to createdAt.
+  String? get uptimeStartTime => startTime ?? createdAt;
 }
 
 /// Minimal channel info included in livestream items.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickChannelInfo {
-  final int id;
-  final String slug;
+  final int? id;
+  final String? slug;
   final KickUser? user;
 
-  const KickChannelInfo({
-    required this.id,
-    required this.slug,
-    this.user,
-  });
+  const KickChannelInfo({this.id, this.slug, this.user});
 
   factory KickChannelInfo.fromJson(Map<String, dynamic> json) =>
       _$KickChannelInfoFromJson(json);

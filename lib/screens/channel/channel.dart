@@ -3,19 +3,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_tabs_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_tabs.dart';
-import 'package:frosty/screens/channel/video/stream_info_bar.dart';
-import 'package:frosty/screens/channel/video/video.dart';
-import 'package:frosty/screens/channel/video/video_overlay.dart';
-import 'package:frosty/screens/channel/video/video_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/draggable_divider.dart';
-import 'package:frosty/widgets/frosty_notification.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_tabs.dart';
+import 'package:krosty/screens/channel/video/stream_info_bar.dart';
+import 'package:krosty/screens/channel/video/video.dart';
+import 'package:krosty/screens/channel/video/video_overlay.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_assets_store.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/stores/global_assets_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/draggable_divider.dart';
+import 'package:krosty/widgets/frosty_notification.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_pip_mode/actions/pip_actions_layout.dart';
 import 'package:simple_pip_mode/pip_widget.dart';
@@ -60,24 +65,22 @@ class _VideoChatState extends State<VideoChat>
   late Animation<double> _springBackAnimation;
 
   late final ChatTabsStore _chatTabsStore = ChatTabsStore(
-    twitchApi: context.twitchApi,
-    bttvApi: context.bttvApi,
-    ffzApi: context.ffzApi,
-    sevenTVApi: context.sevenTVApi,
-    authStore: context.authStore,
-    settingsStore: context.settingsStore,
-    globalAssetsStore: context.globalAssetsStore,
-    primaryChannelId: widget.userId,
-    primaryChannelLogin: widget.userLogin,
+    kickApi: context.read<KickApi>(),
+    sevenTVApi: context.read<SevenTVApi>(),
+    authStore: context.read<AuthStore>(),
+    settingsStore: context.read<SettingsStore>(),
+    globalAssetsStore: context.read<GlobalAssetsStore>(),
+    primaryChannelSlug: widget.userLogin,
     primaryDisplayName: widget.userName,
+    // We don't have chatroomId here yet, ChatStore will fetch it
   );
 
   late final VideoStore _videoStore = VideoStore(
     userLogin: widget.userLogin,
     userId: widget.userId,
-    twitchApi: context.twitchApi,
-    authStore: context.authStore,
-    settingsStore: context.settingsStore,
+    kickApi: context.read<KickApi>(),
+    authStore: context.read<AuthStore>(),
+    settingsStore: context.read<SettingsStore>(),
   );
 
   @override
@@ -324,7 +327,7 @@ class _VideoChatState extends State<VideoChat>
               displayName: _chatStore.displayName,
               isCompact: true,
               isOffline: streamInfo == null,
-              isInSharedChatMode: _chatStore.isInSharedChatMode,
+              isInSharedChatMode: false,
               showTextShadows: false,
             ),
             flexibleSpace: BlurredContainer(

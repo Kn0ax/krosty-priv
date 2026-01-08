@@ -1,10 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/category.dart';
-import 'package:frosty/models/channel.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:mobx/mobx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,7 +14,7 @@ class SearchStore = SearchStoreBase with _$SearchStore;
 abstract class SearchStoreBase with Store {
   final AuthStore authStore;
 
-  final TwitchApi twitchApi;
+  final KickApi kickApi;
 
   final textEditingController = TextEditingController();
 
@@ -33,12 +32,12 @@ abstract class SearchStoreBase with Store {
   var _isSearching = false;
 
   @readonly
-  ObservableFuture<List<ChannelQuery>>? _channelFuture;
+  ObservableFuture<List<KickChannelSearch>>? _channelFuture;
 
   @readonly
-  ObservableFuture<CategoriesTwitch?>? _categoryFuture;
+  ObservableFuture<List<KickCategory>>? _categoryFuture;
 
-  SearchStoreBase({required this.authStore, required this.twitchApi}) {
+  SearchStoreBase({required this.authStore, required this.kickApi}) {
     init();
   }
 
@@ -107,22 +106,20 @@ abstract class SearchStoreBase with Store {
     _isSearching = false;
 
     // Fetch the matching channels, sort it by live status, and then set it.
-    _channelFuture = twitchApi.searchChannels(query: query).then((channels) {
+    _channelFuture = kickApi.searchChannels(query: query).then((channels) {
       channels.sort((c1, c2) => c2.isLive ? 1 : -1);
       return channels;
     }).asObservable();
 
     // Fetch and set the categories that match the query.
-    _categoryFuture = twitchApi.searchCategories(query: query).then((
-      categories,
-    ) {
+    _categoryFuture = kickApi.searchCategories(query: query).then((categories) {
       // Move exact matches to the first result
-      final matchingIndex = categories.data.indexWhere(
+      final matchingIndex = categories.indexWhere(
         (c) => c.name.toLowerCase() == query.toLowerCase(),
       );
       if (matchingIndex >= 1) {
-        final matchingCategory = categories.data.removeAt(matchingIndex);
-        categories.data.insert(0, matchingCategory);
+        final matchingCategory = categories.removeAt(matchingIndex);
+        categories.insert(0, matchingCategory);
       }
       return categories;
     }).asObservable();
@@ -130,9 +127,8 @@ abstract class SearchStoreBase with Store {
 
   /// Find a specific channel provided the [query].
   /// This is used for channels that may not show up in the search results.
-  Future<Channel> searchChannel(String query) async {
-    final user = await twitchApi.getUser(userLogin: query);
-    return await twitchApi.getChannel(userId: user.id);
+  Future<KickChannel> searchChannel(String query) async {
+    return await kickApi.getChannel(channelSlug: query);
   }
 
   void dispose() {

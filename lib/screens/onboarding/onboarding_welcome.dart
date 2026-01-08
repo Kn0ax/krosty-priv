@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/home/home.dart';
-import 'package:frosty/screens/onboarding/onboarding_scaffold.dart';
+import 'package:krosty/screens/home/home.dart';
+import 'package:krosty/screens/onboarding/onboarding_scaffold.dart';
 
 class OnboardingWelcome extends StatelessWidget {
   const OnboardingWelcome({super.key});

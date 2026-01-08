@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/channel/channel.dart';
-import 'package:frosty/screens/settings/account/blocked_users.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/widgets/settings_tile_route.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/screens/channel/channel.dart';
+import 'package:krosty/screens/settings/account/blocked_users.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/widgets/settings_tile_route.dart';
+import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
 
 class AccountOptions extends StatelessWidget {
   final AuthStore authStore;
@@ -47,15 +47,15 @@ class AccountOptions extends StatelessWidget {
             title: 'My channel',
             useScaffold: false,
             child: VideoChat(
-              userId: authStore.user.details!.id,
+              userId: authStore.user.details!.id.toString(),
               userName: authStore.user.details!.displayName,
-              userLogin: authStore.user.details!.login,
+              userLogin: authStore.user.details!.username,
             ),
           ),
           SettingsTileRoute(
             leading: const Icon(Icons.block_rounded),
             title: 'Blocked users',
-            child: BlockedUsers(authStore: authStore),
+            child: const BlockedUsers(),
           ),
           ListTile(
             leading: const Icon(Icons.logout_rounded),

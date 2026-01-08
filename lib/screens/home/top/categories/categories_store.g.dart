@@ -42,16 +42,16 @@ mixin _$CategoriesStore on CategoriesStoreBase, Store {
     context: context,
   );
 
-  ObservableList<CategoryTwitch> get categories {
+  ObservableList<KickCategory> get categories {
     _$_categoriesAtom.reportRead();
     return super._categories;
   }
 
   @override
-  ObservableList<CategoryTwitch> get _categories => categories;
+  ObservableList<KickCategory> get _categories => categories;
 
   @override
-  set _categories(ObservableList<CategoryTwitch> value) {
+  set _categories(ObservableList<KickCategory> value) {
     _$_categoriesAtom.reportWrite(value, super._categories, () {
       super._categories = value;
     });

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/models/irc.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
+import 'package:krosty/constants.dart';
+import 'package:krosty/models/kick_message_renderer.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/frosty_dialog.dart';
 import 'package:provider/provider.dart';
 
 class RecentEmotesPanel extends StatelessWidget {
@@ -83,7 +83,7 @@ class RecentEmotesPanel extends StatelessWidget {
                       onLongPress: () {
                         HapticFeedback.lightImpact();
 
-                        IRCMessage.showEmoteDetailsBottomSheet(
+                        showEmoteDetailsBottomSheet(
                           context,
                           emote: emote,
                           launchExternal: chatStore.settings.launchUrlExternal,

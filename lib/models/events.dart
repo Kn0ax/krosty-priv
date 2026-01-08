@@ -1,4 +1,4 @@
-import 'package:frosty/models/emotes.dart';
+import 'package:krosty/models/emotes.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'events.g.dart';

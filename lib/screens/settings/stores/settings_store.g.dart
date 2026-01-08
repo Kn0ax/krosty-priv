@@ -59,14 +59,9 @@ SettingsStore _$SettingsStoreFromJson(
   ..fullScreenChatOverlayOpacity =
       (json['fullScreenChatOverlayOpacity'] as num?)?.toDouble() ?? 0.5
   ..autocomplete = json['autocomplete'] as bool? ?? true
-  ..showTwitchEmotes = json['showTwitchEmotes'] as bool? ?? true
-  ..showTwitchBadges = json['showTwitchBadges'] as bool? ?? true
+  ..showKickEmotes = json['showKickEmotes'] as bool? ?? true
   ..show7TVEmotes = json['show7TVEmotes'] as bool? ?? true
-  ..showBTTVEmotes = json['showBTTVEmotes'] as bool? ?? true
-  ..showBTTVBadges = json['showBTTVBadges'] as bool? ?? true
-  ..showFFZEmotes = json['showFFZEmotes'] as bool? ?? true
-  ..showFFZBadges = json['showFFZBadges'] as bool? ?? true
-  ..showRecentMessages = json['showRecentMessages'] as bool? ?? false
+  ..showRecentMessages = json['showRecentMessages'] as bool? ?? true
   ..persistChatTabs = json['persistChatTabs'] as bool? ?? true
   ..secondaryTabs =
       (json['secondaryTabs'] as List<dynamic>?)
@@ -122,13 +117,8 @@ Map<String, dynamic> _$SettingsStoreToJson(
   'chatWidth': instance.chatWidth,
   'fullScreenChatOverlayOpacity': instance.fullScreenChatOverlayOpacity,
   'autocomplete': instance.autocomplete,
-  'showTwitchEmotes': instance.showTwitchEmotes,
-  'showTwitchBadges': instance.showTwitchBadges,
+  'showKickEmotes': instance.showKickEmotes,
   'show7TVEmotes': instance.show7TVEmotes,
-  'showBTTVEmotes': instance.showBTTVEmotes,
-  'showBTTVBadges': instance.showBTTVBadges,
-  'showFFZEmotes': instance.showFFZEmotes,
-  'showFFZBadges': instance.showFFZBadges,
   'showRecentMessages': instance.showRecentMessages,
   'persistChatTabs': instance.persistChatTabs,
   'secondaryTabs': instance.secondaryTabs,
@@ -734,39 +724,21 @@ mixin _$SettingsStore on _SettingsStoreBase, Store {
     });
   }
 
-  late final _$showTwitchEmotesAtom = Atom(
-    name: '_SettingsStoreBase.showTwitchEmotes',
+  late final _$showKickEmotesAtom = Atom(
+    name: '_SettingsStoreBase.showKickEmotes',
     context: context,
   );
 
   @override
-  bool get showTwitchEmotes {
-    _$showTwitchEmotesAtom.reportRead();
-    return super.showTwitchEmotes;
+  bool get showKickEmotes {
+    _$showKickEmotesAtom.reportRead();
+    return super.showKickEmotes;
   }
 
   @override
-  set showTwitchEmotes(bool value) {
-    _$showTwitchEmotesAtom.reportWrite(value, super.showTwitchEmotes, () {
-      super.showTwitchEmotes = value;
-    });
-  }
-
-  late final _$showTwitchBadgesAtom = Atom(
-    name: '_SettingsStoreBase.showTwitchBadges',
-    context: context,
-  );
-
-  @override
-  bool get showTwitchBadges {
-    _$showTwitchBadgesAtom.reportRead();
-    return super.showTwitchBadges;
-  }
-
-  @override
-  set showTwitchBadges(bool value) {
-    _$showTwitchBadgesAtom.reportWrite(value, super.showTwitchBadges, () {
-      super.showTwitchBadges = value;
+  set showKickEmotes(bool value) {
+    _$showKickEmotesAtom.reportWrite(value, super.showKickEmotes, () {
+      super.showKickEmotes = value;
     });
   }
 
@@ -785,78 +757,6 @@ mixin _$SettingsStore on _SettingsStoreBase, Store {
   set show7TVEmotes(bool value) {
     _$show7TVEmotesAtom.reportWrite(value, super.show7TVEmotes, () {
       super.show7TVEmotes = value;
-    });
-  }
-
-  late final _$showBTTVEmotesAtom = Atom(
-    name: '_SettingsStoreBase.showBTTVEmotes',
-    context: context,
-  );
-
-  @override
-  bool get showBTTVEmotes {
-    _$showBTTVEmotesAtom.reportRead();
-    return super.showBTTVEmotes;
-  }
-
-  @override
-  set showBTTVEmotes(bool value) {
-    _$showBTTVEmotesAtom.reportWrite(value, super.showBTTVEmotes, () {
-      super.showBTTVEmotes = value;
-    });
-  }
-
-  late final _$showBTTVBadgesAtom = Atom(
-    name: '_SettingsStoreBase.showBTTVBadges',
-    context: context,
-  );
-
-  @override
-  bool get showBTTVBadges {
-    _$showBTTVBadgesAtom.reportRead();
-    return super.showBTTVBadges;
-  }
-
-  @override
-  set showBTTVBadges(bool value) {
-    _$showBTTVBadgesAtom.reportWrite(value, super.showBTTVBadges, () {
-      super.showBTTVBadges = value;
-    });
-  }
-
-  late final _$showFFZEmotesAtom = Atom(
-    name: '_SettingsStoreBase.showFFZEmotes',
-    context: context,
-  );
-
-  @override
-  bool get showFFZEmotes {
-    _$showFFZEmotesAtom.reportRead();
-    return super.showFFZEmotes;
-  }
-
-  @override
-  set showFFZEmotes(bool value) {
-    _$showFFZEmotesAtom.reportWrite(value, super.showFFZEmotes, () {
-      super.showFFZEmotes = value;
-    });
-  }
-
-  late final _$showFFZBadgesAtom = Atom(
-    name: '_SettingsStoreBase.showFFZBadges',
-    context: context,
-  );
-
-  @override
-  bool get showFFZBadges {
-    _$showFFZBadgesAtom.reportRead();
-    return super.showFFZBadges;
-  }
-
-  @override
-  set showFFZBadges(bool value) {
-    _$showFFZBadgesAtom.reportWrite(value, super.showFFZBadges, () {
-      super.showFFZBadges = value;
     });
   }
 
@@ -1140,13 +1040,8 @@ landscapeCutout: ${landscapeCutout},
 chatWidth: ${chatWidth},
 fullScreenChatOverlayOpacity: ${fullScreenChatOverlayOpacity},
 autocomplete: ${autocomplete},
-showTwitchEmotes: ${showTwitchEmotes},
-showTwitchBadges: ${showTwitchBadges},
+showKickEmotes: ${showKickEmotes},
 show7TVEmotes: ${show7TVEmotes},
-showBTTVEmotes: ${showBTTVEmotes},
-showBTTVBadges: ${showBTTVBadges},
-showFFZEmotes: ${showFFZEmotes},
-showFFZBadges: ${showFFZBadges},
 showRecentMessages: ${showRecentMessages},
 persistChatTabs: ${persistChatTabs},
 secondaryTabs: ${secondaryTabs},

@@ -1,8 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:frosty/cache_manager.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:krosty/cache_manager.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 

@@ -1,7 +1,7 @@
 import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
-import 'package:frosty/models/emotes.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/models/emotes.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
 
 /// A [SpecialTextSpanBuilder] that renders emote names as inline images.
 ///

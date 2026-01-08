@@ -1,4 +1,4 @@
-import 'package:frosty/screens/channel/chat/stores/chat_tabs_store.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 
@@ -146,17 +146,14 @@ abstract class _SettingsStoreBase with Store {
   // Autocomplete defaults
   static const defaultAutocomplete = true;
 
-  // Emotes and badges defaults
-  static const defaultShowTwitchEmotes = true;
-  static const defaultShowTwitchBadges = true;
+  // Emotes defaults (Kick platform)
+  static const defaultShowKickEmotes = true;
   static const defaultShow7TVEmotes = true;
-  static const defaultShowBTTVEmotes = true;
-  static const defaultShowBTTVBadges = true;
-  static const defaultShowFFZEmotes = true;
-  static const defaultShowFFZBadges = true;
 
   // Recent messages defaults
-  static const defaultShowRecentMessages = false;
+  static const defaultShowRecentMessages = true;
+
+
 
   // Chat tabs defaults
   static const defaultPersistChatTabs = true;
@@ -248,39 +245,21 @@ abstract class _SettingsStoreBase with Store {
   @observable
   var autocomplete = defaultAutocomplete;
 
-  // Emotes and badges
-  @JsonKey(defaultValue: defaultShowTwitchEmotes)
+  // Emotes (Kick platform)
+  @JsonKey(defaultValue: defaultShowKickEmotes)
   @observable
-  var showTwitchEmotes = defaultShowTwitchEmotes;
-
-  @JsonKey(defaultValue: defaultShowTwitchBadges)
-  @observable
-  var showTwitchBadges = defaultShowTwitchBadges;
+  var showKickEmotes = defaultShowKickEmotes;
 
   @JsonKey(defaultValue: defaultShow7TVEmotes)
   @observable
   var show7TVEmotes = defaultShow7TVEmotes;
 
-  @JsonKey(defaultValue: defaultShowBTTVEmotes)
-  @observable
-  var showBTTVEmotes = defaultShowBTTVEmotes;
-
-  @JsonKey(defaultValue: defaultShowBTTVBadges)
-  @observable
-  var showBTTVBadges = defaultShowBTTVBadges;
-
-  @JsonKey(defaultValue: defaultShowFFZEmotes)
-  @observable
-  var showFFZEmotes = defaultShowFFZEmotes;
-
-  @JsonKey(defaultValue: defaultShowFFZBadges)
-  @observable
-  var showFFZBadges = defaultShowFFZBadges;
-
   // Recent messages
   @JsonKey(defaultValue: defaultShowRecentMessages)
   @observable
-  var showRecentMessages = defaultShowRecentMessages;
+  bool showRecentMessages = defaultShowRecentMessages;
+
+
 
   // Chat tabs
   @JsonKey(defaultValue: defaultPersistChatTabs)
@@ -330,15 +309,12 @@ abstract class _SettingsStoreBase with Store {
 
     autocomplete = defaultAutocomplete;
 
-    showTwitchEmotes = defaultShowTwitchEmotes;
-    showTwitchBadges = defaultShowTwitchBadges;
+    showKickEmotes = defaultShowKickEmotes;
     show7TVEmotes = defaultShow7TVEmotes;
-    showBTTVEmotes = defaultShowBTTVEmotes;
-    showBTTVBadges = defaultShowBTTVBadges;
-    showFFZEmotes = defaultShowFFZEmotes;
-    showFFZBadges = defaultShowFFZBadges;
 
     showRecentMessages = defaultShowRecentMessages;
+
+
 
     persistChatTabs = defaultPersistChatTabs;
     secondaryTabs = defaultSecondaryTabs;

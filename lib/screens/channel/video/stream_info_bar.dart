@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/models/channel.dart';
-import 'package:frosty/models/stream.dart';
-import 'package:frosty/screens/home/top/categories/category_streams.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/live_indicator.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/uptime.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/home/top/categories/category_streams.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/live_indicator.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/uptime.dart';
 import 'package:intl/intl.dart';
 
 class StreamInfoBar extends StatelessWidget {
-  final StreamTwitch? streamInfo;
-  final Channel? offlineChannelInfo;
+  final KickLivestreamItem? streamInfo;
+  final KickChannel? offlineChannelInfo;
   final bool showCategory;
   final bool tappableCategory;
   final bool showUptime;
@@ -90,18 +89,16 @@ class StreamInfoBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final streamTitle = isOffline
-        ? (offlineChannelInfo?.title.trim() ?? '')
-        : (streamInfo?.title.trim() ?? '');
+        ? (offlineChannelInfo?.user.username.trim() ?? '')
+        : (streamInfo?.streamTitle ?? '').trim();
     final streamerName = isOffline
         ? getReadableName(
-            offlineChannelInfo?.broadcasterName.isNotEmpty == true
-                ? offlineChannelInfo?.broadcasterName ?? ''
-                : displayName ?? '',
-            offlineChannelInfo?.broadcasterLogin ?? '',
+            offlineChannelInfo?.user.username ?? displayName ?? '',
+            offlineChannelInfo?.user.slug ?? '',
           )
         : getReadableName(
-            streamInfo?.userName ?? '',
-            streamInfo?.userLogin ?? '',
+            streamInfo?.channelDisplayName ?? '',
+            streamInfo?.channelSlug ?? '',
           );
     final secondLineSize = isCompact ? 13.0 : 14.0;
 
@@ -126,10 +123,10 @@ class StreamInfoBar extends StatelessWidget {
                   : EdgeInsets.zero,
               child: ProfilePicture(
                 userLogin: isOffline
-                    ? (offlineChannelInfo?.broadcasterLogin.isNotEmpty == true
-                          ? offlineChannelInfo?.broadcasterLogin ?? ''
+                    ? (offlineChannelInfo?.user.slug.isNotEmpty == true
+                          ? offlineChannelInfo?.user.slug ?? ''
                           : displayName ?? '')
-                    : (streamInfo?.userLogin ?? ''),
+                    : (streamInfo?.channelSlug ?? ''),
                 radius: 16,
               ),
             ),
@@ -176,8 +173,12 @@ class StreamInfoBar extends StatelessWidget {
                     (!isOffline && showViewerCount) ||
                     (showCategory &&
                         (isOffline
-                            ? (offlineChannelInfo?.gameName.isNotEmpty ?? false)
-                            : (streamInfo?.gameName.isNotEmpty ?? false)))) ...[
+                            ? (offlineChannelInfo
+                                      ?.recentCategories
+                                      ?.isNotEmpty ??
+                                  false)
+                            : (streamInfo?.categoryName.isNotEmpty ??
+                                  false)))) ...[
                   Row(
                     children: [
                       if (isOffline && showOfflineIndicator) ...[
@@ -191,7 +192,7 @@ class StreamInfoBar extends StatelessWidget {
                       ],
                       if (isOffline &&
                           showCategory &&
-                          (offlineChannelInfo?.gameName.isNotEmpty ??
+                          (offlineChannelInfo?.recentCategories?.isNotEmpty ??
                               false)) ...[
                         if (showOfflineIndicator) const SizedBox(width: 8),
                         Icon(
@@ -204,46 +205,25 @@ class StreamInfoBar extends StatelessWidget {
                         const SizedBox(width: 4),
                         Flexible(
                           child: Tooltip(
-                            message: offlineChannelInfo?.gameName ?? '',
+                            message:
+                                offlineChannelInfo
+                                    ?.recentCategories
+                                    ?.first
+                                    .name ??
+                                '',
                             triggerMode: tooltipTriggerMode,
-                            child: tappableCategory
-                                ? GestureDetector(
-                                    onDoubleTap: () {
-                                      if (offlineChannelInfo
-                                              ?.gameId
-                                              .isNotEmpty ??
-                                          false) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                CategoryStreams(
-                                                  categoryId:
-                                                      offlineChannelInfo
-                                                          ?.gameId ??
-                                                      '',
-                                                ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    child: Text(
-                                      offlineChannelInfo?.gameName ?? '',
-                                      style: _getSecondaryTextStyle(
-                                        context,
-                                        secondLineSize,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  )
-                                : Text(
-                                    offlineChannelInfo?.gameName ?? '',
-                                    style: _getSecondaryTextStyle(
-                                      context,
-                                      secondLineSize,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                            child: Text(
+                              offlineChannelInfo
+                                      ?.recentCategories
+                                      ?.first
+                                      .name ??
+                                  '',
+                              style: _getSecondaryTextStyle(
+                                context,
+                                secondLineSize,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ] else ...[
@@ -254,7 +234,7 @@ class StreamInfoBar extends StatelessWidget {
                         if (!isOffline && showUptime) ...[
                           Uptime(
                             startTime:
-                                streamInfo?.startedAt ??
+                                streamInfo?.uptimeStartTime ??
                                 DateTime.now().toIso8601String(),
                             style: _getBaseTextStyle(
                               context,
@@ -284,13 +264,13 @@ class StreamInfoBar extends StatelessWidget {
                         ],
                         if (!isOffline &&
                             showCategory &&
-                            (streamInfo?.gameName.isNotEmpty ?? false) &&
+                            (streamInfo?.categoryName.isNotEmpty ?? false) &&
                             (showUptime || showViewerCount)) ...[
                           const SizedBox(width: 8),
                         ],
                         if (!isOffline &&
                             showCategory &&
-                            (streamInfo?.gameName.isNotEmpty ?? false)) ...[
+                            (streamInfo?.categoryName.isNotEmpty ?? false)) ...[
                           Icon(
                             Icons.gamepad,
                             size: secondLineSize,
@@ -300,7 +280,7 @@ class StreamInfoBar extends StatelessWidget {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Tooltip(
-                              message: streamInfo?.gameName ?? '',
+                              message: streamInfo?.categoryName ?? '',
                               triggerMode: tooltipTriggerMode,
                               child: tappableCategory
                                   ? GestureDetector(
@@ -308,13 +288,17 @@ class StreamInfoBar extends StatelessWidget {
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => CategoryStreams(
-                                            categoryId:
-                                                streamInfo?.gameId ?? '',
+                                            categorySlug:
+                                                streamInfo
+                                                    ?.categories
+                                                    ?.first
+                                                    .slug ??
+                                                '',
                                           ),
                                         ),
                                       ),
                                       child: Text(
-                                        streamInfo?.gameName ?? '',
+                                        streamInfo?.categoryName ?? '',
                                         style: _getBaseTextStyle(
                                           context,
                                           secondLineSize,
@@ -324,7 +308,7 @@ class StreamInfoBar extends StatelessWidget {
                                       ),
                                     )
                                   : Text(
-                                      streamInfo?.gameName ?? '',
+                                      streamInfo?.categoryName ?? '',
                                       style: _getBaseTextStyle(
                                         context,
                                         secondLineSize,

@@ -74,16 +74,17 @@ mixin _$SearchStore on SearchStoreBase, Store {
     context: context,
   );
 
-  ObservableFuture<List<ChannelQuery>>? get channelFuture {
+  ObservableFuture<List<KickChannelSearch>>? get channelFuture {
     _$_channelFutureAtom.reportRead();
     return super._channelFuture;
   }
 
   @override
-  ObservableFuture<List<ChannelQuery>>? get _channelFuture => channelFuture;
+  ObservableFuture<List<KickChannelSearch>>? get _channelFuture =>
+      channelFuture;
 
   @override
-  set _channelFuture(ObservableFuture<List<ChannelQuery>>? value) {
+  set _channelFuture(ObservableFuture<List<KickChannelSearch>>? value) {
     _$_channelFutureAtom.reportWrite(value, super._channelFuture, () {
       super._channelFuture = value;
     });
@@ -94,16 +95,16 @@ mixin _$SearchStore on SearchStoreBase, Store {
     context: context,
   );
 
-  ObservableFuture<CategoriesTwitch?>? get categoryFuture {
+  ObservableFuture<List<KickCategory>>? get categoryFuture {
     _$_categoryFutureAtom.reportRead();
     return super._categoryFuture;
   }
 
   @override
-  ObservableFuture<CategoriesTwitch?>? get _categoryFuture => categoryFuture;
+  ObservableFuture<List<KickCategory>>? get _categoryFuture => categoryFuture;
 
   @override
-  set _categoryFuture(ObservableFuture<CategoriesTwitch?>? value) {
+  set _categoryFuture(ObservableFuture<List<KickCategory>>? value) {
     _$_categoryFutureAtom.reportWrite(value, super._categoryFuture, () {
       super._categoryFuture = value;
     });

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/emote_menu/emote_menu_panel.dart';
-import 'package:frosty/screens/channel/chat/emote_menu/recent_emotes_panel.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_bottom_bar.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_message.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/frosty_page_view.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/models/kick_message.dart';
+import 'package:krosty/screens/channel/chat/emote_menu/emote_menu_panel.dart';
+import 'package:krosty/screens/channel/chat/emote_menu/recent_emotes_panel.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_bottom_bar.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/frosty_page_view.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
 
 class Chat extends StatelessWidget {
   final ChatStore chatStore;
@@ -81,15 +82,17 @@ class Chat extends StatelessWidget {
                                 addAutomaticKeepAlives: false,
                                 controller: chatStore.scrollController,
                                 itemCount: chatStore.renderMessages.length,
-                                itemBuilder: (context, index) => ChatMessage(
-                                  ircMessage:
-                                      chatStore.renderMessages[chatStore
-                                              .renderMessages
-                                              .length -
-                                          1 -
-                                          index],
-                                  chatStore: chatStore,
-                                ),
+                                itemBuilder: (context, index) {
+                                  // Reverse index for correct display
+                                  final message = chatStore.renderMessages[
+                                      chatStore.renderMessages.length - 1 - index];
+                                  
+                                  // Ensure we are passing a KickChatMessage
+                                  return ChatMessage(
+                                    message: message as KickChatMessage,
+                                    chatStore: chatStore,
+                                  );
+                                },
                               );
                             },
                           ),
@@ -177,34 +180,25 @@ class Chat extends StatelessWidget {
                               child: FrostyPageView(
                                 headers: [
                                   'Recent',
-                                  if (chatStore.settings.showTwitchEmotes)
-                                    'Twitch',
+                                  if (chatStore.settings.showKickEmotes) 'Kick',
                                   if (chatStore.settings.show7TVEmotes) '7TV',
-                                  if (chatStore.settings.showBTTVEmotes) 'BTTV',
-                                  if (chatStore.settings.showFFZEmotes) 'FFZ',
                                 ],
                                 children: [
                                   RecentEmotesPanel(chatStore: chatStore),
-                                  if (chatStore.settings.showTwitchEmotes)
+                                  if (chatStore.settings.showKickEmotes)
                                     EmoteMenuPanel(
                                       chatStore: chatStore,
-                                      twitchEmotes: chatStore
-                                          .assetsStore
-                                          .userEmoteSectionToEmotes,
+                                      emotes: chatStore.assetsStore.emotesList
+                                          .where((e) => chatStore.assetsStore.isKick(e))
+                                          .toList(),
                                     ),
-                                  ...[
-                                    if (chatStore.settings.show7TVEmotes)
-                                      chatStore.assetsStore.sevenTVEmotes,
-                                    if (chatStore.settings.showBTTVEmotes)
-                                      chatStore.assetsStore.bttvEmotes,
-                                    if (chatStore.settings.showFFZEmotes)
-                                      chatStore.assetsStore.ffzEmotes,
-                                  ].map(
-                                    (emotes) => EmoteMenuPanel(
+                                  if (chatStore.settings.show7TVEmotes)
+                                    EmoteMenuPanel(
                                       chatStore: chatStore,
-                                      emotes: emotes,
+                                      emotes: chatStore.assetsStore.emotesList
+                                          .where((e) => chatStore.assetsStore.is7TV(e))
+                                          .toList(),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),

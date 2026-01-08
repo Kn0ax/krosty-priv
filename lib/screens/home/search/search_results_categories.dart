@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/models/category.dart';
-import 'package:frosty/screens/home/search/search_store.dart';
-import 'package:frosty/screens/home/top/categories/category_card.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/home/search/search_store.dart';
+import 'package:krosty/screens/home/top/categories/category_card.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:mobx/mobx.dart';
 
 class SearchResultsCategories extends StatelessWidget {
@@ -46,7 +46,7 @@ class SearchResultsCategories extends StatelessWidget {
               ),
             );
           case FutureStatus.fulfilled:
-            final CategoriesTwitch? categories = future.result;
+            final List<KickCategory>? categories = future.result;
 
             if (categories == null) {
               return const SliverToBoxAdapter(
@@ -60,7 +60,7 @@ class SearchResultsCategories extends StatelessWidget {
               );
             }
 
-            if (categories.data.isEmpty) {
+            if (categories.isEmpty) {
               return const SliverToBoxAdapter(
                 child: SizedBox(
                   height: 100.0,
@@ -73,9 +73,9 @@ class SearchResultsCategories extends StatelessWidget {
             }
 
             return SliverList.builder(
-              itemCount: categories.data.length,
+              itemCount: categories.length,
               itemBuilder: (context, index) =>
-                  CategoryCard(category: categories.data[index]),
+                  CategoryCard(category: categories[index]),
             );
         }
       },

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_message.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/user_actions_modal.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/user_actions_modal.dart';
 
 class ChatUserModal extends StatefulWidget {
   final ChatStore chatStore;
@@ -89,7 +89,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
             child: Observer(
               builder: (context) {
                 final userMessages = widget.chatStore.messages.reversed
-                    .where((message) => message.user == widget.username)
+                    .where((message) => message.sender.slug == widget.username)
                     .toList();
 
                 if (userMessages.isEmpty) {
@@ -112,7 +112,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
                         primary: false,
                         itemCount: userMessages.length,
                         itemBuilder: (context, index) => ChatMessage(
-                          ircMessage: userMessages[index],
+                          message: userMessages[index],
                           chatStore: widget.chatStore,
                           isModal: true,
                         ),

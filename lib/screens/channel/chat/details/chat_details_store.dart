@@ -1,18 +1,55 @@
 import 'dart:collection';
 
 import 'package:flutter/widgets.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/irc.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_message.dart';
 import 'package:mobx/mobx.dart';
 
 part 'chat_details_store.g.dart';
 
 class ChatDetailsStore = ChatDetailsStoreBase with _$ChatDetailsStore;
 
-abstract class ChatDetailsStoreBase with Store {
-  final TwitchApi twitchApi;
+/// Kick chatroom state (slow mode, followers only, etc).
+class KickRoomState {
+  final bool slowMode;
+  final bool subscribersMode;
+  final bool followersMode;
+  final bool emotesMode;
+  final int messageInterval;
+  final int followingMinDuration;
 
-  final String channelName;
+  const KickRoomState({
+    this.slowMode = false,
+    this.subscribersMode = false,
+    this.followersMode = false,
+    this.emotesMode = false,
+    this.messageInterval = 0,
+    this.followingMinDuration = 0,
+  });
+
+  KickRoomState copyWith({
+    bool? slowMode,
+    bool? subscribersMode,
+    bool? followersMode,
+    bool? emotesMode,
+    int? messageInterval,
+    int? followingMinDuration,
+  }) {
+    return KickRoomState(
+      slowMode: slowMode ?? this.slowMode,
+      subscribersMode: subscribersMode ?? this.subscribersMode,
+      followersMode: followersMode ?? this.followersMode,
+      emotesMode: emotesMode ?? this.emotesMode,
+      messageInterval: messageInterval ?? this.messageInterval,
+      followingMinDuration: followingMinDuration ?? this.followingMinDuration,
+    );
+  }
+}
+
+abstract class ChatDetailsStoreBase with Store {
+  final KickApi kickApi;
+
+  final String channelSlug;
 
   /// The scroll controller for handling the scroll to top button.
   final scrollController = ScrollController();
@@ -25,7 +62,7 @@ abstract class ChatDetailsStoreBase with Store {
 
   /// The rules and modes being used in the chat.
   @observable
-  var roomState = const ROOMSTATE();
+  var roomState = const KickRoomState();
 
   @observable
   var showJumpButton = false;
@@ -42,7 +79,7 @@ abstract class ChatDetailsStoreBase with Store {
   Iterable<String> get filteredUsers =>
       chatUsers.where((user) => user.contains(_filterText));
 
-  ChatDetailsStoreBase({required this.twitchApi, required this.channelName}) {
+  ChatDetailsStoreBase({required this.kickApi, required this.channelSlug}) {
     scrollController.addListener(() {
       if (scrollController.position.atEdge ||
           scrollController.position.outOfRange) {
@@ -53,6 +90,19 @@ abstract class ChatDetailsStoreBase with Store {
     });
 
     textController.addListener(() => _filterText = textController.text);
+  }
+
+  /// Update room state from a chatroom updated event.
+  @action
+  void updateFromChatroomEvent(KickChatroomUpdatedEvent event) {
+    roomState = roomState.copyWith(
+      slowMode: event.slowMode,
+      subscribersMode: event.subscribersMode,
+      followersMode: event.followersMode,
+      emotesMode: event.emotesMode,
+      messageInterval: event.messageInterval,
+      followingMinDuration: event.followingMinDuration,
+    );
   }
 
   void dispose() {

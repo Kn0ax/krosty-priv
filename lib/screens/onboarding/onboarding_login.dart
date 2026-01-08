@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/onboarding/login_webview.dart';
-import 'package:frosty/screens/onboarding/onboarding_scaffold.dart';
-import 'package:frosty/screens/onboarding/onboarding_setup.dart';
+import 'package:krosty/screens/onboarding/login_webview.dart';
+import 'package:krosty/screens/onboarding/onboarding_scaffold.dart';
+import 'package:krosty/screens/onboarding/onboarding_setup.dart';
 import 'package:simple_icons/simple_icons.dart';
 
 class OnboardingLogin extends StatelessWidget {

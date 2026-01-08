@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/models/followed_channel.dart';
-import 'package:frosty/screens/channel/channel.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/user_actions_modal.dart';
+import 'package:krosty/models/followed_channel.dart';
+import 'package:krosty/screens/channel/channel.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/user_actions_modal.dart';
 import 'package:provider/provider.dart';
 
 /// A tappable card widget that displays an offline followed channel's details.

@@ -10,12 +10,24 @@ class KickUser {
   final String? bio;
   @JsonKey(name: 'profile_pic')
   final String? profilePic;
+  final String? instagram;
+  final String? twitter;
+  final String? youtube;
+  final String? discord;
+  final String? tiktok;
+  final String? facebook;
 
   const KickUser({
     required this.id,
     required this.username,
     this.bio,
     this.profilePic,
+    this.instagram,
+    this.twitter,
+    this.youtube,
+    this.discord,
+    this.tiktok,
+    this.facebook,
   });
 
   factory KickUser.fromJson(Map<String, dynamic> json) =>
@@ -34,10 +46,7 @@ class KickIdentity {
   final String color;
   final List<KickBadgeInfo> badges;
 
-  const KickIdentity({
-    required this.color,
-    required this.badges,
-  });
+  const KickIdentity({required this.color, required this.badges});
 
   factory KickIdentity.fromJson(Map<String, dynamic> json) =>
       _$KickIdentityFromJson(json);
@@ -50,11 +59,7 @@ class KickBadgeInfo {
   final String? text;
   final int? count;
 
-  const KickBadgeInfo({
-    required this.type,
-    this.text,
-    this.count,
-  });
+  const KickBadgeInfo({required this.type, this.text, this.count});
 
   factory KickBadgeInfo.fromJson(Map<String, dynamic> json) =>
       _$KickBadgeInfoFromJson(json);

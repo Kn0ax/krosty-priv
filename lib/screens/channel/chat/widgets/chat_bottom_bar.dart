@@ -2,15 +2,15 @@ import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/models/irc.dart';
-import 'package:frosty/screens/channel/chat/details/chat_details.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/chat_input/emote_text_span_builder.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/constants.dart';
+import 'package:krosty/models/kick_message_renderer.dart';
+import 'package:krosty/screens/channel/chat/details/chat_details.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/chat_input/emote_text_span_builder.dart';
+import 'package:krosty/widgets/frosty_cached_network_image.dart';
 
 class ChatBottomBar extends StatelessWidget {
   final ChatStore chatStore;
@@ -28,10 +28,8 @@ class ChatBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEmotesEnabled =
-        chatStore.settings.showTwitchEmotes ||
-        chatStore.settings.show7TVEmotes ||
-        chatStore.settings.showBTTVEmotes ||
-        chatStore.settings.showFFZEmotes;
+        chatStore.settings.showKickEmotes ||
+        chatStore.settings.show7TVEmotes;
 
     final emoteMenuButton = isEmotesEnabled
         ? Tooltip(
@@ -92,7 +90,7 @@ class ChatBottomBar extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Tooltip(
-                          message: chatStore.replyingToMessage!.message ?? '',
+                          message: chatStore.replyingToMessage!.content,
                           preferBelow: false,
                           child: Text.rich(
                             TextSpan(
@@ -105,7 +103,6 @@ class ChatBottomBar extends StatelessWidget {
                                     launchExternal:
                                         chatStore.settings.launchUrlExternal,
                                     timestamp: chatStore.settings.timestampType,
-                                    currentChannelId: chatStore.channelId,
                                   ),
                             ),
                             maxLines: 1,
@@ -148,7 +145,7 @@ class ChatBottomBar extends StatelessWidget {
                       onLongPress: () {
                         HapticFeedback.lightImpact();
 
-                        IRCMessage.showEmoteDetailsBottomSheet(
+                        showEmoteDetailsBottomSheet(
                           context,
                           emote: matchingEmotes[index],
                           launchExternal: chatStore.settings.launchUrlExternal,
@@ -355,7 +352,7 @@ class ChatBottomBar extends StatelessWidget {
                                     chatDetailsStore:
                                         chatStore.chatDetailsStore,
                                     chatStore: chatStore,
-                                    userLogin: chatStore.channelName,
+                                    userLogin: chatStore.channelSlug,
                                     onAddChat: onAddChat,
                                   ),
                                 ),
