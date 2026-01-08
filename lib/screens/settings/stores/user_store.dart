@@ -1,5 +1,6 @@
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/user.dart';
+import 'package:flutter/material.dart';
+import 'package:frosty/apis/kick_api.dart';
+import 'package:frosty/models/kick_user.dart';
 import 'package:mobx/mobx.dart';
 
 part 'user_store.g.dart';
@@ -7,64 +8,77 @@ part 'user_store.g.dart';
 class UserStore = UserStoreBase with _$UserStore;
 
 abstract class UserStoreBase with Store {
-  final TwitchApi twitchApi;
+  final KickApi kickApi;
 
   /// The current user's info.
   @readonly
-  UserTwitch? _details;
+  KickUser? _details;
 
-  /// The user's list of blocked users.
+  /// The user's list of followed channels.
   @readonly
-  var _blockedUsers = ObservableList<UserBlockedTwitch>();
+  var _followedChannels = ObservableList<String>();
 
   ReactionDisposer? _disposeReaction;
 
-  UserStoreBase({required this.twitchApi});
+  UserStoreBase({required this.kickApi});
 
   @action
   Future<void> init() async {
-    // Get and update the current user's info.
-    _details = await twitchApi.getUserInfo();
+    try {
+      // Get and update the current user's info.
+      _details = await kickApi.getCurrentUser();
 
-    // Get and update the current user's list of blocked users.
-    // Don't use await because having a huge list of blocked users will block the UI.
-    if (_details?.id != null) {
-      twitchApi
-          .getUserBlockedList(id: _details!.id)
-          .then((blockedUsers) => _blockedUsers = blockedUsers.asObservable());
-    }
-
-    _disposeReaction = autorun(
-      (_) => _blockedUsers.sort((a, b) => a.userLogin.compareTo(b.userLogin)),
-    );
-  }
-
-  @action
-  Future<void> block({
-    required String targetId,
-    required String displayName,
-  }) async {
-    final success = await twitchApi.blockUser(userId: targetId);
-
-    if (success) {
-      _blockedUsers.add(UserBlockedTwitch(targetId, displayName, displayName));
+      debugPrint('User initialized: ${_details?.username}');
+    } catch (e) {
+      debugPrint('Failed to initialize user: $e');
+      _details = null;
     }
   }
 
-  @action
-  Future<void> unblock({required String targetId}) async {
-    final success = await twitchApi.unblockUser(userId: targetId);
-    if (success) await refreshBlockedUsers();
+  /// Check if the user is following a specific channel.
+  Future<bool> isFollowing({required int channelId}) async {
+    try {
+      return await kickApi.isFollowing(channelId: channelId);
+    } catch (e) {
+      debugPrint('Failed to check follow status: $e');
+      return false;
+    }
   }
 
+  /// Follow a channel.
   @action
-  Future<void> refreshBlockedUsers() async => _blockedUsers =
-      (await twitchApi.getUserBlockedList(id: _details!.id)).asObservable();
+  Future<bool> follow({required int channelId}) async {
+    try {
+      final success = await kickApi.followChannel(channelId: channelId);
+      if (success) {
+        _followedChannels.add(channelId.toString());
+      }
+      return success;
+    } catch (e) {
+      debugPrint('Failed to follow channel: $e');
+      return false;
+    }
+  }
+
+  /// Unfollow a channel.
+  @action
+  Future<bool> unfollow({required int channelId}) async {
+    try {
+      final success = await kickApi.unfollowChannel(channelId: channelId);
+      if (success) {
+        _followedChannels.remove(channelId.toString());
+      }
+      return success;
+    } catch (e) {
+      debugPrint('Failed to unfollow channel: $e');
+      return false;
+    }
+  }
 
   @action
   void dispose() {
     _details = null;
-    _blockedUsers.clear();
+    _followedChannels.clear();
     if (_disposeReaction != null) _disposeReaction!();
   }
 }

@@ -1,5 +1,5 @@
-name: frosty
-description: A Twitch client for iOS and Android.
+name: krosty
+description: A Kick client for iOS and Android.
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -69,6 +69,7 @@ dependencies:
     path_provider: ^2.1.5
     dio: ^5.9.0
     app_links: ^7.0.0
+    crypto: ^3.0.3
     extended_text_field: ^16.0.2
 
 dev_dependencies:
