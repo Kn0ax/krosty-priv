@@ -365,14 +365,12 @@ class VideoOverlay extends StatelessWidget {
                           children: [
                             backButton,
                             Flexible(
-                              child: Observer(
-                                builder: (context) => StreamInfoBar(
-                                  streamInfo: streamInfo,
-                                  showUptime: false,
-                                  showViewerCount: false,
-                                  textColor: surfaceColor,
-                                  isInSharedChatMode: false,
-                                ),
+                              child: StreamInfoBar(
+                                streamInfo: streamInfo,
+                                showUptime: false,
+                                showViewerCount: false,
+                                textColor: surfaceColor,
+                                isInSharedChatMode: false,
                               ),
                             ),
                           ],
@@ -423,22 +421,24 @@ class VideoOverlay extends StatelessWidget {
                             spacing: 8,
                             children: [
                               Tooltip(
-                                message: 'Stream uptime',
+                                message: 'Tap to sync to live',
                                 preferBelow: false,
-                                triggerMode: TooltipTriggerMode.tap,
-                                child: Row(
-                                  spacing: 6,
-                                  children: [
-                                    const LiveIndicator(),
-                                    Uptime(
-                                      startTime: streamInfo.uptimeStartTime ?? '',
-                                      style: TextStyle(
-                                        color: surfaceColor,
-                                        fontWeight: FontWeight.w500,
-                                        shadows: _textShadow,
+                                child: GestureDetector(
+                                  onTap: videoStore.syncToLive,
+                                  child: Row(
+                                    spacing: 6,
+                                    children: [
+                                      const LiveIndicator(),
+                                      Uptime(
+                                        startTime: streamInfo.uptimeStartTime ?? '',
+                                        style: TextStyle(
+                                          color: surfaceColor,
+                                          fontWeight: FontWeight.w500,
+                                          shadows: _textShadow,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                               Tooltip(

@@ -133,26 +133,6 @@ mixin _$VideoStore on VideoStoreBase, Store {
     });
   }
 
-  late final _$_latencyAtom = Atom(
-    name: 'VideoStoreBase._latency',
-    context: context,
-  );
-
-  String? get latency {
-    _$_latencyAtom.reportRead();
-    return super._latency;
-  }
-
-  @override
-  String? get _latency => latency;
-
-  @override
-  set _latency(String? value) {
-    _$_latencyAtom.reportWrite(value, super._latency, () {
-      super._latency = value;
-    });
-  }
-
   late final _$_isInPipModeAtom = Atom(
     name: 'VideoStoreBase._isInPipMode',
     context: context,
@@ -170,6 +150,46 @@ mixin _$VideoStore on VideoStoreBase, Store {
   set _isInPipMode(bool value) {
     _$_isInPipModeAtom.reportWrite(value, super._isInPipMode, () {
       super._isInPipMode = value;
+    });
+  }
+
+  late final _$_isBufferingAtom = Atom(
+    name: 'VideoStoreBase._isBuffering',
+    context: context,
+  );
+
+  bool get isBuffering {
+    _$_isBufferingAtom.reportRead();
+    return super._isBuffering;
+  }
+
+  @override
+  bool get _isBuffering => isBuffering;
+
+  @override
+  set _isBuffering(bool value) {
+    _$_isBufferingAtom.reportWrite(value, super._isBuffering, () {
+      super._isBuffering = value;
+    });
+  }
+
+  late final _$_latencyAtom = Atom(
+    name: 'VideoStoreBase._latency',
+    context: context,
+  );
+
+  String? get latency {
+    _$_latencyAtom.reportRead();
+    return super._latency;
+  }
+
+  @override
+  String? get _latency => latency;
+
+  @override
+  set _latency(String? value) {
+    _$_latencyAtom.reportWrite(value, super._latency, () {
+      super._latency = value;
     });
   }
 
@@ -195,28 +215,6 @@ mixin _$VideoStore on VideoStoreBase, Store {
     return _$setStreamQualityAsyncAction.run(
       () => super.setStreamQuality(newStreamQuality),
     );
-  }
-
-  late final _$_setStreamQualityIndexAsyncAction = AsyncAction(
-    'VideoStoreBase._setStreamQualityIndex',
-    context: context,
-  );
-
-  @override
-  Future<void> _setStreamQualityIndex(int newStreamQualityIndex) {
-    return _$_setStreamQualityIndexAsyncAction.run(
-      () => super._setStreamQualityIndex(newStreamQualityIndex),
-    );
-  }
-
-  late final _$initVideoAsyncAction = AsyncAction(
-    'VideoStoreBase.initVideo',
-    context: context,
-  );
-
-  @override
-  Future<void> initVideo() {
-    return _$initVideoAsyncAction.run(() => super.initVideo());
   }
 
   late final _$updateStreamInfoAsyncAction = AsyncAction(
@@ -289,6 +287,18 @@ mixin _$VideoStore on VideoStoreBase, Store {
     );
     try {
       return super.togglePictureInPicture();
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void onPipModeChanged(bool isInPipMode) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.onPipModeChanged',
+    );
+    try {
+      return super.onPipModeChanged(isInPipMode);
     } finally {
       _$VideoStoreBaseActionController.endAction(_$actionInfo);
     }

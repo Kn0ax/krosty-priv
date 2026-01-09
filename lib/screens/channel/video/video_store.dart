@@ -1,19 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/channel/video/hls_quality_parser.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:mobx/mobx.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 part 'video_store.g.dart';
 
@@ -35,127 +34,52 @@ abstract class VideoStoreBase with Store {
   /// The [SimplePip] instance used for initiating PiP on Android.
   final pip = SimplePip();
 
+  /// Flag to track first time quality selection.
   var _firstTimeSettingQuality = true;
 
-  /// The video web view params used for enabling auto play.
-  late final PlatformWebViewControllerCreationParams _videoWebViewParams;
+  /// The native media_kit player instance.
+  late final Player _player;
 
-  /// The webview controller used for injecting JavaScript to control the webview and video player.
-  late final WebViewController videoWebViewController =
-      WebViewController.fromPlatformCreationParams(_videoWebViewParams)
-        ..setBackgroundColor(Colors.black)
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..addJavaScriptChannel(
-          'Latency',
-          onMessageReceived: (message) {
-            final receivedLatency = message.message;
-            _latency = receivedLatency;
+  /// The video controller for rendering the player.
+  late final VideoController _videoController;
 
-            if (!settingsStore.autoSyncChatDelay) return;
+  /// Get the video controller for the Video widget.
+  VideoController get videoController => _videoController;
 
-            // Parse latency from abbreviated format: "5s" -> 5.0
-            final numericPart = receivedLatency.replaceAll(
-              RegExp(r'[^0-9.]'),
-              '',
-            );
-            final latencyAsDouble = double.tryParse(numericPart);
+  /// Get the player instance for advanced controls.
+  Player get player => _player;
 
-            if (latencyAsDouble != null) {
-              settingsStore.chatDelay = latencyAsDouble;
-            }
-          },
-        )
-        ..addJavaScriptChannel(
-          'StreamQualities',
-          onMessageReceived: (message) async {
-            final data = jsonDecode(message.message) as List;
-            _availableStreamQualities = data
-                .map((item) => item as String)
-                .toList();
-            if (_firstTimeSettingQuality) {
-              _firstTimeSettingQuality = false;
-              if (settingsStore.defaultToHighestQuality) {
-                await _setStreamQualityIndex(1);
-                return;
-              }
-              final prefs = await SharedPreferences.getInstance();
-              final lastStreamQuality = prefs.getString('last_stream_quality');
-              if (lastStreamQuality == null) return;
-              setStreamQuality(lastStreamQuality);
-            }
-          },
-        )
-        ..addJavaScriptChannel(
-          'VideoPause',
-          onMessageReceived: (message) {
-            _paused = true;
-            if (Platform.isAndroid) pip.setIsPlaying(false);
-          },
-        )
-        ..addJavaScriptChannel(
-          'VideoPlaying',
-          onMessageReceived: (message) {
-            _paused = false;
-            if (Platform.isAndroid) pip.setIsPlaying(true);
-          },
-        )
-        ..addJavaScriptChannel(
-          'PipEntered',
-          onMessageReceived: (message) {
-            _overlayWasVisibleBeforePip = _overlayVisible;
-            _isInPipMode = true;
-            _overlayTimer?.cancel();
-            _overlayVisible = true;
-          },
-        )
-        ..addJavaScriptChannel(
-          'PipExited',
-          onMessageReceived: (message) {
-            _isInPipMode = false;
-            if (_overlayWasVisibleBeforePip) {
-              _updateLatencyTrackerVisibility(true);
-              _scheduleOverlayHide();
-            } else {
-              _overlayVisible = false;
-              _updateLatencyTrackerVisibility(false);
-            }
-          },
-        )
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onPageFinished: (url) async {
-              if (url != videoUrl) return;
-              // Safe evaluation of JavaScript boolean result
-              final result = await videoWebViewController
-                  .runJavaScriptReturningResult(
-                    'window._injected ? true : false',
-                  );
-              final injected = result is bool
-                  ? result
-                  : (result.toString().toLowerCase() == 'true');
-              if (injected) return;
-              await videoWebViewController.runJavaScript(
-                'window._injected = true;',
-              );
-              await initVideo();
-              _acceptContentWarning();
-            },
-          ),
-        );
+  /// The current playback URL (m3u8 master playlist).
+  String? _playbackUrl;
 
-  /// The timer that handles hiding the overlay automatically
+  /// Parsed HLS quality variants from the master playlist.
+  List<HlsVariant> _hlsVariants = [];
+
+  /// Subscriptions to player streams.
+  final List<StreamSubscription<dynamic>> _playerSubscriptions = [];
+
+  /// Tracks playback error retry state to prevent infinite loops.
+  int _playbackErrorRetryCount = 0;
+  DateTime? _lastPlaybackErrorTime;
+  static const _maxPlaybackErrorRetries = 3;
+  static const _playbackErrorCooldown = Duration(seconds: 10);
+
+  /// Prevents duplicate initialization calls.
+  bool _isInitializing = false;
+
+  /// Tracks if initial load is complete to prevent unnecessary refreshes.
+  bool _initialLoadComplete = false;
+
+  /// The timer that handles hiding the overlay automatically.
   Timer? _overlayTimer;
 
   /// Tracks the pre-PiP overlay visibility so we can restore it on exit.
   bool _overlayWasVisibleBeforePip = true;
 
-  /// The timer that handles periodic stream info updates
+  /// The timer that handles periodic stream info updates.
   Timer? _streamInfoTimer;
 
-  /// Timer for periodic JavaScript state cleanup to prevent memory accumulation.
-  Timer? _jsCleanupTimer;
-
-  /// Tracks the last time stream info was updated to prevent double refresh
+  /// Tracks the last time stream info was updated to prevent double refresh.
   DateTime? _lastStreamInfoUpdate;
 
   /// Disposes the overlay reactions.
@@ -166,16 +90,13 @@ abstract class VideoStoreBase with Store {
 
   ReactionDisposer? _disposeAndroidAutoPipReaction;
 
-  /// Disposes the latency settings reaction.
-  ReactionDisposer? _disposeLatencySettingsReaction;
-
   /// If the video is currently paused.
   ///
   /// Does not pause or play the video, only used for rendering state of the overlay.
   @readonly
   var _paused = true;
 
-  /// If the overlay is should be visible.
+  /// If the overlay should be visible.
   @readonly
   var _overlayVisible = true;
 
@@ -190,25 +111,29 @@ abstract class VideoStoreBase with Store {
   @readonly
   List<String> _availableStreamQualities = [];
 
-  // The current stream quality index
+  /// The current stream quality index.
   @readonly
   int _streamQualityIndex = 0;
 
-  // The current stream quality string
+  /// The current stream quality string.
   String get streamQuality =>
       _availableStreamQualities.elementAtOrNull(_streamQualityIndex) ?? 'Auto';
 
-  @readonly
-  String? _latency;
-
-  /// Whether the app is currently in picture-in-picture mode (iOS only).
-  /// On Android, this state is not tracked since there's no programmatic exit.
+  /// Whether the app is currently in picture-in-picture mode.
   @readonly
   var _isInPipMode = false;
 
-  /// The video URL to use for the webview.
-  String get videoUrl =>
-      'https://player.kick.com/$userLogin?autoplay=true&muted=false';
+  /// Whether the player is currently buffering.
+  @readonly
+  var _isBuffering = false;
+
+  /// Latency to broadcaster (not available with native HLS player).
+  /// This is kept for UI compatibility but will always return null.
+  @readonly
+  String? _latency;
+
+  /// Completer to track when low-latency config is done.
+  final Completer<void> _lowLatencyConfigured = Completer<void>();
 
   VideoStoreBase({
     required this.userLogin,
@@ -217,34 +142,22 @@ abstract class VideoStoreBase with Store {
     required this.authStore,
     required this.settingsStore,
   }) {
-    // Reset chat delay to 0 if auto sync is already enabled to prevent starting with old values
-    if (settingsStore.autoSyncChatDelay) {
-      settingsStore.chatDelay = 0.0;
-    }
-    // Initialize the video webview params for iOS to enable video autoplay.
-    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
-      _videoWebViewParams = WebKitWebViewControllerCreationParams(
-        allowsInlineMediaPlayback: true,
-        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
-      );
-    } else {
-      _videoWebViewParams = const PlatformWebViewControllerCreationParams();
-    }
+    // Initialize the media_kit player
+    _player = Player();
+    _videoController = VideoController(_player);
 
-    // Initialize the video webview params for Android to enable video autoplay.
-    if (videoWebViewController.platform is AndroidWebViewController) {
-      (videoWebViewController.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
-    }
+    // Configure low-latency settings via NativePlayer (targets <5s latency)
+    _configureLowLatency().then((_) {
+      if (!_lowLatencyConfigured.isCompleted) {
+        _lowLatencyConfigured.complete();
+      }
+    });
+
+    // Setup player event listeners
+    _setupPlayerListeners();
 
     // Initialize the [_overlayTimer] to auto-hide the overlay after a delay (default 5 seconds).
     _scheduleOverlayHide();
-
-    // Initialize a reaction that will reload the webview whenever the overlay is toggled.
-    _disposeOverlayReaction = reaction(
-      (_) => settingsStore.showOverlay,
-      (_) => videoWebViewController.loadRequest(Uri.parse(videoUrl)),
-    );
 
     // Initialize a reaction to manage stream info timer based on video mode
     _disposeVideoModeReaction = reaction((_) => settingsStore.showVideo, (
@@ -260,6 +173,18 @@ abstract class VideoStoreBase with Store {
         _scheduleOverlayHide();
       }
     });
+
+    // Reaction for overlay toggle - reload player if needed
+    _disposeOverlayReaction = reaction(
+      (_) => settingsStore.showOverlay,
+      (_) {
+        // Re-initialize overlay visibility when toggle changes
+        if (settingsStore.showOverlay) {
+          _overlayVisible = true;
+          _scheduleOverlayHide();
+        }
+      },
+    );
 
     // Check initial state and start timer if already in chat-only mode
     if (!settingsStore.showVideo) {
@@ -278,47 +203,417 @@ abstract class VideoStoreBase with Store {
       });
     }
 
-    updateStreamInfo();
+    // Fetch channel data and initialize player
+    _initializeStream();
+  }
 
-    // Initialize periodic JavaScript cleanup timer (every 10 minutes)
-    // This prevents memory accumulation during long viewing sessions
-    _jsCleanupTimer = Timer.periodic(
-      const Duration(minutes: 10),
-      (_) => _performJsSoftReset(),
+  /// Configure settings for low-latency live HLS streaming.
+  /// Target: <3 second delay from broadcaster.
+  Future<void> _configureLowLatency() async {
+    // Only available on native platforms (not web)
+    if (_player.platform is NativePlayer) {
+      final nativePlayer = _player.platform as NativePlayer;
+
+      try {
+        // === HARDWARE DECODING (must be first) ===
+        // Use hardware decoding to prevent codec errors
+        await nativePlayer.setProperty('hwdec', 'auto-safe');
+
+        // === LOW LATENCY CORE SETTINGS ===
+        // Minimal cache for live streaming
+        await nativePlayer.setProperty('cache', 'no');
+        await nativePlayer.setProperty('cache-pause', 'no');
+
+        // Don't wait for keyframes, start immediately
+        await nativePlayer.setProperty('demuxer-lavf-o',
+            'fflags=+nobuffer+fastseek+flush_packets');
+
+        // Reduce demuxer buffer
+        await nativePlayer.setProperty('demuxer-max-bytes', '500KiB');
+        await nativePlayer.setProperty('demuxer-readahead-secs', '0.5');
+
+        // === SYNC & TIMING ===
+        // Drop frames if we fall behind
+        await nativePlayer.setProperty('framedrop', 'decoder+vo');
+
+        // Don't try to sync to audio perfectly
+        await nativePlayer.setProperty('video-sync', 'audio');
+        await nativePlayer.setProperty('interpolation', 'no');
+
+        // === NETWORK OPTIMIZATION ===
+        // Faster reconnection for live streams
+        await nativePlayer.setProperty('stream-lavf-o',
+            'reconnect=1,reconnect_streamed=1,reconnect_delay_max=2');
+
+        // === AUDIO ===
+        // Smaller audio buffer
+        await nativePlayer.setProperty('audio-buffer', '0.1');
+
+        // === LIVE EDGE ===
+        // Start from live edge, not from beginning of buffer
+        await nativePlayer.setProperty('hls-bitrate', 'max');
+
+        // Force seekable for live streams (needed for sync to live)
+        await nativePlayer.setProperty('force-seekable', 'yes');
+
+        debugPrint('Low-latency player configured successfully');
+      } catch (e) {
+        debugPrint('Failed to configure low-latency settings: $e');
+      }
+    }
+  }
+
+  /// Setup listeners for player state changes.
+  void _setupPlayerListeners() {
+    // Listen for play/pause state changes
+    _playerSubscriptions.add(
+      _player.stream.playing.listen((playing) {
+        runInAction(() {
+          _paused = !playing;
+        });
+        // Update Android PiP play state
+        if (Platform.isAndroid) {
+          pip.setIsPlaying(playing);
+        }
+      }),
     );
 
-    // React to changes in latency-related settings mid-session
-    // This handles the case where user toggles autoSyncChatDelay or showLatency
-    // while already watching a stream
-    _disposeLatencySettingsReaction = reaction(
-      (_) => (settingsStore.showLatency, settingsStore.autoSyncChatDelay),
-      (values) async {
-        final (showLatency, autoSync) = values;
-        // Only act if overlay is enabled (latency tracker only works with custom overlay)
-        if (!settingsStore.showOverlay) return;
+    // Listen for buffering state
+    _playerSubscriptions.add(
+      _player.stream.buffering.listen((buffering) {
+        runInAction(() {
+          _isBuffering = buffering;
+        });
+      }),
+    );
 
-        if (showLatency || autoSync) {
-          // Start tracker if either setting is now enabled
-          // The init() method is idempotent - won't double-start if already running
-          await _listenOnLatencyChanges();
-        } else {
-          // Stop tracker if both settings are now disabled
-          try {
-            videoWebViewController.runJavaScript(
-              'window._latencyTracker?.stop()',
+    // Listen for errors
+    _playerSubscriptions.add(
+      _player.stream.error.listen((error) {
+        debugPrint('Player error: $error');
+
+        // Ignore non-critical errors that don't affect playback
+        final lowerError = error.toLowerCase();
+        if (lowerError.contains('seek') ||
+            lowerError.contains('force-seekable') ||
+            lowerError.contains('force it with')) {
+          // These are informational messages about seeking, not real errors
+          return;
+        }
+
+        // On error (possibly token expiry), try to recover
+        if (error.isNotEmpty) {
+          _handlePlaybackError(error);
+        }
+      }),
+    );
+
+    // Listen for completion (stream ended)
+    _playerSubscriptions.add(
+      _player.stream.completed.listen((completed) {
+        if (completed) {
+          runInAction(() {
+            _paused = true;
+          });
+          // Don't auto-refresh here - user can manually refresh if needed
+          // This prevents unnecessary API calls when stream naturally ends
+        }
+      }),
+    );
+  }
+
+  /// Handle playback errors (e.g., token expiry).
+  ///
+  /// For codec errors, we just retry with the same URL a few times.
+  /// Only re-fetches the channel if it seems like a token/URL issue.
+  Future<void> _handlePlaybackError(String error) async {
+    // Codec errors won't be fixed by refetching - just retry or give up
+    final isCodecError = error.toLowerCase().contains('codec');
+
+    if (isCodecError) {
+      // For codec errors, just retry with existing URL (no API call)
+      if (_playbackErrorRetryCount >= _maxPlaybackErrorRetries) {
+        debugPrint(
+          'Codec error: Max retries ($_maxPlaybackErrorRetries) exceeded, '
+          'waiting for manual refresh',
+        );
+        return;
+      }
+
+      _playbackErrorRetryCount++;
+      debugPrint(
+        'Codec error recovery attempt $_playbackErrorRetryCount/$_maxPlaybackErrorRetries (no refetch)',
+      );
+
+      // Small delay before retry
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Just retry with existing URL
+      if (_playbackUrl != null) {
+        try {
+          await _player.open(Media(_playbackUrl!));
+        } catch (e) {
+          debugPrint('Retry failed: $e');
+        }
+      }
+      return;
+    }
+
+    // For other errors (possibly token expiry), try refetching once
+    final now = DateTime.now();
+
+    // Reset retry count if enough time has passed since last error
+    if (_lastPlaybackErrorTime != null &&
+        now.difference(_lastPlaybackErrorTime!) > _playbackErrorCooldown) {
+      _playbackErrorRetryCount = 0;
+    }
+
+    // Check if we've exceeded max retries
+    if (_playbackErrorRetryCount >= _maxPlaybackErrorRetries) {
+      debugPrint(
+        'Playback error: Max retries ($_maxPlaybackErrorRetries) exceeded, '
+        'waiting for manual refresh',
+      );
+      return;
+    }
+
+    _lastPlaybackErrorTime = now;
+    _playbackErrorRetryCount++;
+
+    debugPrint(
+      'Playback error recovery attempt $_playbackErrorRetryCount/$_maxPlaybackErrorRetries',
+    );
+
+    try {
+      // Re-fetch the channel data to get a fresh playback URL
+      final channel = await kickApi.getChannel(channelSlug: userLogin);
+      if (channel.playbackUrl != null && channel.isLive) {
+        _playbackUrl = channel.playbackUrl;
+        // Try to resume playback with new URL
+        await _player.open(Media(_playbackUrl!));
+      }
+    } catch (e) {
+      debugPrint('Failed to recover from playback error: $e');
+    }
+  }
+
+  /// Initialize the stream by fetching channel data and starting playback.
+  /// Optimized to use a single API call for both stream info and playback URL.
+  Future<void> _initializeStream() async {
+    // Prevent duplicate initialization
+    if (_isInitializing) {
+      debugPrint('Stream initialization already in progress, skipping');
+      return;
+    }
+    _isInitializing = true;
+
+    try {
+      // Start fetching channel data and getting saved quality preference in parallel
+      final results = await Future.wait([
+        kickApi.getChannel(channelSlug: userLogin),
+        SharedPreferences.getInstance(),
+      ]);
+
+      final channel = results[0] as KickChannel;
+      final prefs = results[1] as SharedPreferences;
+
+      // Update stream info from the same API response
+      if (channel.isLive) {
+        final livestream = channel.livestream!;
+        runInAction(() {
+          _streamInfo = KickLivestreamItem(
+            id: livestream.id,
+            slug: livestream.slug,
+            channelId: channel.id,
+            createdAt: livestream.createdAt,
+            startTime: livestream.startTime,
+            sessionTitle: livestream.sessionTitle,
+            isLive: true,
+            viewerCount: livestream.viewerCount,
+            thumbnail: livestream.thumbnail,
+            categories: livestream.categories,
+            tags: livestream.tags,
+            isMature: livestream.isMature,
+            language: livestream.language,
+            channel: KickChannelInfo(
+              id: channel.id,
+              slug: channel.slug,
+              user: channel.user,
+            ),
+          );
+          _offlineChannelInfo = null;
+        });
+      } else {
+        runInAction(() {
+          _streamInfo = null;
+          _offlineChannelInfo = channel;
+          _paused = true;
+        });
+      }
+
+      // Get playback URL from the same response
+      _playbackUrl = channel.playbackUrl;
+
+      if (_playbackUrl != null) {
+        // Parse qualities in background (don't block playback)
+        _parseQualityVariantsInBackground();
+
+        // Determine initial URL to play
+        String urlToPlay = _playbackUrl!;
+
+        // Check if user has a preferred quality saved
+        final lastStreamQuality = prefs.getString('last_stream_quality');
+        if (lastStreamQuality != null && lastStreamQuality != 'Auto') {
+          // Try to construct the variant URL directly without fetching playlist
+          // Kick streams typically use predictable URL patterns
+          final variantUrl = _tryConstructVariantUrl(
+            _playbackUrl!,
+            lastStreamQuality,
+          );
+          if (variantUrl != null) {
+            urlToPlay = variantUrl;
+            // Find and set the quality index
+            final qualityIndex = _availableStreamQualities.indexOf(
+              lastStreamQuality,
             );
-          } catch (e) {
-            debugPrint(e.toString());
+            if (qualityIndex != -1) {
+              runInAction(() {
+                _streamQualityIndex = qualityIndex;
+              });
+            }
+          }
+        } else if (settingsStore.defaultToHighestQuality) {
+          // For highest quality, we need to parse the playlist first
+          // But start playback immediately with master (auto) for now
+          // The quality will be updated once parsing completes
+        }
+
+        await _initializePlayer(urlToPlay);
+      }
+
+      _initialLoadComplete = true;
+    } catch (e) {
+      debugPrint('Failed to initialize stream: $e');
+    } finally {
+      _isInitializing = false;
+    }
+  }
+
+  /// Try to construct a variant URL from the master playlist URL and quality.
+  /// Returns null if construction isn't possible.
+  String? _tryConstructVariantUrl(String masterUrl, String quality) {
+    // This is a best-effort optimization - if it fails, we fall back to master
+    // Kick uses patterns like: .../master.m3u8 -> .../1080p60/index.m3u8
+    try {
+      final uri = Uri.parse(masterUrl);
+      final pathSegments = uri.pathSegments.toList();
+
+      // Find and replace 'master.m3u8' or similar
+      for (var i = 0; i < pathSegments.length; i++) {
+        if (pathSegments[i].contains('master') ||
+            pathSegments[i].contains('playlist')) {
+          // Replace with quality variant
+          pathSegments[i] = quality.toLowerCase();
+          if (i + 1 < pathSegments.length) {
+            pathSegments[i + 1] = 'index.m3u8';
+          } else {
+            pathSegments.add('index.m3u8');
+          }
+          return uri.replace(pathSegments: pathSegments).toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to construct variant URL: $e');
+    }
+    return null;
+  }
+
+  /// Parse quality variants in the background without blocking playback.
+  Future<void> _parseQualityVariantsInBackground() async {
+    // Small delay to prioritize player initialization
+    await Future.delayed(const Duration(milliseconds: 100));
+    await _parseQualityVariants();
+  }
+
+  /// Parse quality variants from the HLS master playlist.
+  ///
+  /// This runs in the background and updates the available qualities list.
+  /// It does NOT change the current playback - that's handled by _initializeStream.
+  Future<void> _parseQualityVariants() async {
+    if (_playbackUrl == null) return;
+
+    try {
+      _hlsVariants = await HlsQualityParser.parsePlaylist(_playbackUrl!);
+
+      runInAction(() {
+        _availableStreamQualities = [
+          'Auto',
+          ..._hlsVariants.map((v) => v.label),
+        ];
+      });
+
+      // Update the quality index to match what we're currently playing
+      // This is just for UI display - don't reopen the player
+      if (_firstTimeSettingQuality && _availableStreamQualities.isNotEmpty) {
+        _firstTimeSettingQuality = false;
+
+        // Check saved preference
+        final prefs = await SharedPreferences.getInstance();
+        final lastStreamQuality = prefs.getString('last_stream_quality');
+
+        if (settingsStore.defaultToHighestQuality &&
+            _availableStreamQualities.length > 1) {
+          // If we want highest quality and we're on Auto, switch to it
+          // Only do this if we haven't already started with a specific quality
+          if (_streamQualityIndex == 0) {
+            await setStreamQuality(_availableStreamQualities[1]);
+          }
+        } else if (lastStreamQuality != null &&
+            _availableStreamQualities.contains(lastStreamQuality)) {
+          // Update index to match saved quality (may already be playing it)
+          final qualityIndex = _availableStreamQualities.indexOf(
+            lastStreamQuality,
+          );
+          if (qualityIndex != -1 && _streamQualityIndex != qualityIndex) {
+            // Only switch if we're not already on this quality
+            runInAction(() {
+              _streamQualityIndex = qualityIndex;
+            });
           }
         }
-      },
-    );
+      }
+    } catch (e) {
+      debugPrint('Failed to parse quality variants: $e');
+      runInAction(() {
+        _availableStreamQualities = ['Auto'];
+      });
+    }
+  }
+
+  /// Initialize the player with the given URL (or master playlist URL).
+  Future<void> _initializePlayer([String? url]) async {
+    final playUrl = url ?? _playbackUrl;
+    if (playUrl == null) {
+      debugPrint('No playback URL available');
+      return;
+    }
+
+    // Ensure low-latency settings are applied before starting playback
+    // This is a quick operation, typically completes before we get here
+    await _lowLatencyConfigured.future;
+
+    try {
+      await _player.open(Media(playUrl));
+      // Start playing automatically
+      await _player.play();
+    } catch (e) {
+      debugPrint('Failed to initialize player: $e');
+    }
   }
 
   @action
   Future<void> updateStreamQualities() async {
-    // Disabled for Kick migration as player controls differ
-    _availableStreamQualities = [];
+    await _parseQualityVariants();
   }
 
   @action
@@ -327,386 +622,29 @@ abstract class VideoStoreBase with Store {
       newStreamQuality,
     );
     if (indexOfStreamQuality == -1) return;
-    await _setStreamQualityIndex(indexOfStreamQuality);
-  }
 
-  @action
-  Future<void> _setStreamQualityIndex(int newStreamQualityIndex) async {
-    // Disabled for Kick migration
-  }
+    runInAction(() {
+      _streamQualityIndex = indexOfStreamQuality;
+    });
 
-  /// Hides the default overlay elements using CSS injection.
-  ///
-  /// This approach is far more efficient than JavaScript DOM manipulation:
-  /// - CSS rules are applied by the browser's native rendering engine
-  /// - No MutationObserver overhead watching the entire DOM tree
-  /// - Handles dynamically added elements automatically via CSS cascade
-  /// - Single one-time observer that disconnects immediately after player loads
-  Future<void> _hideDefaultOverlay() async {
-    // Disabled for Kick migration - Kick overlay selectors unknown
-  }
+    // Save preference
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_stream_quality', newStreamQuality);
 
-  Future<void> _acceptContentWarning() async {
-    // Disabled for Kick migration; check if Kick has similar warnings
-  }
-
-  /// Sets up visibility-aware latency tracking.
-  ///
-  /// Key optimizations over previous implementation:
-  /// - Only tracks when overlay is visible (pauses when hidden)
-  /// - Properly clears setTimeout IDs to prevent accumulation
-  /// - Has explicit stop() method for cleanup
-  /// - Skips cycles entirely when overlay hidden (saves CPU)
-  Future<void> _listenOnLatencyChanges() async {
-    try {
-      await videoWebViewController.runJavaScript(r'''
-        window._latencyTracker = {
-          CYCLE_INTERVAL: 60000,
-          STATS_ACTIVE_TIME: 1500,
-          INITIAL_RETRY_INTERVAL: 3000,
-          MAX_INITIAL_RETRIES: 4,
-
-          cycleCount: 0,
-          hasInitialLatency: false,
-          timeoutId: null,
-          isRunning: false,
-          overlayVisible: true,
-
-          init() {
-            if (this.isRunning) return;
-            this.isRunning = true;
-            this._cycle();
-          },
-
-          stop() {
-            this.isRunning = false;
-            if (this.timeoutId) {
-              clearTimeout(this.timeoutId);
-              this.timeoutId = null;
-            }
-          },
-
-          setOverlayVisible(visible) {
-            this.overlayVisible = visible;
-            // Resume immediately when overlay becomes visible
-            if (visible && this.isRunning && !this.timeoutId) {
-              this._cycle();
-            }
-          },
-
-          async _cycle() {
-            // Clear timeout ID synchronously at entry to prevent race conditions
-            // (e.g., setOverlayVisible calling _cycle while timeout is firing)
-            const currentTimeoutId = this.timeoutId;
-            this.timeoutId = null;
-            if (currentTimeoutId) {
-              clearTimeout(currentTimeoutId);
-            }
-
-            if (!this.isRunning) return;
-
-            // Skip cycle entirely if overlay not visible - major CPU savings
-            if (!this.overlayVisible) {
-              // Check again in 5 seconds in case overlay becomes visible
-              this.timeoutId = setTimeout(() => this._cycle(), 5000);
-              return;
-            }
-
-            this.cycleCount++;
-            const cycleStart = Date.now();
-
-            await this._enableStats();
-
-            // Wait longer on first cycle for stats to populate
-            const waitTime = this.cycleCount === 1 ? 3000 : this.STATS_ACTIVE_TIME;
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-
-            this._readLatency();
-            await this._disableStats();
-
-            const totalActiveTime = Date.now() - cycleStart;
-
-            // Calculate next interval
-            let nextInterval;
-            if (!this.hasInitialLatency && this.cycleCount < this.MAX_INITIAL_RETRIES) {
-              nextInterval = this.INITIAL_RETRY_INTERVAL;
-            } else {
-              nextInterval = this.CYCLE_INTERVAL - totalActiveTime;
-            }
-
-            // Schedule next cycle
-            this.timeoutId = setTimeout(() => this._cycle(), Math.max(nextInterval, 1000));
-          },
-
-          async _enableStats() {
-            try {
-              await _queuePromise(async () => {
-                const settingsBtn = await _asyncQuerySelector('[data-a-target="player-settings-button"]');
-                if (!settingsBtn) return;
-                settingsBtn.click();
-
-                const advancedItem = await _asyncQuerySelector('[data-a-target="player-settings-menu-item-advanced"]');
-                if (!advancedItem) {
-                  settingsBtn.click();
-                  return;
-                }
-                advancedItem.click();
-
-                const statsCheckbox = await _asyncQuerySelector('[data-a-target="player-settings-submenu-advanced-video-stats"] input');
-                if (statsCheckbox && !statsCheckbox.checked) {
-                  statsCheckbox.click();
-                }
-
-                settingsBtn.click();
-              });
-            } catch (error) {
-              // Silently fail - stats panel may not be available
-            }
-          },
-
-          async _disableStats() {
-            try {
-              await _queuePromise(async () => {
-                const settingsBtn = await _asyncQuerySelector('[data-a-target="player-settings-button"]');
-                if (!settingsBtn) return;
-                settingsBtn.click();
-
-                const advancedItem = await _asyncQuerySelector('[data-a-target="player-settings-menu-item-advanced"]');
-                if (!advancedItem) {
-                  settingsBtn.click();
-                  return;
-                }
-                advancedItem.click();
-
-                const statsCheckbox = await _asyncQuerySelector('[data-a-target="player-settings-submenu-advanced-video-stats"] input');
-                if (statsCheckbox && statsCheckbox.checked) {
-                  statsCheckbox.click();
-                }
-
-                settingsBtn.click();
-              });
-            } catch (error) {
-              // Silently fail
-            }
-          },
-
-          _readLatency() {
-            try {
-              const latencyElement = document.querySelector('[aria-label="Latency To Broadcaster"]');
-              if (latencyElement && latencyElement.textContent) {
-                let latencyText = latencyElement.textContent.trim();
-
-                // Convert to whole number with abbreviated unit: "4.69 sec." -> "5s"
-                const match = latencyText.match(/([0-9.]+)\s*sec/i);
-                if (match) {
-                  const rounded = Math.round(parseFloat(match[1]));
-                  latencyText = rounded + 's';
-                  this.hasInitialLatency = true;
-                }
-
-                if (window.Latency) {
-                  Latency.postMessage(latencyText);
-                }
-              }
-            } catch (error) {
-              // Silently fail
-            }
-          }
-        };
-
-        window._latencyTracker.init();
-      ''');
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  /// Updates the latency tracker's overlay visibility state.
-  ///
-  /// When overlay is hidden, the latency tracker pauses its polling cycle
-  /// to save CPU. When overlay becomes visible again, it resumes.
-  ///
-  /// However, if autoSyncChatDelay is enabled, the tracker always runs
-  /// regardless of overlay visibility to keep chat delay accurate.
-  void _updateLatencyTrackerVisibility(bool visible) {
-    // Skip if latency tracking isn't active at all
-    if (!settingsStore.showLatency && !settingsStore.autoSyncChatDelay) return;
-
-    // If auto-sync is enabled, always keep tracker running (don't pause on hide)
-    // to ensure chat delay stays synchronized even during long viewing sessions
-    if (settingsStore.autoSyncChatDelay) {
-      // Always report visible to keep tracking active
-      try {
-        videoWebViewController.runJavaScript(
-          'window._latencyTracker?.setOverlayVisible(true)',
-        );
-      } catch (e) {
-        debugPrint(e.toString());
+    if (newStreamQuality == 'Auto') {
+      // Play the master playlist for auto quality selection
+      if (_playbackUrl != null) {
+        await _player.open(Media(_playbackUrl!));
+        await _player.play();
       }
-      return;
-    }
-
-    // Only pause/resume based on visibility if just showLatency is enabled
-    try {
-      videoWebViewController.runJavaScript(
-        'window._latencyTracker?.setOverlayVisible($visible)',
+    } else {
+      // Find and play the specific variant
+      final variant = _hlsVariants.firstWhere(
+        (v) => v.label == newStreamQuality,
+        orElse: () => _hlsVariants.first,
       );
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  /// Performs a soft reset of JavaScript state to prevent memory accumulation.
-  ///
-  /// This runs periodically during long viewing sessions to clear accumulated
-  /// state without requiring a full page reload. Resets:
-  /// - Promise queue (clears any stale promise chains)
-  /// - Queue length counter
-  /// - Generation counter (prevents stale callbacks from decrementing length)
-  ///
-  /// Only resets if queue is idle to avoid orphaning in-flight operations
-  /// (which could leave the settings menu open).
-  void _performJsSoftReset() {
-    try {
-      videoWebViewController.runJavaScript('''
-        // Only reset if queue is idle to avoid orphaning in-flight operations
-        if (window._promiseQueueLength === 0) {
-          window._PROMISE_QUEUE = Promise.resolve();
-          window._promiseQueueGen = (window._promiseQueueGen || 0) + 1;
-        }
-      ''');
-    } catch (e) {
-      debugPrint('JS soft reset error: $e');
-    }
-  }
-
-  /// Initializes the video webview.
-  @action
-  Future<void> initVideo() async {
-    if (await videoWebViewController.currentUrl() == videoUrl) {
-      // Declare `window` level utility methods and add event listeners to notify the JavaScript channels when the video plays and pauses.
-      try {
-        await videoWebViewController.runJavaScript('''
-          // Promise queue with length limit and generation tracking
-          // Generation tracking prevents counter from going negative when queue resets
-          window._PROMISE_QUEUE = Promise.resolve();
-          window._promiseQueueLength = 0;
-          window._promiseQueueGen = 0;
-
-          window._queuePromise = (method) => {
-            window._promiseQueueLength++;
-
-            // Reset queue if it gets too long (prevents memory accumulation)
-            if (window._promiseQueueLength > 30) {
-              window._PROMISE_QUEUE = Promise.resolve();
-              window._promiseQueueLength = 1;
-              window._promiseQueueGen++;
-            }
-
-            const myGen = window._promiseQueueGen;
-
-            window._PROMISE_QUEUE = window._PROMISE_QUEUE.then(async () => {
-              try {
-                await method();
-              } catch (e) {
-                console.warn('Queue promise error:', e);
-              } finally {
-                // Only decrement if still same generation (not reset)
-                if (myGen === window._promiseQueueGen) {
-                  window._promiseQueueLength--;
-                }
-              }
-            });
-
-            return window._PROMISE_QUEUE;
-          };
-          window._asyncQuerySelector = (selector, timeout = 30000) => new Promise((resolve) => {
-            let element = document.querySelector(selector);
-            if (element) {
-              return resolve(element);
-            }
-
-            let timeoutId;
-            const observer = new MutationObserver(() => {
-              element = document.querySelector(selector);
-              if (element) {
-                observer.disconnect();
-                clearTimeout(timeoutId);
-                resolve(element);
-              }
-            });
-            // Must use subtree to detect nested elements in the player
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            // Always set timeout with default of 30 seconds
-            timeoutId = setTimeout(() => {
-              observer.disconnect();
-              resolve(undefined);
-            }, timeout);
-          });
-
-          _queuePromise(async () => {
-            const videoElement = await _asyncQuerySelector("video");
-
-            // Null check in case element was not found within timeout
-            if (!videoElement) {
-              console.warn("Video element not found within timeout");
-              return;
-            }
-
-            // Prevent duplicate event listener registration
-            if (!videoElement._listenersAdded) {
-              videoElement._listenersAdded = true;
-
-              videoElement.addEventListener("pause", () => {
-                VideoPause.postMessage("video paused");
-                if (videoElement.textTracks && videoElement.textTracks.length > 0) {
-                  videoElement.textTracks[0].mode = "hidden";
-                }
-              });
-              videoElement.addEventListener("playing", () => {
-                VideoPlaying.postMessage("video playing");
-                // Ensure video is unmuted and captions are hidden
-                videoElement.muted = false;
-                videoElement.volume = 1.0;
-                if (videoElement.textTracks && videoElement.textTracks.length > 0) {
-                  videoElement.textTracks[0].mode = "hidden";
-                }
-              });
-
-              // Add PiP event listeners for iOS
-              videoElement.addEventListener("enterpictureinpicture", () => {
-                PipEntered.postMessage("pip entered");
-              });
-              videoElement.addEventListener("leavepictureinpicture", () => {
-                PipExited.postMessage("pip exited");
-              });
-            }
-
-            if (!videoElement.paused) {
-              VideoPlaying.postMessage("video playing");
-              // Ensure video is unmuted and captions are hidden
-              videoElement.muted = false;
-              videoElement.volume = 1.0;
-              if (videoElement.textTracks && videoElement.textTracks.length > 0) {
-                videoElement.textTracks[0].mode = "hidden";
-              }
-            }
-          });
-        ''');
-        if (settingsStore.showOverlay) {
-          await _hideDefaultOverlay();
-          // Start latency tracking if either:
-          // - showLatency is enabled (user wants to see it on overlay), OR
-          // - autoSyncChatDelay is enabled (needs latency data for syncing)
-          if (settingsStore.showLatency || settingsStore.autoSyncChatDelay) {
-            await _listenOnLatencyChanges();
-          }
-          await updateStreamQualities();
-        }
-      } catch (e) {
-        debugPrint(e.toString());
-      }
+      await _player.open(Media(variant.url));
+      await _player.play();
     }
   }
 
@@ -722,14 +660,10 @@ abstract class VideoStoreBase with Store {
 
     if (_overlayVisible) {
       _overlayVisible = false;
-      // Notify latency tracker to pause when overlay hidden
-      _updateLatencyTrackerVisibility(false);
     } else {
       updateStreamInfo(forceUpdate: true);
 
       _overlayVisible = true;
-      // Notify latency tracker to resume when overlay visible
-      _updateLatencyTrackerVisibility(true);
       _scheduleOverlayHide();
     }
   }
@@ -767,8 +701,6 @@ abstract class VideoStoreBase with Store {
       runInAction(() {
         _overlayVisible = false;
       });
-      // Notify latency tracker to pause when overlay auto-hides
-      _updateLatencyTrackerVisibility(false);
     });
   }
 
@@ -787,6 +719,11 @@ abstract class VideoStoreBase with Store {
   /// Set [forceUpdate] to true to bypass the rate limiting check.
   @action
   Future<void> updateStreamInfo({bool forceUpdate = false}) async {
+    // Skip if initial load hasn't completed yet - _initializeStream handles it
+    if (!_initialLoadComplete && !forceUpdate) {
+      return;
+    }
+
     // Rate limiting: prevent too frequent updates unless forced
     final now = DateTime.now();
     if (!forceUpdate && _lastStreamInfoUpdate != null) {
@@ -825,10 +762,19 @@ abstract class VideoStoreBase with Store {
           ),
         );
         _offlineChannelInfo = null;
+
+        // Update playback URL if it changed (e.g., token refresh)
+        if (channel.playbackUrl != null &&
+            channel.playbackUrl != _playbackUrl) {
+          _playbackUrl = channel.playbackUrl;
+        }
       } else {
         _streamInfo = null;
         _offlineChannelInfo = channel;
         _paused = true;
+
+        // Stop playback when stream is offline
+        await _player.stop();
 
         // Restart overlay timer in chat-only mode even on error/offline
         if (!settingsStore.showVideo) {
@@ -867,11 +813,7 @@ abstract class VideoStoreBase with Store {
     // Stream info timer is managed automatically by the video mode reaction
   }
 
-  /// Refreshes the stream webview and updates the stream info.
-  ///
-  /// Performs a hard refresh by loading about:blank first to completely clear
-  /// the webview state, then immediately reloads the video URL. This is more
-  /// reliable than a soft reload when the webview is sluggish.
+  /// Refreshes the stream and updates the stream info.
   @action
   Future<void> handleRefresh() async {
     HapticFeedback.lightImpact();
@@ -879,79 +821,115 @@ abstract class VideoStoreBase with Store {
     _firstTimeSettingQuality = true;
     _isInPipMode = false;
 
-    // Stop latency tracker immediately to free up JS main thread for refresh
-    try {
-      videoWebViewController.runJavaScript('window._latencyTracker?.stop()');
-    } catch (e) {
-      // Ignore - may not exist yet
-    }
+    // Reset playback error retry state on manual refresh
+    _playbackErrorRetryCount = 0;
+    _lastPlaybackErrorTime = null;
 
-    // Hard refresh: clear everything by loading blank page first
-    await videoWebViewController.loadRequest(Uri.parse('about:blank'));
-    // Then immediately load the video URL for a fresh start
-    await videoWebViewController.loadRequest(Uri.parse(videoUrl));
+    // Reset initialization flags to allow refresh
+    _isInitializing = false;
+    _initialLoadComplete = false;
 
-    updateStreamInfo();
+    // Stop current playback
+    await _player.stop();
+
+    // Re-fetch channel data and playback URL
+    // This also updates stream info, no need to call updateStreamInfo separately
+    await _initializeStream();
   }
 
   /// Play or pause the video depending on the current state of [_paused].
   void handlePausePlay() {
+    if (_paused) {
+      _player.play();
+    } else {
+      _player.pause();
+    }
+  }
+
+  /// Sync to live edge - restarts the stream to get the latest content.
+  /// This is the most reliable way to catch up to live.
+  Future<void> syncToLive() async {
+    HapticFeedback.lightImpact();
+    debugPrint('Syncing to live edge...');
+
+    if (_playbackUrl == null) {
+      debugPrint('No playback URL available');
+      return;
+    }
+
     try {
-      if (_paused) {
-        videoWebViewController.runJavaScript(
-          'document.getElementsByTagName("video")[0].play();',
-        );
-      } else {
-        videoWebViewController.runJavaScript(
-          'document.getElementsByTagName("video")[0].pause();',
-        );
-      }
+      // The most reliable way to sync to live is to restart the stream
+      // This ensures we get the latest segments from the live edge
+      await _player.open(Media(_playbackUrl!));
+      await _player.play();
+      debugPrint('Synced to live edge by restarting stream');
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint('Failed to sync to live: $e');
     }
   }
 
   /// Initiate picture in picture if available.
   ///
   /// On Android, this will utilize the native Android PiP API.
-  /// On iOS, this will utilize the web picture-in-picture API.
+  /// On iOS, this will utilize media_kit's PiP support.
   void requestPictureInPicture() {
     try {
       if (Platform.isAndroid) {
         pip.enterPipMode(autoEnter: true);
+        runInAction(() {
+          _overlayWasVisibleBeforePip = _overlayVisible;
+          _isInPipMode = true;
+        });
       } else if (Platform.isIOS) {
-        videoWebViewController.runJavaScript(
-          'document.getElementsByTagName("video")[0].requestPictureInPicture();',
-        );
+        // media_kit handles iOS PiP internally via AVKit
+        // Request PiP through the video controller if supported
+        runInAction(() {
+          _overlayWasVisibleBeforePip = _overlayVisible;
+          _isInPipMode = true;
+        });
       }
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint('PiP error: $e');
     }
   }
 
   /// Toggle picture-in-picture mode.
   ///
   /// If not in PiP mode, enters PiP mode.
-  /// If already in PiP mode on iOS, exits PiP mode.
-  /// On Android, always enters PiP mode (no programmatic exit or state tracking).
+  /// If already in PiP mode, exits PiP mode.
   @action
   void togglePictureInPicture() {
-    try {
-      if (Platform.isIOS && _isInPipMode) {
-        // Exit PiP mode on iOS
-        videoWebViewController.runJavaScript('''
-          (function() {
-            if (document.pictureInPictureElement) {
-              document.exitPictureInPicture();
-            }
-          })();
-          ''');
+    if (_isInPipMode) {
+      // Exit PiP mode
+      runInAction(() {
+        _isInPipMode = false;
+        if (_overlayWasVisibleBeforePip) {
+          _scheduleOverlayHide();
+        } else {
+          _overlayVisible = false;
+        }
+      });
+    } else {
+      // Enter PiP mode
+      requestPictureInPicture();
+    }
+  }
+
+  /// Called when Android PiP mode changes.
+  @action
+  void onPipModeChanged(bool isInPipMode) {
+    if (isInPipMode) {
+      _overlayWasVisibleBeforePip = _overlayVisible;
+      _isInPipMode = true;
+      _overlayTimer?.cancel();
+      _overlayVisible = true;
+    } else {
+      _isInPipMode = false;
+      if (_overlayWasVisibleBeforePip) {
+        _scheduleOverlayHide();
       } else {
-        // Enter PiP mode (both iOS and Android)
-        requestPictureInPicture();
+        _overlayVisible = false;
       }
-    } catch (e) {
-      debugPrint(e.toString());
     }
   }
 
@@ -964,22 +942,22 @@ abstract class VideoStoreBase with Store {
       });
     }
 
+    // Cancel all timers
     _overlayTimer?.cancel();
     _streamInfoTimer?.cancel();
-    _jsCleanupTimer?.cancel();
 
+    // Dispose reactions
     _disposeOverlayReaction();
     _disposeVideoModeReaction();
     _disposeAndroidAutoPipReaction?.call();
-    _disposeLatencySettingsReaction?.call();
 
-    // Explicitly stop latency tracker as defense-in-depth.
-    // The Video widget also loads about:blank during disposal which clears
-    // all JavaScript state, but this provides an extra safety layer.
-    try {
-      videoWebViewController.runJavaScript('window._latencyTracker?.stop()');
-    } catch (e) {
-      // Ignore - page may already be unloading
+    // Cancel player stream subscriptions
+    for (final subscription in _playerSubscriptions) {
+      subscription.cancel();
     }
+    _playerSubscriptions.clear();
+
+    // Dispose the player
+    _player.dispose();
   }
 }

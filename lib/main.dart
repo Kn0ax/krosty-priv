@@ -23,6 +23,7 @@ import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:krosty/theme.dart';
 import 'package:krosty/utils.dart';
+import 'package:krosty/utils/media_kit_initializer.dart';
 import 'package:krosty/widgets/alert_message.dart';
 import 'package:mobx/mobx.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +32,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize media_kit for native HLS video playback
+  initializeMediaKit();
 
   CustomCacheManager.removeOrphanedCacheFiles();
 

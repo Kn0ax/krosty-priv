@@ -31,21 +31,11 @@ class VideoSettings extends StatelessWidget {
               onChanged: (newValue) =>
                   settingsStore.defaultToHighestQuality = newValue,
             ),
-          if (Platform.isAndroid)
-            SettingsListSwitch(
-              title: 'Use fast video rendering',
-              subtitle: const Text(
-                'Uses a faster WebView rendering method. Disable if you experience crashes while watching streams.',
-              ),
-              value: settingsStore.useTextureRendering,
-              onChanged: (newValue) =>
-                  settingsStore.useTextureRendering = newValue,
-            ),
           const SectionHeader('Overlay'),
           SettingsListSwitch(
             title: 'Use custom video overlay',
             subtitle: const Text(
-              'Replaces Twitch\'s default web overlay with a mobile-friendly version.',
+              'Replaces the default player controls with a mobile-friendly overlay.',
             ),
             value: settingsStore.showOverlay,
             onChanged: (newValue) => settingsStore.showOverlay = newValue,
@@ -53,18 +43,10 @@ class VideoSettings extends StatelessWidget {
           SettingsListSwitch(
             title: 'Long-press player to toggle overlay',
             subtitle: const Text(
-              'Allows switching between Twitch\'s overlay and the custom overlay.',
+              'Allows switching between the default and custom overlay.',
             ),
             value: settingsStore.toggleableOverlay,
             onChanged: (newValue) => settingsStore.toggleableOverlay = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show latency',
-            subtitle: const Text(
-              'Displays the stream latency in the video overlay.',
-            ),
-            value: settingsStore.showLatency,
-            onChanged: (newValue) => settingsStore.showLatency = newValue,
           ),
         ],
       ),
