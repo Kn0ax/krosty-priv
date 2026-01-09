@@ -421,24 +421,22 @@ class VideoOverlay extends StatelessWidget {
                             spacing: 8,
                             children: [
                               Tooltip(
-                                message: 'Tap to sync to live',
+                                message: 'Stream uptime',
                                 preferBelow: false,
-                                child: GestureDetector(
-                                  onTap: videoStore.syncToLive,
-                                  child: Row(
-                                    spacing: 6,
-                                    children: [
-                                      const LiveIndicator(),
-                                      Uptime(
-                                        startTime: streamInfo.uptimeStartTime ?? '',
-                                        style: TextStyle(
-                                          color: surfaceColor,
-                                          fontWeight: FontWeight.w500,
-                                          shadows: _textShadow,
-                                        ),
+                                triggerMode: TooltipTriggerMode.tap,
+                                child: Row(
+                                  spacing: 6,
+                                  children: [
+                                    const LiveIndicator(),
+                                    Uptime(
+                                      startTime: streamInfo.uptimeStartTime ?? '',
+                                      style: TextStyle(
+                                        color: surfaceColor,
+                                        fontWeight: FontWeight.w500,
+                                        shadows: _textShadow,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               Tooltip(

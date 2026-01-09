@@ -207,58 +207,30 @@ abstract class VideoStoreBase with Store {
     _initializeStream();
   }
 
-  /// Configure settings for low-latency live HLS streaming.
-  /// Target: <3 second delay from broadcaster.
+  /// Configure settings for live HLS streaming.
+  /// Uses NativePlayer's setProperty to pass mpv options.
   Future<void> _configureLowLatency() async {
     // Only available on native platforms (not web)
     if (_player.platform is NativePlayer) {
       final nativePlayer = _player.platform as NativePlayer;
 
+      // Use a more compatible HLS configuration
+      // The low-latency profile can cause codec issues on some devices
       try {
-        // === HARDWARE DECODING (must be first) ===
-        // Use hardware decoding to prevent codec errors
+        // Essential HLS settings for live streaming
+        await nativePlayer.setProperty('demuxer-max-bytes', '50MiB');
+        await nativePlayer.setProperty('demuxer-max-back-bytes', '25MiB');
+
+        // Enable hardware decoding for better performance
         await nativePlayer.setProperty('hwdec', 'auto-safe');
 
-        // === LOW LATENCY CORE SETTINGS ===
-        // Minimal cache for live streaming
-        await nativePlayer.setProperty('cache', 'no');
-        await nativePlayer.setProperty('cache-pause', 'no');
+        // Reduce initial buffering for faster start
+        await nativePlayer.setProperty('demuxer-readahead-secs', '3');
 
-        // Don't wait for keyframes, start immediately
-        await nativePlayer.setProperty('demuxer-lavf-o',
-            'fflags=+nobuffer+fastseek+flush_packets');
-
-        // Reduce demuxer buffer
-        await nativePlayer.setProperty('demuxer-max-bytes', '500KiB');
-        await nativePlayer.setProperty('demuxer-readahead-secs', '0.5');
-
-        // === SYNC & TIMING ===
-        // Drop frames if we fall behind
-        await nativePlayer.setProperty('framedrop', 'decoder+vo');
-
-        // Don't try to sync to audio perfectly
-        await nativePlayer.setProperty('video-sync', 'audio');
-        await nativePlayer.setProperty('interpolation', 'no');
-
-        // === NETWORK OPTIMIZATION ===
-        // Faster reconnection for live streams
-        await nativePlayer.setProperty('stream-lavf-o',
-            'reconnect=1,reconnect_streamed=1,reconnect_delay_max=2');
-
-        // === AUDIO ===
-        // Smaller audio buffer
-        await nativePlayer.setProperty('audio-buffer', '0.1');
-
-        // === LIVE EDGE ===
-        // Start from live edge, not from beginning of buffer
-        await nativePlayer.setProperty('hls-bitrate', 'max');
-
-        // Force seekable for live streams (needed for sync to live)
-        await nativePlayer.setProperty('force-seekable', 'yes');
-
-        debugPrint('Low-latency player configured successfully');
+        // Better error recovery for live streams
+        await nativePlayer.setProperty('stream-lavf-o', 'reconnect=1');
       } catch (e) {
-        debugPrint('Failed to configure low-latency settings: $e');
+        debugPrint('Failed to configure player properties: $e');
       }
     }
   }
@@ -291,16 +263,6 @@ abstract class VideoStoreBase with Store {
     _playerSubscriptions.add(
       _player.stream.error.listen((error) {
         debugPrint('Player error: $error');
-
-        // Ignore non-critical errors that don't affect playback
-        final lowerError = error.toLowerCase();
-        if (lowerError.contains('seek') ||
-            lowerError.contains('force-seekable') ||
-            lowerError.contains('force it with')) {
-          // These are informational messages about seeking, not real errors
-          return;
-        }
-
         // On error (possibly token expiry), try to recover
         if (error.isNotEmpty) {
           _handlePlaybackError(error);
@@ -843,28 +805,6 @@ abstract class VideoStoreBase with Store {
       _player.play();
     } else {
       _player.pause();
-    }
-  }
-
-  /// Sync to live edge - restarts the stream to get the latest content.
-  /// This is the most reliable way to catch up to live.
-  Future<void> syncToLive() async {
-    HapticFeedback.lightImpact();
-    debugPrint('Syncing to live edge...');
-
-    if (_playbackUrl == null) {
-      debugPrint('No playback URL available');
-      return;
-    }
-
-    try {
-      // The most reliable way to sync to live is to restart the stream
-      // This ensures we get the latest segments from the live edge
-      await _player.open(Media(_playbackUrl!));
-      await _player.play();
-      debugPrint('Synced to live edge by restarting stream');
-    } catch (e) {
-      debugPrint('Failed to sync to live: $e');
     }
   }
 
