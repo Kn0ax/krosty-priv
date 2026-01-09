@@ -313,11 +313,14 @@ class KickApi extends BaseApiClient {
 
   /// Get all emotes for a channel (Global, Channel, Emoji).
   /// Uses https://kick.com/emotes/{slug}
-  Future<List<KickEmoteData>> getEmotes({required String channelSlug}) async {
+  Future<List<KickEmoteGroup>> getEmotes({required String channelSlug}) async {
     try {
-      // Direct call to main domain endpoint
-      final data = await get<JsonList>('https://kick.com/emotes/$channelSlug');
-      return data.map((e) => KickEmoteData.fromJson(e)).toList();
+      // Direct call to main domain endpoint - returns a List of Groups
+      final data = await get<List<dynamic>>(
+        'https://kick.com/emotes/$channelSlug',
+      );
+
+      return data.map((json) => KickEmoteGroup.fromJson(json)).toList();
     } on ApiException catch (e) {
       debugPrint('Failed to get emotes for $channelSlug: $e');
       return [];
@@ -327,6 +330,12 @@ class KickApi extends BaseApiClient {
   /// Get global Kick emotes. (Deprecated: Use getEmotes)
   @Deprecated('Use getEmotes')
   Future<List<KickEmoteData>> getGlobalEmotes() async {
+    // We can use a random channel or hardcoded one to get globals,
+    // or arguably just fetch from any valid user endpoint.
+    // Usually 'kick' or generic user works. Let's try 'kick'.
+    // Or we handle this in the store.
+    // For backward compatibility, let's just return empty or try to fetch.
+    // The user's request showed `https://kick.com/emotes/{username}` gives global too.
     return [];
   }
 
@@ -335,7 +344,17 @@ class KickApi extends BaseApiClient {
   Future<List<KickEmoteData>> getChannelEmotes({
     required String channelSlug,
   }) async {
-    return getEmotes(channelSlug: channelSlug);
+    try {
+      final groups = await getEmotes(channelSlug: channelSlug);
+      // Filter for the group that matches the channel slug
+      final channelGroup = groups.firstWhere(
+        (g) => g.slug == channelSlug,
+        orElse: () => const KickEmoteGroup(id: 0, emotes: []),
+      );
+      return channelGroup.emotes;
+    } catch (e) {
+      return [];
+    }
   }
 
   // ...
@@ -554,12 +573,14 @@ class KickTokenResponse {
 /// Kick emote data from API.
 class KickEmoteData {
   final dynamic id; // Can be int or string
+  final int? channelId;
   final String name;
   final bool subscribersOnly;
   final String? type; // 'global', 'channel', 'emoji' if provided
 
   const KickEmoteData({
     required this.id,
+    this.channelId,
     required this.name,
     this.subscribersOnly = false,
     this.type,
@@ -568,6 +589,7 @@ class KickEmoteData {
   factory KickEmoteData.fromJson(Map<String, dynamic> json) {
     return KickEmoteData(
       id: json['id'], // dynamic
+      channelId: json['channel_id'] as int?,
       name: json['name'] as String? ?? 'emote',
       subscribersOnly: json['subscribers_only'] as bool? ?? false,
       type: json['type'] as String?,
@@ -576,6 +598,34 @@ class KickEmoteData {
 
   /// Get emote URL.
   String get url => 'https://files.kick.com/emotes/$id/fullsize';
+}
+
+/// Represents a group of emotes (e.g. Channel specific, Global, Emojis)
+class KickEmoteGroup {
+  final dynamic id; // Int ID for channels, String "Global"/"Emoji" for others
+  final String? slug;
+  final String? name; // "Global", "Emojis"
+  final List<KickEmoteData> emotes;
+
+  const KickEmoteGroup({
+    required this.id,
+    this.slug,
+    this.name,
+    required this.emotes,
+  });
+
+  factory KickEmoteGroup.fromJson(Map<String, dynamic> json) {
+    return KickEmoteGroup(
+      id: json['id'],
+      slug: json['slug'] as String?,
+      name: json['name'] as String?,
+      emotes:
+          (json['emotes'] as List<dynamic>?)
+              ?.map((e) => KickEmoteData.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
 }
 
 /// Kick silenced user pagination response.

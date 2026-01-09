@@ -12,8 +12,6 @@ import 'package:krosty/utils.dart' as utils;
 import 'package:krosty/widgets/frosty_cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-
-
 /// Regex for matching emoji characters.
 final regexEmoji = RegExp(
   r'[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]',
@@ -88,6 +86,7 @@ extension KickMessageRenderer on KickChatMessage {
         style,
         onTapPingedUser,
         onTapDeletedMessage,
+        content,
       );
     }
 
@@ -271,6 +270,7 @@ extension KickMessageRenderer on KickChatMessage {
     TextStyle? textStyle,
     void Function(String)? onTapPingedUser,
     void Function()? onTapDeletedMessage,
+    String messageContent,
   ) {
     if (!showMessage) {
       span.add(
@@ -294,14 +294,43 @@ extension KickMessageRenderer on KickChatMessage {
     }
 
     // Split message into words and process each
-    final messageWords = content.split(' ');
+    final messageWords = messageContent.split(' ');
 
     for (var i = 0; i < messageWords.length; i++) {
       final word = messageWords[i];
       if (word.isEmpty) continue;
 
+      var emote = emoteToObject[word];
+
+      // Handle [emote:id:name] format for Kick emotes (especially from other channels)
+      if (emote == null) {
+        final kickEmoteMatch = RegExp(
+          r'^\[emote:(\d+):([^\]]+)\]$',
+        ).firstMatch(word);
+        if (kickEmoteMatch != null) {
+          final id = kickEmoteMatch.group(1);
+          final name = kickEmoteMatch.group(2);
+
+          if (name != null) {
+            // Check if we have it by name
+            emote = emoteToObject[name];
+
+            // If not found, create a dynamic emote object
+            if (emote == null && id != null) {
+              emote = Emote(
+                id: id,
+                name: name,
+                zeroWidth: false,
+                url: 'https://files.kick.com/emotes/$id/fullsize',
+                type: EmoteType
+                    .kickChannel, // Assumption for external channel emotes
+              );
+            }
+          }
+        }
+      }
+
       // Check if word is an emote
-      final emote = emoteToObject[word];
       if (emote != null) {
         // Handle zero-width emotes stacking
         if (emote.zeroWidth && i > 0) {
@@ -359,7 +388,8 @@ extension KickMessageRenderer on KickChatMessage {
               fontWeight: FontWeight.w500,
             ),
             recognizer: onTapPingedUser != null && username.isNotEmpty
-                ? (TapGestureRecognizer()..onTap = () => onTapPingedUser(username))
+                ? (TapGestureRecognizer()
+                    ..onTap = () => onTapPingedUser(username))
                 : null,
           ),
         );
@@ -412,7 +442,7 @@ extension KickMessageRenderer on KickChatMessage {
     // Collect consecutive zero-width emotes
     final emoteStack = <Emote>[startEmote];
     var checkIndex = index - 1;
-    
+
     while (checkIndex >= 0) {
       final prevWord = words[checkIndex];
       final prevEmote = emoteToObject[prevWord];
@@ -432,7 +462,7 @@ extension KickMessageRenderer on KickChatMessage {
 
     // Build the stacked widget
     final children = <Widget>[];
-    
+
     if (baseEmote != null && !baseEmote.zeroWidth) {
       children.add(
         FrostyCachedNetworkImage(
@@ -464,10 +494,7 @@ extension KickMessageRenderer on KickChatMessage {
           message: emoteStack.map((e) => e.name).join(' + '),
           preferBelow: false,
           triggerMode: TooltipTriggerMode.tap,
-          child: Stack(
-            alignment: Alignment.center,
-            children: children,
-          ),
+          child: Stack(alignment: Alignment.center, children: children),
         ),
       ),
     );
@@ -514,15 +541,9 @@ void showEmoteDetailsBottomSheet(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FrostyCachedNetworkImage(
-              imageUrl: emote.url,
-              height: 96,
-            ),
+            FrostyCachedNetworkImage(imageUrl: emote.url, height: 96),
             const SizedBox(height: 16),
-            Text(
-              emote.name,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(emote.name, style: Theme.of(context).textTheme.titleLarge),
             if (emote.realName != null && emote.realName != emote.name)
               Text(
                 'Original: ${emote.realName}',

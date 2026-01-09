@@ -60,7 +60,7 @@ class _EmoteMenuSectionState extends State<EmoteMenuSection>
             padding: const EdgeInsets.all(5.0),
             child: Center(
               child: FrostyCachedNetworkImage(
-                imageUrl: widget.emotes[index].url,
+                imageUrl: widget.emotes[index].lowQualityUrl,
                 height:
                     widget.emotes[index].height?.toDouble() ?? defaultEmoteSize,
                 width: widget.emotes[index].width?.toDouble(),

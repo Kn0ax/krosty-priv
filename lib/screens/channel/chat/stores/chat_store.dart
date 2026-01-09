@@ -255,18 +255,12 @@ abstract class ChatStoreBase with Store {
 
     // Reaction for emote settings changes
     reactions.add(
-      reaction(
-        (_) => [
-          settings.showKickEmotes,
-          settings.show7TVEmotes,
-        ],
-        (_) {
-          if (!settings.show7TVEmotes) {
-            _sevenTVChannel?.sink.close(1000);
-          }
-          getAssets();
-        },
-      ),
+      reaction((_) => [settings.showKickEmotes, settings.show7TVEmotes], (_) {
+        if (!settings.show7TVEmotes) {
+          _sevenTVChannel?.sink.close(1000);
+        }
+        getAssets();
+      }),
     );
 
     // Start chat delay countdown when toggling video on
@@ -302,10 +296,12 @@ abstract class ChatStoreBase with Store {
       show7TVEmotes: settings.show7TVEmotes,
     );
 
-    _messages.add(KickChatMessage.createNotice(
-      message: 'Connecting to chat...',
-      chatroomId: chatroomId ?? 0,
-    ));
+    _messages.add(
+      KickChatMessage.createNotice(
+        message: 'Connecting to chat...',
+        chatroomId: chatroomId ?? 0,
+      ),
+    );
 
     connectToChat();
 
@@ -423,16 +419,15 @@ abstract class ChatStoreBase with Store {
 
     messageBuffer.add(
       KickChatMessage.createNotice(
-        message: "Welcome to ${getReadableName(displayName, channelSlug)}'s chat!",
+        message:
+            "Welcome to ${getReadableName(displayName, channelSlug)}'s chat!",
         chatroomId: chatroomId ?? 0,
       ),
     );
 
     // Transform reconnect message to summary on successful connection
     if (_reconnectMessage != null && _reconnectStartTime != null) {
-      final elapsed = DateTime.now()
-          .difference(_reconnectStartTime!)
-          .inSeconds;
+      final elapsed = DateTime.now().difference(_reconnectStartTime!).inSeconds;
       final attempts = _retries;
       final index = _messages.indexOf(_reconnectMessage!);
       if (index != -1) {
@@ -467,8 +462,9 @@ abstract class ChatStoreBase with Store {
       chatDetailsStore.chatUsers.add(message.senderName);
 
       // Check for blocked users
-      if (auth.user.blockedUsernames
-          .contains(message.sender.username.toLowerCase())) {
+      if (auth.user.blockedUsernames.contains(
+        message.sender.username.toLowerCase(),
+      )) {
         return;
       }
 
@@ -486,7 +482,7 @@ abstract class ChatStoreBase with Store {
       messageBuffer.add(message);
 
       // Handle our own sent message confirmation
-      if (toSend != null && 
+      if (toSend != null &&
           message.sender.username == auth.user.details?.username) {
         _sendingTimeoutTimer?.cancel();
         _isWaitingForAck = false;
@@ -565,12 +561,14 @@ abstract class ChatStoreBase with Store {
       final durationText = permanent
           ? 'permanently banned'
           : duration != null
-              ? 'timed out for ${duration}s'
-              : 'banned';
-      messageBuffer.add(KickChatMessage.createNotice(
-        message: '$username has been $durationText',
-        chatroomId: chatroomId ?? 0,
-      ));
+          ? 'timed out for ${duration}s'
+          : 'banned';
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: '$username has been $durationText',
+          chatroomId: chatroomId ?? 0,
+        ),
+      );
     } catch (e) {
       debugPrint('Error handling user banned: $e');
     }
@@ -584,10 +582,12 @@ abstract class ChatStoreBase with Store {
 
     try {
       final unbannedEvent = KickUserUnbannedEvent.fromJson(data);
-      messageBuffer.add(KickChatMessage.createNotice(
-        message: '${unbannedEvent.user.username} has been unbanned',
-        chatroomId: chatroomId ?? 0,
-      ));
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: '${unbannedEvent.user.username} has been unbanned',
+          chatroomId: chatroomId ?? 0,
+        ),
+      );
     } catch (e) {
       debugPrint('Error handling user unbanned: $e');
     }
@@ -612,10 +612,12 @@ abstract class ChatStoreBase with Store {
   void _handleChatroomClear() {
     _messages.clear();
     messageBuffer.clear();
-    _messages.add(KickChatMessage.createNotice(
-      message: 'Chat has been cleared by a moderator',
-      chatroomId: chatroomId ?? 0,
-    ));
+    _messages.add(
+      KickChatMessage.createNotice(
+        message: 'Chat has been cleared by a moderator',
+        chatroomId: chatroomId ?? 0,
+      ),
+    );
   }
 
   // Fetch the assets used in chat including emotes.
@@ -646,10 +648,12 @@ abstract class ChatStoreBase with Store {
         chatroomId = channel.chatroom.id;
       } catch (e) {
         debugPrint('Failed to get chatroom ID: $e');
-        _messages.add(KickChatMessage.createNotice(
-          message: 'Failed to load chat info.',
-          chatroomId: 0,
-        ));
+        _messages.add(
+          KickChatMessage.createNotice(
+            message: 'Failed to load chat info.',
+            chatroomId: 0,
+          ),
+        );
         return;
       }
     }
@@ -657,26 +661,28 @@ abstract class ChatStoreBase with Store {
     // Fetch chat history if enabled (only on initial connect)
     if (!isReconnect && settings.showRecentMessages) {
       try {
-        final historyJson = await kickApi.getChatHistory(chatroomId: chatroomId!);
+        final historyJson = await kickApi.getChatHistory(
+          chatroomId: chatroomId!,
+        );
         final historyMessages = historyJson
             .map((json) => KickChatMessage.fromJson(json))
             .toList()
-            .reversed // History usually returned newest first, we want oldest first for chat list? 
-            // Wait, Kick API returns arrays. If it's standard order, verify. 
-            // Most lists are new->old. We prepend them. 
+            .reversed // History usually returned newest first, we want oldest first for chat list?
+            // Wait, Kick API returns arrays. If it's standard order, verify.
+            // Most lists are new->old. We prepend them.
             // Actually _messages expects chronological order (old -> new).
             // If API returns [newest, ..., oldest], we need to reverse.
             // Assuming standard API behavior for now.
             .toList();
 
         if (historyMessages.isNotEmpty) {
-           // We might need to verify order. Typically lists are "latest first" in pagination.
-           // If we append them to start, we want [oldest, ..., newest].
-           // So if API is [newest...oldest], reversing gives [oldest...newest].
-           // Let's assume typical list behavior.
-           
-           // Filter blocked etc if needed.
-           _messages.insertAll(0, historyMessages);
+          // We might need to verify order. Typically lists are "latest first" in pagination.
+          // If we append them to start, we want [oldest, ..., newest].
+          // So if API is [newest...oldest], reversing gives [oldest...newest].
+          // Let's assume typical list behavior.
+
+          // Filter blocked etc if needed.
+          _messages.insertAll(0, historyMessages);
         }
       } catch (e) {
         debugPrint('Failed to load chat history: $e');
@@ -687,9 +693,7 @@ abstract class ChatStoreBase with Store {
     _channelListener?.cancel();
 
     _channel?.sink.close(1000);
-    _channel = WebSocketChannel.connect(
-      Uri.parse(kickPusherWsUrl),
-    );
+    _channel = WebSocketChannel.connect(Uri.parse(kickPusherWsUrl));
 
     // Only show chat delay countdown on initial connection
     if (!isReconnect && settings.showVideo && settings.chatDelay > 0) {
@@ -854,41 +858,40 @@ abstract class ChatStoreBase with Store {
     );
     _messages.add(_countdownMessage!);
 
-    _chatDelayCountdownTimer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) {
-        remainingSeconds--;
+    _chatDelayCountdownTimer = Timer.periodic(const Duration(seconds: 1), (
+      timer,
+    ) {
+      remainingSeconds--;
 
-        if (remainingSeconds <= 0) {
-          timer.cancel();
-          _chatDelaySyncCompleted = true;
-
-          if (_countdownMessage != null) {
-            final index = _messages.indexOf(_countdownMessage!);
-            if (index != -1) {
-              _messages[index] = KickChatMessage.createNotice(
-                message: 'Chat synced!',
-                chatroomId: chatroomId ?? 0,
-              );
-            }
-            _countdownMessage = null;
-          }
-          return;
-        }
+      if (remainingSeconds <= 0) {
+        timer.cancel();
+        _chatDelaySyncCompleted = true;
 
         if (_countdownMessage != null) {
           final index = _messages.indexOf(_countdownMessage!);
           if (index != -1) {
-            final updated = KickChatMessage.createNotice(
-              message: 'Chat syncing in ${remainingSeconds}s...',
+            _messages[index] = KickChatMessage.createNotice(
+              message: 'Chat synced!',
               chatroomId: chatroomId ?? 0,
             );
-            _countdownMessage = updated;
-            _messages[index] = updated;
           }
+          _countdownMessage = null;
         }
-      },
-    );
+        return;
+      }
+
+      if (_countdownMessage != null) {
+        final index = _messages.indexOf(_countdownMessage!);
+        if (index != -1) {
+          final updated = KickChatMessage.createNotice(
+            message: 'Chat syncing in ${remainingSeconds}s...',
+            chatroomId: chatroomId ?? 0,
+          );
+          _countdownMessage = updated;
+          _messages[index] = updated;
+        }
+      }
+    });
   }
 
   /// Sends a chat message.
@@ -902,12 +905,29 @@ abstract class ChatStoreBase with Store {
 
     _isWaitingForAck = true;
 
+    // Process message to format Kick emotes
+    var contentToSend = message.trim();
+    final words = contentToSend.split(' ');
+    final parsedWords = <String>[];
+
+    for (final word in words) {
+      final emote = assetsStore.emotes[word];
+      // If it's a Kick emote, ensure we send it in the format [emote:id:name]
+      if (emote != null && assetsStore.isKick(emote) && emote.id != null) {
+        parsedWords.add('[emote:${emote.id}:${emote.name}]');
+      } else {
+        parsedWords.add(word);
+      }
+    }
+    contentToSend = parsedWords.join(' ');
+
     try {
+      var success = false;
       // Send message via Kick API
       if (chatroomId != null) {
-        await kickApi.sendChatMessage(
+        success = await kickApi.sendChatMessage(
           chatroomId: chatroomId!,
-          content: message.trim(),
+          content: contentToSend,
           replyToMessageId: replyingToMessage?.id,
         );
       }
@@ -916,7 +936,7 @@ abstract class ChatStoreBase with Store {
       toSend = KickChatMessage(
         id: 'pending_${DateTime.now().millisecondsSinceEpoch}',
         chatroomId: chatroomId ?? 0,
-        content: message.trim(),
+        content: contentToSend,
         type: 'message',
         createdAt: DateTime.now(),
         sender: KickMessageSender(
@@ -926,6 +946,14 @@ abstract class ChatStoreBase with Store {
         ),
       );
 
+      // If the request was successful (200 OK), we assume the message was sent.
+      // We clear the input immediately and don't wait for the Pusher event to confirm.
+      if (success) {
+        _isWaitingForAck = false;
+        textController.clear();
+        replyingToMessage = null;
+      }
+
       // Start timeout timer
       _sendingTimeoutTimer?.cancel();
       _sendingTimeoutTimer = Timer(const Duration(seconds: 10), () {
@@ -934,7 +962,9 @@ abstract class ChatStoreBase with Store {
         if (_isWaitingForAck) {
           _isWaitingForAck = false;
           toSend = null;
-          updateNotification('Message may not have been sent. Please try again.');
+          updateNotification(
+            'Message may not have been sent. Please try again.',
+          );
         }
       });
     } catch (e) {

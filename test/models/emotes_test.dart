@@ -69,6 +69,35 @@ void main() {
 
       expect(emote.zeroWidth, isTrue);
     });
+
+    test('selects smallest WEBP for lowQualityUrl', () {
+      final emote7TV = Emote7TV(
+        'lowqualtest',
+        'LowQual',
+        Emote7TVData(
+          'lowqualtest',
+          'LowQual',
+          0,
+          null,
+          Emote7TVHost('//cdn.7tv.app/emote/01F63B8GJR000AE7CZT484KXF9', [
+            Emote7TVFile('1x.webp', 32, 32, 'WEBP'),
+            Emote7TVFile('2x.webp', 64, 64, 'WEBP'),
+            Emote7TVFile('3x.webp', 96, 96, 'WEBP'),
+          ]),
+        ),
+      );
+
+      final emote = Emote.from7TV(emote7TV, EmoteType.sevenTVGlobal);
+
+      expect(
+        emote.url,
+        'https://cdn.7tv.app/emote/01F63B8GJR000AE7CZT484KXF9/3x.webp',
+      );
+      expect(
+        emote.lowQualityUrl,
+        'https://cdn.7tv.app/emote/01F63B8GJR000AE7CZT484KXF9/1x.webp',
+      );
+    });
   });
 
   group('EmoteType', () {
@@ -77,6 +106,41 @@ void main() {
       expect(EmoteType.kickChannel.toString(), 'Kick channel emote');
       expect(EmoteType.sevenTVGlobal.toString(), '7TV global emote');
       expect(EmoteType.sevenTVChannel.toString(), '7TV channel emote');
+    });
+  });
+  group('KickEmoteGroup', () {
+    test('parses group correctly', () {
+      final json = {
+        'id': 123,
+        'slug': 'testparsed',
+        'name': 'Test Group',
+        'emotes': [
+          {'id': 1, 'name': 'emote1'},
+          {'id': 2, 'name': 'emote2'},
+        ],
+      };
+
+      final group = KickEmoteGroup.fromJson(json);
+      expect(group.id, 123);
+      expect(group.slug, 'testparsed');
+      expect(group.name, 'Test Group');
+      expect(group.emotes.length, 2);
+      expect(group.emotes[0].name, 'emote1');
+    });
+
+    test('parses Global group correctly', () {
+      final json = {
+        'id': 'Global',
+        'name': 'Global',
+        'emotes': [
+          {'id': 1, 'name': 'global_emote'},
+        ],
+      };
+
+      final group = KickEmoteGroup.fromJson(json);
+      expect(group.id, 'Global');
+      expect(group.name, 'Global');
+      expect(group.emotes.first.name, 'global_emote');
     });
   });
 }

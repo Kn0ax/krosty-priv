@@ -23,18 +23,19 @@ class SevenTVApi extends BaseApiClient {
   /// Returns a tuple containing the emote set ID and a list of a Kick channel's
   /// 7TV emotes.
   ///
-  /// Uses the Kick platform endpoint: `/users/kick/{channel_slug}`
+  /// Uses the Kick platform endpoint: `/users/kick/{user_id}`
+  /// Requires the user_id from Kick API v2 channels endpoint.
   Future<(String, List<Emote>)> getEmotesChannel({
-    required String channelSlug,
+    required int userId,
   }) async {
     try {
-      // 7TV uses 'kick' as the platform identifier for Kick channels
-      final data = await get<JsonMap>('/users/kick/$channelSlug');
+      // 7TV uses 'kick' as the platform identifier and user_id (not slug)
+      final data = await get<JsonMap>('/users/kick/$userId');
 
       // Handle case where emote_set might be null
       final emoteSet = data['emote_set'] as Map<String, dynamic>?;
       if (emoteSet == null) {
-        debugPrint('No 7TV emote set found for Kick channel: $channelSlug');
+        debugPrint('No 7TV emote set found for Kick user ID: $userId');
         return ('', <Emote>[]);
       }
 
@@ -52,23 +53,24 @@ class SevenTVApi extends BaseApiClient {
       );
     } on NotFoundException {
       // Channel doesn't have 7TV emotes
-      debugPrint('Kick channel $channelSlug not found on 7TV');
+      debugPrint('Kick user ID $userId not found on 7TV');
       return ('', <Emote>[]);
     } catch (e) {
-      debugPrint('Error fetching 7TV emotes for $channelSlug: $e');
+      debugPrint('Error fetching 7TV emotes for user ID $userId: $e');
       return ('', <Emote>[]);
     }
   }
 
   /// Returns the user connection data for a Kick channel.
   /// This includes the emote set ID needed for real-time updates.
-  Future<String?> getChannelEmoteSetId({required String channelSlug}) async {
+  /// Requires the user_id from Kick API v2 channels endpoint.
+  Future<String?> getChannelEmoteSetId({required int userId}) async {
     try {
-      final data = await get<JsonMap>('/users/kick/$channelSlug');
+      final data = await get<JsonMap>('/users/kick/$userId');
       final emoteSet = data['emote_set'] as Map<String, dynamic>?;
       return emoteSet?['id'] as String?;
     } catch (e) {
-      debugPrint('Error fetching 7TV emote set ID for $channelSlug: $e');
+      debugPrint('Error fetching 7TV emote set ID for user ID $userId: $e');
       return null;
     }
   }

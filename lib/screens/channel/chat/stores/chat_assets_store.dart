@@ -1,11 +1,10 @@
-import 'dart:convert';
-
+import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/seventv_api.dart';
 import 'package:krosty/models/emotes.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:mobx/mobx.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 part 'chat_assets_store.g.dart';
 
@@ -36,13 +35,13 @@ abstract class ChatAssetsStoreBase with Store {
   @computed
   Map<String, Emote> get emotes {
     final allEmotes = <String, Emote>{};
-    
+
     // Add global emotes first
     allEmotes.addAll(globalAssetsStore.allEmotes);
-    
+
     // Add channel emotes (override global if same name)
     allEmotes.addAll(_channelEmotes);
-    
+
     return allEmotes;
   }
 
@@ -96,6 +95,14 @@ abstract class ChatAssetsStoreBase with Store {
     try {
       final futures = <Future>[];
 
+      // Ensure global assets are loaded
+      futures.add(
+        globalAssetsStore.ensureLoaded(
+          showKickEmotes: showKickEmotes,
+          show7TVEmotes: show7TVEmotes,
+        ),
+      );
+
       // Kick channel emotes
       if (showKickEmotes) {
         futures.add(_fetchKickChannelEmotes());
@@ -117,29 +124,44 @@ abstract class ChatAssetsStoreBase with Store {
   /// Fetch Kick channel emotes.
   Future<void> _fetchKickChannelEmotes() async {
     try {
-      final emotes = await kickApi.getChannelEmotes(channelSlug: channelSlug);
-      
-      for (final emote in emotes) {
-        final converted = Emote.fromKick(emote, EmoteType.kickChannel);
-        _channelEmotes[converted.name] = converted;
+      final groups = await kickApi.getEmotes(channelSlug: channelSlug);
+
+      // Find the group for this channel
+      // The API returns groups for Global, Emojis, and the Channel itself.
+      // The channel group usually has the slug matching the requested channel.
+      final channelGroup = groups.firstWhereOrNull(
+        (g) =>
+            g.slug == channelSlug ||
+            (g.slug?.toLowerCase() == channelSlug.toLowerCase()),
+      );
+
+      if (channelGroup != null) {
+        for (final emote in channelGroup.emotes) {
+          final converted = Emote.fromKick(emote, EmoteType.kickChannel);
+          _channelEmotes[converted.name] = converted;
+        }
       }
     } catch (e) {
       // Silently fail - channel may not have emotes
+      debugPrint('Error fetching Kick channel emotes: $e');
     }
   }
 
   /// Fetch 7TV channel emotes.
   Future<void> _fetch7TVChannelEmotes() async {
     try {
-      final (_, emotes) = await sevenTVApi.getEmotesChannel(
-        channelSlug: channelSlug,
-      );
-      
+      // First, get the channel to retrieve user_id from v2 channels endpoint
+      final channel = await kickApi.getChannel(channelSlug: channelSlug);
+      final userId = channel.user.id;
+
+      // Use user_id (not slug) for 7TV API
+      final (_, emotes) = await sevenTVApi.getEmotesChannel(userId: userId);
+
       for (final emote in emotes) {
         _channelEmotes[emote.name] = emote;
       }
     } catch (e) {
-      // Silently fail - 7TV may not be connected
+      // Silently fail - 7TV may not be connected or channel may not exist
     }
   }
 

@@ -14,10 +14,7 @@ abstract class GlobalAssetsStoreBase with Store {
   final KickApi kickApi;
   final SevenTVApi sevenTVApi;
 
-  GlobalAssetsStoreBase({
-    required this.kickApi,
-    required this.sevenTVApi,
-  });
+  GlobalAssetsStoreBase({required this.kickApi, required this.sevenTVApi});
 
   // ============= Loading State =============
 
@@ -128,13 +125,28 @@ abstract class GlobalAssetsStoreBase with Store {
       // Kick global emotes
       if (showKickEmotes)
         kickApi
-            .getGlobalEmotes()
-            .then((emotes) => _kickGlobalEmotes = emotes
-                .map((e) => Emote.fromKick(e, EmoteType.kickGlobal))
-                .toList())
+            .getEmotes(
+              channelSlug: 'xqc',
+            ) // Use 'xqc' or any valid channel to get globals
+            .then((groups) {
+              final globals = <Emote>[];
+              for (final group in groups) {
+                // Global and Emoji groups usually have string IDs or specific names
+                if (group.id == 'Global' ||
+                    group.id == 'Emoji' ||
+                    group.name == 'Global' ||
+                    group.name == 'Emojis') {
+                  globals.addAll(
+                    group.emotes.map(
+                      (e) => Emote.fromKick(e, EmoteType.kickGlobal),
+                    ),
+                  );
+                }
+              }
+              _kickGlobalEmotes = globals;
+            })
             .catchError((e) {
               _kickGlobalEmotes = onEmoteError(e);
-              return _kickGlobalEmotes;
             }),
       // 7TV global emotes
       if (show7TVEmotes)

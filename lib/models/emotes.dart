@@ -70,6 +70,7 @@ class Emote7TVFile {
 @JsonSerializable()
 class Emote {
   final String name;
+  final String? id;
   final String? realName;
   final int? width;
   final int? height;
@@ -82,16 +83,20 @@ class Emote {
 
   const Emote({
     required this.name,
+    this.id,
     this.realName,
     this.width,
     this.height,
     required this.zeroWidth,
     required this.url,
+    String? lowQualityUrl,
     required this.type,
     this.ownerDisplayName,
     this.ownerUsername,
     this.ownerId,
-  });
+  }) : lowQualityUrl = lowQualityUrl ?? url;
+
+  final String lowQualityUrl;
 
   factory Emote.from7TV(Emote7TV emote, EmoteType type) {
     final emoteData = emote.data;
@@ -103,24 +108,39 @@ class Emote {
       (file) => file.format != 'AVIF',
     );
 
+    // Find smallest WEBP/GIF for picker optimization
+    final smallestFile = emoteData.host.files
+        .where((f) => f.format != 'AVIF') // Filter AVIF if not supported
+        .sorted((a, b) => a.width.compareTo(b.width))
+        .firstOrNull;
+
     // Check if the flag has 1 at the 8th bit.
     final isZeroWidth = (emoteData.flags & 256) == 256;
 
     return Emote(
+      id: emote.id,
       name: emote.name,
       realName: emote.name != emoteData.name ? emoteData.name : null,
       width: emoteData.host.files.firstOrNull?.width,
       height: emoteData.host.files.firstOrNull?.height,
       zeroWidth: isZeroWidth,
       url: file != null ? 'https:$url/${file.name}' : '',
+      lowQualityUrl: smallestFile != null
+          ? 'https:$url/${smallestFile.name}'
+          : (file != null ? 'https:$url/${file.name}' : ''),
       type: type,
       ownerDisplayName: emoteData.owner?.displayName,
       ownerUsername: emoteData.owner?.username,
     );
   }
 
-  factory Emote.fromKick(KickEmoteData emote, EmoteType type) =>
-      Emote(name: emote.name, zeroWidth: false, url: emote.url, type: type);
+  factory Emote.fromKick(KickEmoteData emote, EmoteType type) => Emote(
+    id: emote.id.toString(),
+    name: emote.name,
+    zeroWidth: false,
+    url: emote.url,
+    type: type,
+  );
 
   factory Emote.fromJson(Map<String, dynamic> json) => _$EmoteFromJson(json);
   Map<String, dynamic> toJson() => _$EmoteToJson(this);

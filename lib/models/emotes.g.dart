@@ -43,11 +43,13 @@ Emote7TVFile _$Emote7TVFileFromJson(Map<String, dynamic> json) => Emote7TVFile(
 
 Emote _$EmoteFromJson(Map<String, dynamic> json) => Emote(
   name: json['name'] as String,
+  id: json['id'] as String?,
   realName: json['realName'] as String?,
   width: (json['width'] as num?)?.toInt(),
   height: (json['height'] as num?)?.toInt(),
   zeroWidth: json['zeroWidth'] as bool,
   url: json['url'] as String,
+  lowQualityUrl: json['lowQualityUrl'] as String?,
   type: $enumDecode(_$EmoteTypeEnumMap, json['type']),
   ownerDisplayName: json['ownerDisplayName'] as String?,
   ownerUsername: json['ownerUsername'] as String?,
@@ -56,6 +58,7 @@ Emote _$EmoteFromJson(Map<String, dynamic> json) => Emote(
 
 Map<String, dynamic> _$EmoteToJson(Emote instance) => <String, dynamic>{
   'name': instance.name,
+  'id': instance.id,
   'realName': instance.realName,
   'width': instance.width,
   'height': instance.height,
@@ -65,6 +68,7 @@ Map<String, dynamic> _$EmoteToJson(Emote instance) => <String, dynamic>{
   'ownerDisplayName': instance.ownerDisplayName,
   'ownerUsername': instance.ownerUsername,
   'ownerId': instance.ownerId,
+  'lowQualityUrl': instance.lowQualityUrl,
 };
 
 const _$EmoteTypeEnumMap = {

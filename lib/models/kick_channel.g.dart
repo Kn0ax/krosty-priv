@@ -133,6 +133,7 @@ KickChannelSearch _$KickChannelSearchFromJson(Map<String, dynamic> json) =>
       isLive: json['is_live'] as bool? ?? false,
       isVerified: json['is_verified'] as bool? ?? false,
       viewerCount: (json['viewer_count'] as num?)?.toInt(),
+      startTime: json['start_time'] as String?,
     );
 
 KickLivestreamsResponse _$KickLivestreamsResponseFromJson(
