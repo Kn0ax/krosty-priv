@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:native_device_orientation/native_device_orientation.dart';
 
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/channel/video/stream_info_bar.dart';
@@ -171,12 +172,38 @@ class VideoOverlay extends StatelessWidget {
           color: surfaceColor,
           shadows: _iconShadow,
         ),
-        onPressed: () {
+        onPressed: () async {
           if (context.isPortrait) {
-            SystemChrome.setPreferredOrientations([
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ]);
+            // Detect physical device tilt to rotate to optimal orientation
+            final physicalOrientation =
+                await NativeDeviceOrientationCommunicator()
+                    .orientation(useSensor: true);
+
+            // Map native orientation to Flutter's DeviceOrientation
+            // iOS: native landscapeLeft = notch left, needs swap to Flutter's landscapeRight
+            // Android: direct mapping works correctly
+            final needsSwap = Platform.isIOS;
+
+            if (physicalOrientation == NativeDeviceOrientation.landscapeLeft) {
+              SystemChrome.setPreferredOrientations([
+                needsSwap
+                    ? DeviceOrientation.landscapeRight
+                    : DeviceOrientation.landscapeLeft,
+              ]);
+            } else if (physicalOrientation ==
+                NativeDeviceOrientation.landscapeRight) {
+              SystemChrome.setPreferredOrientations([
+                needsSwap
+                    ? DeviceOrientation.landscapeLeft
+                    : DeviceOrientation.landscapeRight,
+              ]);
+            } else {
+              // Not tilted to landscape yet, allow both
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ]);
+            }
           } else {
             SystemChrome.setPreferredOrientations([
               DeviceOrientation.portraitUp,

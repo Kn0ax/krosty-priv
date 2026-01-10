@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -145,7 +146,15 @@ abstract class AuthBase with Store {
   /// then extracts session cookies for API access.
   WebViewController createAuthWebViewController({Widget? routeAfter}) {
     final webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted);
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // Use platform-specific user agents to allow Google OAuth sign-in.
+      // Google blocks OAuth in embedded WebViews (error 403: disallowed_useragent)
+      // by detecting WebView markers. These standard browser UAs work around that.
+      ..setUserAgent(
+        Platform.isIOS
+            ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'
+            : 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
+      );
 
     // Reset state for new login flow
     _loginButtonClicked = false;
