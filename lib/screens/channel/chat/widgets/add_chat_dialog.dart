@@ -232,6 +232,7 @@ class _AddChatSheetState extends State<AddChatSheet> {
         return ListTile(
           leading: ProfilePicture(
             userLogin: channel.slug,
+            profileUrl: channel.profilePic,
             radius: 16,
           ),
           title: Text(displayName),

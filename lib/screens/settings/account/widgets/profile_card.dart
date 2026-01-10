@@ -42,6 +42,7 @@ class ProfileCard extends StatelessWidget {
           return ListTile(
             leading: ProfilePicture(
               userLogin: authStore.user.details!.username,
+              profileUrl: authStore.user.details!.profilePic,
               radius: 12,
             ),
             title: Text(authStore.user.details!.displayName),

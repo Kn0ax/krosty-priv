@@ -5,9 +5,15 @@ import 'package:provider/provider.dart';
 
 class ProfilePicture extends StatefulWidget {
   final String userLogin;
+  final String? profileUrl;
   final double radius;
 
-  const ProfilePicture({super.key, required this.userLogin, this.radius = 20});
+  const ProfilePicture({
+    super.key,
+    required this.userLogin,
+    this.profileUrl,
+    this.radius = 20,
+  });
 
   @override
   State<ProfilePicture> createState() => _ProfilePictureState();
@@ -27,6 +33,11 @@ class _ProfilePictureState extends State<ProfilePicture> {
       'https://files.kick.com/images/profile_image/default2.jpeg';
 
   Future<String> _getProfileImageUrl() async {
+    // Return provided URL if available (avoid API call)
+    if (widget.profileUrl?.isNotEmpty == true) {
+      return widget.profileUrl!;
+    }
+
     final userLogin = widget.userLogin;
 
     // Return cached URL if available

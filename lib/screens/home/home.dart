@@ -116,6 +116,7 @@ class _HomeState extends State<Home> {
                     icon: isLoggedIn
                         ? ProfilePicture(
                             userLogin: _authStore.user.details!.username,
+                            profileUrl: _authStore.user.details!.profilePic,
                             radius: 16,
                           )
                         : const Icon(Icons.settings_rounded),

@@ -140,6 +140,7 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
                       title: Text(displayName),
                       leading: ProfilePicture(
                         userLogin: channel.slug,
+                        profileUrl: channel.profilePic,
                         radius: 16,
                       ),
                       subtitle: channel.isLive

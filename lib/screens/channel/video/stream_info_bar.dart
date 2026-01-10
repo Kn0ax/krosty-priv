@@ -124,9 +124,12 @@ class StreamInfoBar extends StatelessWidget {
               child: ProfilePicture(
                 userLogin: isOffline
                     ? (offlineChannelInfo?.user.slug.isNotEmpty == true
-                          ? offlineChannelInfo?.user.slug ?? ''
-                          : displayName ?? '')
+                        ? offlineChannelInfo?.user.slug ?? ''
+                        : displayName ?? '')
                     : (streamInfo?.channelSlug ?? ''),
+                profileUrl: isOffline
+                    ? offlineChannelInfo?.profilePicUrl
+                    : streamInfo?.channelProfilePic,
                 radius: 16,
               ),
             ),
