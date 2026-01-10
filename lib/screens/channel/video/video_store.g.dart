@@ -9,6 +9,26 @@ part of 'video_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoStore on VideoStoreBase, Store {
+  late final _$_playbackUrlAtom = Atom(
+    name: 'VideoStoreBase._playbackUrl',
+    context: context,
+  );
+
+  String? get playbackUrl {
+    _$_playbackUrlAtom.reportRead();
+    return super._playbackUrl;
+  }
+
+  @override
+  String? get _playbackUrl => playbackUrl;
+
+  @override
+  set _playbackUrl(String? value) {
+    _$_playbackUrlAtom.reportWrite(value, super._playbackUrl, () {
+      super._playbackUrl = value;
+    });
+  }
+
   late final _$_pausedAtom = Atom(
     name: 'VideoStoreBase._paused',
     context: context,
@@ -130,6 +150,26 @@ mixin _$VideoStore on VideoStoreBase, Store {
   set _streamQualityIndex(int value) {
     _$_streamQualityIndexAtom.reportWrite(value, super._streamQualityIndex, () {
       super._streamQualityIndex = value;
+    });
+  }
+
+  late final _$_isAutoQualityAtom = Atom(
+    name: 'VideoStoreBase._isAutoQuality',
+    context: context,
+  );
+
+  bool get isAutoQuality {
+    _$_isAutoQualityAtom.reportRead();
+    return super._isAutoQuality;
+  }
+
+  @override
+  bool get _isAutoQuality => isAutoQuality;
+
+  @override
+  set _isAutoQuality(bool value) {
+    _$_isAutoQualityAtom.reportWrite(value, super._isAutoQuality, () {
+      super._isAutoQuality = value;
     });
   }
 

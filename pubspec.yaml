@@ -72,10 +72,10 @@ dependencies:
     crypto: ^3.0.3
     extended_text_field: ^16.0.2
 
-    # Native HLS video player
-    media_kit: ^1.1.11
-    media_kit_video: ^1.2.5
-    media_kit_libs_video: ^1.0.5
+    # AWS IVS video player (optimized for Kick streams)
+    # Using local copy with updated SDK 1.44.0 for 16KB page alignment fix
+    aws_ivs_player:
+        path: ../aws_ivs_player
 
 dev_dependencies:
     flutter_test:

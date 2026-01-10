@@ -1,17 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:aws_ivs_player/aws_ivs_player.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/models/kick_channel.dart';
-import 'package:krosty/screens/channel/video/hls_quality_parser.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:mobx/mobx.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
 
 part 'video_store.g.dart';
@@ -34,29 +31,15 @@ abstract class VideoStoreBase with Store {
   /// The [SimplePip] instance used for initiating PiP on Android.
   final pip = SimplePip();
 
-  /// Flag to track first time quality selection.
-  var _firstTimeSettingQuality = true;
+  /// The AWS IVS player controller.
+  late final IvsPlayerController _ivsController;
 
-  /// The native media_kit player instance.
-  late final Player _player;
-
-  /// The video controller for rendering the player.
-  late final VideoController _videoController;
-
-  /// Get the video controller for the Video widget.
-  VideoController get videoController => _videoController;
-
-  /// Get the player instance for advanced controls.
-  Player get player => _player;
+  /// Get the IVS controller for the Video widget.
+  IvsPlayerController get ivsController => _ivsController;
 
   /// The current playback URL (m3u8 master playlist).
+  @readonly
   String? _playbackUrl;
-
-  /// Parsed HLS quality variants from the master playlist.
-  List<HlsVariant> _hlsVariants = [];
-
-  /// Subscriptions to player streams.
-  final List<StreamSubscription<dynamic>> _playerSubscriptions = [];
 
   /// Tracks playback error retry state to prevent infinite loops.
   int _playbackErrorRetryCount = 0;
@@ -108,16 +91,21 @@ abstract class VideoStoreBase with Store {
   @readonly
   KickChannel? _offlineChannelInfo;
 
+  /// Available stream qualities from the IVS player.
   @readonly
-  List<String> _availableStreamQualities = [];
+  List<String> _availableStreamQualities = ['Auto'];
 
   /// The current stream quality index.
   @readonly
   int _streamQualityIndex = 0;
 
+  /// Whether auto quality mode is enabled.
+  @readonly
+  bool _isAutoQuality = true;
+
   /// The current stream quality string.
   String get streamQuality =>
-      _availableStreamQualities.elementAtOrNull(_streamQualityIndex) ?? 'Auto';
+      _isAutoQuality ? 'Auto' : _availableStreamQualities[_streamQualityIndex];
 
   /// Whether the app is currently in picture-in-picture mode.
   @readonly
@@ -127,13 +115,10 @@ abstract class VideoStoreBase with Store {
   @readonly
   var _isBuffering = false;
 
-  /// Latency to broadcaster (not available with native HLS player).
-  /// This is kept for UI compatibility but will always return null.
+  /// Latency to broadcaster.
+  /// IVS doesn't expose latency metrics in the current API version.
   @readonly
   String? _latency;
-
-  /// Completer to track when low-latency config is done.
-  final Completer<void> _lowLatencyConfigured = Completer<void>();
 
   VideoStoreBase({
     required this.userLogin,
@@ -142,19 +127,11 @@ abstract class VideoStoreBase with Store {
     required this.authStore,
     required this.settingsStore,
   }) {
-    // Initialize the media_kit player
-    _player = Player();
-    _videoController = VideoController(_player);
+    // Initialize the AWS IVS player controller
+    _ivsController = IvsPlayerController();
 
-    // Configure low-latency settings via NativePlayer (targets <5s latency)
-    _configureLowLatency().then((_) {
-      if (!_lowLatencyConfigured.isCompleted) {
-        _lowLatencyConfigured.complete();
-      }
-    });
-
-    // Setup player event listeners
-    _setupPlayerListeners();
+    // Setup player state listener
+    _ivsController.addListener(_onPlayerStateChanged);
 
     // Initialize the [_overlayTimer] to auto-hide the overlay after a delay (default 5 seconds).
     _scheduleOverlayHide();
@@ -207,121 +184,60 @@ abstract class VideoStoreBase with Store {
     _initializeStream();
   }
 
-  /// Configure settings for live HLS streaming.
-  /// Uses NativePlayer's setProperty to pass mpv options.
-  Future<void> _configureLowLatency() async {
-    // Only available on native platforms (not web)
-    if (_player.platform is NativePlayer) {
-      final nativePlayer = _player.platform as NativePlayer;
-
-      // Use a more compatible HLS configuration
-      // The low-latency profile can cause codec issues on some devices
-      try {
-        // Essential HLS settings for live streaming
-        await nativePlayer.setProperty('demuxer-max-bytes', '50MiB');
-        await nativePlayer.setProperty('demuxer-max-back-bytes', '25MiB');
-
-        // Enable hardware decoding for better performance
-        await nativePlayer.setProperty('hwdec', 'auto-safe');
-
-        // Reduce initial buffering for faster start
-        await nativePlayer.setProperty('demuxer-readahead-secs', '3');
-
-        // Better error recovery for live streams
-        await nativePlayer.setProperty('stream-lavf-o', 'reconnect=1');
-      } catch (e) {
-        debugPrint('Failed to configure player properties: $e');
+  /// Handle IVS player state changes.
+  void _onPlayerStateChanged() {
+    final state = _ivsController.state;
+    runInAction(() {
+      switch (state) {
+        case PlayerState.idle:
+          _paused = true;
+          _isBuffering = false;
+          break;
+        case PlayerState.loading:
+          _isBuffering = true;
+          break;
+        case PlayerState.ready:
+          _isBuffering = false;
+          break;
+        case PlayerState.playing:
+          _paused = false;
+          _isBuffering = false;
+          // Update Android PiP play state
+          if (Platform.isAndroid) {
+            pip.setIsPlaying(true);
+          }
+          break;
+        case PlayerState.paused:
+          _paused = true;
+          _isBuffering = false;
+          // Update Android PiP play state
+          if (Platform.isAndroid) {
+            pip.setIsPlaying(false);
+          }
+          break;
+        case PlayerState.stopped:
+          _paused = true;
+          _isBuffering = false;
+          // Update Android PiP play state
+          if (Platform.isAndroid) {
+            pip.setIsPlaying(false);
+          }
+          break;
+        case PlayerState.error:
+          _paused = true;
+          _isBuffering = false;
+          _handlePlaybackError(_ivsController.errorMessage ?? 'Unknown error');
+          break;
+        case PlayerState.disposed:
+          break;
       }
-    }
+    });
   }
 
-  /// Setup listeners for player state changes.
-  void _setupPlayerListeners() {
-    // Listen for play/pause state changes
-    _playerSubscriptions.add(
-      _player.stream.playing.listen((playing) {
-        runInAction(() {
-          _paused = !playing;
-        });
-        // Update Android PiP play state
-        if (Platform.isAndroid) {
-          pip.setIsPlaying(playing);
-        }
-      }),
-    );
-
-    // Listen for buffering state
-    _playerSubscriptions.add(
-      _player.stream.buffering.listen((buffering) {
-        runInAction(() {
-          _isBuffering = buffering;
-        });
-      }),
-    );
-
-    // Listen for errors
-    _playerSubscriptions.add(
-      _player.stream.error.listen((error) {
-        debugPrint('Player error: $error');
-        // On error (possibly token expiry), try to recover
-        if (error.isNotEmpty) {
-          _handlePlaybackError(error);
-        }
-      }),
-    );
-
-    // Listen for completion (stream ended)
-    _playerSubscriptions.add(
-      _player.stream.completed.listen((completed) {
-        if (completed) {
-          runInAction(() {
-            _paused = true;
-          });
-          // Don't auto-refresh here - user can manually refresh if needed
-          // This prevents unnecessary API calls when stream naturally ends
-        }
-      }),
-    );
-  }
-
-  /// Handle playback errors (e.g., token expiry).
-  ///
-  /// For codec errors, we just retry with the same URL a few times.
-  /// Only re-fetches the channel if it seems like a token/URL issue.
+  /// Handle playback errors.
   Future<void> _handlePlaybackError(String error) async {
-    // Codec errors won't be fixed by refetching - just retry or give up
-    final isCodecError = error.toLowerCase().contains('codec');
+    debugPrint('IVS Player error: $error');
 
-    if (isCodecError) {
-      // For codec errors, just retry with existing URL (no API call)
-      if (_playbackErrorRetryCount >= _maxPlaybackErrorRetries) {
-        debugPrint(
-          'Codec error: Max retries ($_maxPlaybackErrorRetries) exceeded, '
-          'waiting for manual refresh',
-        );
-        return;
-      }
-
-      _playbackErrorRetryCount++;
-      debugPrint(
-        'Codec error recovery attempt $_playbackErrorRetryCount/$_maxPlaybackErrorRetries (no refetch)',
-      );
-
-      // Small delay before retry
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Just retry with existing URL
-      if (_playbackUrl != null) {
-        try {
-          await _player.open(Media(_playbackUrl!));
-        } catch (e) {
-          debugPrint('Retry failed: $e');
-        }
-      }
-      return;
-    }
-
-    // For other errors (possibly token expiry), try refetching once
     final now = DateTime.now();
 
     // Reset retry count if enough time has passed since last error
@@ -350,9 +266,11 @@ abstract class VideoStoreBase with Store {
       // Re-fetch the channel data to get a fresh playback URL
       final channel = await kickApi.getChannel(channelSlug: userLogin);
       if (channel.playbackUrl != null && channel.isLive) {
-        _playbackUrl = channel.playbackUrl;
+        runInAction(() {
+          _playbackUrl = channel.playbackUrl;
+        });
         // Try to resume playback with new URL
-        await _player.open(Media(_playbackUrl!));
+        await _ivsController.play(_playbackUrl!);
       }
     } catch (e) {
       debugPrint('Failed to recover from playback error: $e');
@@ -360,7 +278,6 @@ abstract class VideoStoreBase with Store {
   }
 
   /// Initialize the stream by fetching channel data and starting playback.
-  /// Optimized to use a single API call for both stream info and playback URL.
   Future<void> _initializeStream() async {
     // Prevent duplicate initialization
     if (_isInitializing) {
@@ -370,14 +287,7 @@ abstract class VideoStoreBase with Store {
     _isInitializing = true;
 
     try {
-      // Start fetching channel data and getting saved quality preference in parallel
-      final results = await Future.wait([
-        kickApi.getChannel(channelSlug: userLogin),
-        SharedPreferences.getInstance(),
-      ]);
-
-      final channel = results[0] as KickChannel;
-      final prefs = results[1] as SharedPreferences;
+      final channel = await kickApi.getChannel(channelSlug: userLogin);
 
       // Update stream info from the same API response
       if (channel.isLive) {
@@ -414,43 +324,13 @@ abstract class VideoStoreBase with Store {
       }
 
       // Get playback URL from the same response
-      _playbackUrl = channel.playbackUrl;
+      final playbackUrl = channel.playbackUrl;
+      runInAction(() {
+        _playbackUrl = playbackUrl;
+      });
 
-      if (_playbackUrl != null) {
-        // Parse qualities in background (don't block playback)
-        _parseQualityVariantsInBackground();
-
-        // Determine initial URL to play
-        String urlToPlay = _playbackUrl!;
-
-        // Check if user has a preferred quality saved
-        final lastStreamQuality = prefs.getString('last_stream_quality');
-        if (lastStreamQuality != null && lastStreamQuality != 'Auto') {
-          // Try to construct the variant URL directly without fetching playlist
-          // Kick streams typically use predictable URL patterns
-          final variantUrl = _tryConstructVariantUrl(
-            _playbackUrl!,
-            lastStreamQuality,
-          );
-          if (variantUrl != null) {
-            urlToPlay = variantUrl;
-            // Find and set the quality index
-            final qualityIndex = _availableStreamQualities.indexOf(
-              lastStreamQuality,
-            );
-            if (qualityIndex != -1) {
-              runInAction(() {
-                _streamQualityIndex = qualityIndex;
-              });
-            }
-          }
-        } else if (settingsStore.defaultToHighestQuality) {
-          // For highest quality, we need to parse the playlist first
-          // But start playback immediately with master (auto) for now
-          // The quality will be updated once parsing completes
-        }
-
-        await _initializePlayer(urlToPlay);
+      if (playbackUrl != null) {
+        await _ivsController.play(playbackUrl);
       }
 
       _initialLoadComplete = true;
@@ -461,152 +341,54 @@ abstract class VideoStoreBase with Store {
     }
   }
 
-  /// Try to construct a variant URL from the master playlist URL and quality.
-  /// Returns null if construction isn't possible.
-  String? _tryConstructVariantUrl(String masterUrl, String quality) {
-    // This is a best-effort optimization - if it fails, we fall back to master
-    // Kick uses patterns like: .../master.m3u8 -> .../1080p60/index.m3u8
-    try {
-      final uri = Uri.parse(masterUrl);
-      final pathSegments = uri.pathSegments.toList();
-
-      // Find and replace 'master.m3u8' or similar
-      for (var i = 0; i < pathSegments.length; i++) {
-        if (pathSegments[i].contains('master') ||
-            pathSegments[i].contains('playlist')) {
-          // Replace with quality variant
-          pathSegments[i] = quality.toLowerCase();
-          if (i + 1 < pathSegments.length) {
-            pathSegments[i + 1] = 'index.m3u8';
-          } else {
-            pathSegments.add('index.m3u8');
-          }
-          return uri.replace(pathSegments: pathSegments).toString();
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to construct variant URL: $e');
-    }
-    return null;
-  }
-
-  /// Parse quality variants in the background without blocking playback.
-  Future<void> _parseQualityVariantsInBackground() async {
-    // Small delay to prioritize player initialization
-    await Future.delayed(const Duration(milliseconds: 100));
-    await _parseQualityVariants();
-  }
-
-  /// Parse quality variants from the HLS master playlist.
-  ///
-  /// This runs in the background and updates the available qualities list.
-  /// It does NOT change the current playback - that's handled by _initializeStream.
-  Future<void> _parseQualityVariants() async {
-    if (_playbackUrl == null) return;
-
-    try {
-      _hlsVariants = await HlsQualityParser.parsePlaylist(_playbackUrl!);
-
-      runInAction(() {
-        _availableStreamQualities = [
-          'Auto',
-          ..._hlsVariants.map((v) => v.label),
-        ];
-      });
-
-      // Update the quality index to match what we're currently playing
-      // This is just for UI display - don't reopen the player
-      if (_firstTimeSettingQuality && _availableStreamQualities.isNotEmpty) {
-        _firstTimeSettingQuality = false;
-
-        // Check saved preference
-        final prefs = await SharedPreferences.getInstance();
-        final lastStreamQuality = prefs.getString('last_stream_quality');
-
-        if (settingsStore.defaultToHighestQuality &&
-            _availableStreamQualities.length > 1) {
-          // If we want highest quality and we're on Auto, switch to it
-          // Only do this if we haven't already started with a specific quality
-          if (_streamQualityIndex == 0) {
-            await setStreamQuality(_availableStreamQualities[1]);
-          }
-        } else if (lastStreamQuality != null &&
-            _availableStreamQualities.contains(lastStreamQuality)) {
-          // Update index to match saved quality (may already be playing it)
-          final qualityIndex = _availableStreamQualities.indexOf(
-            lastStreamQuality,
-          );
-          if (qualityIndex != -1 && _streamQualityIndex != qualityIndex) {
-            // Only switch if we're not already on this quality
-            runInAction(() {
-              _streamQualityIndex = qualityIndex;
-            });
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to parse quality variants: $e');
-      runInAction(() {
-        _availableStreamQualities = ['Auto'];
-      });
-    }
-  }
-
-  /// Initialize the player with the given URL (or master playlist URL).
-  Future<void> _initializePlayer([String? url]) async {
-    final playUrl = url ?? _playbackUrl;
-    if (playUrl == null) {
-      debugPrint('No playback URL available');
-      return;
-    }
-
-    // Ensure low-latency settings are applied before starting playback
-    // This is a quick operation, typically completes before we get here
-    await _lowLatencyConfigured.future;
-
-    try {
-      await _player.open(Media(playUrl));
-      // Start playing automatically
-      await _player.play();
-    } catch (e) {
-      debugPrint('Failed to initialize player: $e');
-    }
-  }
-
   @action
   Future<void> updateStreamQualities() async {
-    await _parseQualityVariants();
+    try {
+      final qualities = await _ivsController.getQualities();
+      if (qualities.isNotEmpty) {
+        // Build list with 'Auto' first, then quality labels sorted by height (descending)
+        final sortedQualities = List<IvsQuality>.from(qualities)
+          ..sort((a, b) => b.height.compareTo(a.height));
+
+        _availableStreamQualities = [
+          'Auto',
+          ...sortedQualities.map((q) => q.label),
+        ];
+        debugPrint('Available qualities: $_availableStreamQualities');
+      } else {
+        _availableStreamQualities = ['Auto'];
+      }
+    } catch (e) {
+      debugPrint('Error updating stream qualities: $e');
+      _availableStreamQualities = ['Auto'];
+    }
   }
 
   @action
   Future<void> setStreamQuality(String newStreamQuality) async {
-    final indexOfStreamQuality = _availableStreamQualities.indexOf(
-      newStreamQuality,
-    );
-    if (indexOfStreamQuality == -1) return;
+    try {
+      if (newStreamQuality == 'Auto') {
+        await _ivsController.setAutoQualityMode(true);
+        _isAutoQuality = true;
+        _streamQualityIndex = 0;
+        debugPrint('Set to Auto quality mode');
+      } else {
+        // Find the matching quality by label
+        final qualities = await _ivsController.getQualities();
+        final quality = qualities.firstWhere(
+          (q) => q.label == newStreamQuality,
+          orElse: () => qualities.first,
+        );
 
-    runInAction(() {
-      _streamQualityIndex = indexOfStreamQuality;
-    });
-
-    // Save preference
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('last_stream_quality', newStreamQuality);
-
-    if (newStreamQuality == 'Auto') {
-      // Play the master playlist for auto quality selection
-      if (_playbackUrl != null) {
-        await _player.open(Media(_playbackUrl!));
-        await _player.play();
+        final success = await _ivsController.setQuality(quality.name);
+        if (success) {
+          _isAutoQuality = false;
+          _streamQualityIndex = _availableStreamQualities.indexOf(newStreamQuality);
+          debugPrint('Set quality to: ${quality.name}');
+        }
       }
-    } else {
-      // Find and play the specific variant
-      final variant = _hlsVariants.firstWhere(
-        (v) => v.label == newStreamQuality,
-        orElse: () => _hlsVariants.first,
-      );
-      await _player.open(Media(variant.url));
-      await _player.play();
+    } catch (e) {
+      debugPrint('Error setting stream quality: $e');
     }
   }
 
@@ -736,7 +518,7 @@ abstract class VideoStoreBase with Store {
         _paused = true;
 
         // Stop playback when stream is offline
-        await _player.stop();
+        await _ivsController.stop();
 
         // Restart overlay timer in chat-only mode even on error/offline
         if (!settingsStore.showVideo) {
@@ -780,7 +562,6 @@ abstract class VideoStoreBase with Store {
   Future<void> handleRefresh() async {
     HapticFeedback.lightImpact();
     _paused = true;
-    _firstTimeSettingQuality = true;
     _isInPipMode = false;
 
     // Reset playback error retry state on manual refresh
@@ -792,7 +573,7 @@ abstract class VideoStoreBase with Store {
     _initialLoadComplete = false;
 
     // Stop current playback
-    await _player.stop();
+    await _ivsController.stop();
 
     // Re-fetch channel data and playback URL
     // This also updates stream info, no need to call updateStreamInfo separately
@@ -802,16 +583,18 @@ abstract class VideoStoreBase with Store {
   /// Play or pause the video depending on the current state of [_paused].
   void handlePausePlay() {
     if (_paused) {
-      _player.play();
+      if (_playbackUrl != null) {
+        _ivsController.resume();
+      }
     } else {
-      _player.pause();
+      _ivsController.pause();
     }
   }
 
   /// Initiate picture in picture if available.
   ///
   /// On Android, this will utilize the native Android PiP API.
-  /// On iOS, this will utilize media_kit's PiP support.
+  /// On iOS, this will utilize the native AVKit PiP support.
   void requestPictureInPicture() {
     try {
       if (Platform.isAndroid) {
@@ -821,8 +604,7 @@ abstract class VideoStoreBase with Store {
           _isInPipMode = true;
         });
       } else if (Platform.isIOS) {
-        // media_kit handles iOS PiP internally via AVKit
-        // Request PiP through the video controller if supported
+        // IVS handles iOS PiP internally via AVKit
         runInAction(() {
           _overlayWasVisibleBeforePip = _overlayVisible;
           _isInPipMode = true;
@@ -891,13 +673,8 @@ abstract class VideoStoreBase with Store {
     _disposeVideoModeReaction();
     _disposeAndroidAutoPipReaction?.call();
 
-    // Cancel player stream subscriptions
-    for (final subscription in _playerSubscriptions) {
-      subscription.cancel();
-    }
-    _playerSubscriptions.clear();
-
-    // Dispose the player
-    _player.dispose();
+    // Remove listener and dispose the IVS controller
+    _ivsController.removeListener(_onPlayerStateChanged);
+    _ivsController.dispose();
   }
 }

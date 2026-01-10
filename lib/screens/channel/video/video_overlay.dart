@@ -17,7 +17,6 @@ import 'package:krosty/widgets/section_header.dart';
 import 'package:krosty/widgets/uptime.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Creates a widget containing controls which enable interactions with an underlying [Video] widget.
 class VideoOverlay extends StatelessWidget {
@@ -104,18 +103,18 @@ class VideoOverlay extends StatelessWidget {
                     children: videoStore.availableStreamQualities
                         .map(
                           (quality) => ListTile(
+                            leading: quality == 'Auto'
+                                ? const Icon(Icons.auto_awesome_rounded)
+                                : const Icon(Icons.high_quality_rounded),
                             trailing: videoStore.streamQuality == quality
                                 ? const Icon(Icons.check_rounded)
                                 : null,
                             title: Text(quality),
+                            subtitle: quality == 'Auto'
+                                ? const Text('Adjusts based on connection')
+                                : null,
                             onTap: () {
                               videoStore.setStreamQuality(quality);
-                              SharedPreferences.getInstance().then(
-                                (prefs) => prefs.setString(
-                                  'last_stream_quality',
-                                  quality,
-                                ),
-                              );
                               Navigator.pop(context);
                             },
                           ),
