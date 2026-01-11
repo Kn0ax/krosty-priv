@@ -58,6 +58,9 @@ abstract class ChatStoreBase with Store {
   /// The chatroom ID for Pusher subscription.
   int? chatroomId;
 
+  /// The channel ID for API calls (e.g., chat history).
+  int? channelId;
+
   /// The channel's display name to show on widgets.
   final String displayName;
 
@@ -246,6 +249,7 @@ abstract class ChatStoreBase with Store {
     required this.settings,
     required this.channelSlug,
     this.chatroomId,
+    this.channelId,
     required this.displayName,
   }) {
     // Create a reaction that will reconnect to chat when logging in or out.
@@ -642,10 +646,11 @@ abstract class ChatStoreBase with Store {
   @action
   Future<void> connectToChat({bool isReconnect = false}) async {
     // Ensure chatroomId is available
-    if (chatroomId == null) {
+    if (chatroomId == null || channelId == null) {
       try {
         final channel = await kickApi.getChannel(channelSlug: channelSlug);
         chatroomId = channel.chatroom.id;
+        channelId = channel.id;
       } catch (e) {
         debugPrint('Failed to get chatroom ID: $e');
         _messages.add(
@@ -661,27 +666,21 @@ abstract class ChatStoreBase with Store {
     // Fetch chat history if enabled (only on initial connect)
     if (!isReconnect && settings.showRecentMessages) {
       try {
-        final historyJson = await kickApi.getChatHistory(
-          chatroomId: chatroomId!,
-        );
+        final historyJson = await kickApi.getChatHistory(channelId: channelId!);
         final historyMessages = historyJson
-            .map((json) => KickChatMessage.fromJson(json))
+            .map((json) {
+              final msg = KickChatMessage.fromJson(
+                json as Map<String, dynamic>,
+              );
+              msg.isHistorical = true;
+              return msg;
+            })
             .toList()
-            .reversed // History usually returned newest first, we want oldest first for chat list?
-            // Wait, Kick API returns arrays. If it's standard order, verify.
-            // Most lists are new->old. We prepend them.
-            // Actually _messages expects chronological order (old -> new).
-            // If API returns [newest, ..., oldest], we need to reverse.
-            // Assuming standard API behavior for now.
+            .reversed // API returns newest first, we want oldest first
             .toList();
 
         if (historyMessages.isNotEmpty) {
-          // We might need to verify order. Typically lists are "latest first" in pagination.
-          // If we append them to start, we want [oldest, ..., newest].
-          // So if API is [newest...oldest], reversing gives [oldest...newest].
-          // Let's assume typical list behavior.
-
-          // Filter blocked etc if needed.
+          // Insert history at the beginning (before "Connecting..." message)
           _messages.insertAll(0, historyMessages);
         }
       } catch (e) {

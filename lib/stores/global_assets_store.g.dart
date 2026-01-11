@@ -78,6 +78,51 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
     });
   }
 
+  late final _$_kickEmojiEmotesAtom = Atom(
+    name: 'GlobalAssetsStoreBase._kickEmojiEmotes',
+    context: context,
+  );
+
+  List<Emote> get kickEmojiEmotes {
+    _$_kickEmojiEmotesAtom.reportRead();
+    return super._kickEmojiEmotes;
+  }
+
+  @override
+  List<Emote> get _kickEmojiEmotes => kickEmojiEmotes;
+
+  @override
+  set _kickEmojiEmotes(List<Emote> value) {
+    _$_kickEmojiEmotesAtom.reportWrite(value, super._kickEmojiEmotes, () {
+      super._kickEmojiEmotes = value;
+    });
+  }
+
+  late final _$_userSubEmotesByChannelAtom = Atom(
+    name: 'GlobalAssetsStoreBase._userSubEmotesByChannel',
+    context: context,
+  );
+
+  Map<String, List<Emote>> get userSubEmotesByChannel {
+    _$_userSubEmotesByChannelAtom.reportRead();
+    return super._userSubEmotesByChannel;
+  }
+
+  @override
+  Map<String, List<Emote>> get _userSubEmotesByChannel =>
+      userSubEmotesByChannel;
+
+  @override
+  set _userSubEmotesByChannel(Map<String, List<Emote>> value) {
+    _$_userSubEmotesByChannelAtom.reportWrite(
+      value,
+      super._userSubEmotesByChannel,
+      () {
+        super._userSubEmotesByChannel = value;
+      },
+    );
+  }
+
   late final _$_sevenTVGlobalEmotesAtom = Atom(
     name: 'GlobalAssetsStoreBase._sevenTVGlobalEmotes',
     context: context,
@@ -154,6 +199,47 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
         show7TVEmotes: show7TVEmotes,
       ),
     );
+  }
+
+  late final _$GlobalAssetsStoreBaseActionController = ActionController(
+    name: 'GlobalAssetsStoreBase',
+    context: context,
+  );
+
+  @override
+  void setGlobalEmotes(List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.setGlobalEmotes',
+    );
+    try {
+      return super.setGlobalEmotes(emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setEmojiEmotes(List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.setEmojiEmotes',
+    );
+    try {
+      return super.setEmojiEmotes(emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void addUserSubEmotes(String channelName, List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.addUserSubEmotes',
+    );
+    try {
+      return super.addUserSubEmotes(channelName, emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
   }
 
   @override

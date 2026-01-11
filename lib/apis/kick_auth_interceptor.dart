@@ -33,6 +33,11 @@ class KickAuthInterceptor extends Interceptor {
       return true;
     }
 
+    // Add auth to kick.com emotes endpoint (requires auth to get user's sub emotes)
+    if (url.contains('kick.com/emotes/')) {
+      return true;
+    }
+
     // Add auth to official Kick API
     if (url.contains('api.kick.com')) {
       return true;

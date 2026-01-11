@@ -38,6 +38,50 @@ mixin _$ChatAssetsStore on ChatAssetsStoreBase, Store {
     });
   }
 
+  late final _$_subscriberBadgesAtom = Atom(
+    name: 'ChatAssetsStoreBase._subscriberBadges',
+    context: context,
+  );
+
+  List<KickSubscriberBadge> get subscriberBadges {
+    _$_subscriberBadgesAtom.reportRead();
+    return super._subscriberBadges;
+  }
+
+  @override
+  List<KickSubscriberBadge> get _subscriberBadges => subscriberBadges;
+
+  @override
+  set _subscriberBadges(List<KickSubscriberBadge> value) {
+    _$_subscriberBadgesAtom.reportWrite(value, super._subscriberBadges, () {
+      super._subscriberBadges = value;
+    });
+  }
+
+  late final _$_isSubscribedToChannelAtom = Atom(
+    name: 'ChatAssetsStoreBase._isSubscribedToChannel',
+    context: context,
+  );
+
+  bool get isSubscribedToChannel {
+    _$_isSubscribedToChannelAtom.reportRead();
+    return super._isSubscribedToChannel;
+  }
+
+  @override
+  bool get _isSubscribedToChannel => isSubscribedToChannel;
+
+  @override
+  set _isSubscribedToChannel(bool value) {
+    _$_isSubscribedToChannelAtom.reportWrite(
+      value,
+      super._isSubscribedToChannel,
+      () {
+        super._isSubscribedToChannel = value;
+      },
+    );
+  }
+
   late final _$_isLoadingAtom = Atom(
     name: 'ChatAssetsStoreBase._isLoading',
     context: context,

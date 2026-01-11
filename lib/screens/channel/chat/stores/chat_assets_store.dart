@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/seventv_api.dart';
@@ -35,6 +34,10 @@ abstract class ChatAssetsStoreBase with Store {
   /// Subscriber badges for the current channel.
   @readonly
   List<KickSubscriberBadge> _subscriberBadges = [];
+
+  /// Whether the user is subscribed to this channel.
+  @readonly
+  bool _isSubscribedToChannel = false;
 
   /// Combined emotes (channel + global) for quick lookup.
   @computed
@@ -74,6 +77,31 @@ abstract class ChatAssetsStoreBase with Store {
   /// Get all emotes as a list (for emote menu).
   List<Emote> get emotesList => emotes.values.toList();
 
+  /// Get current channel's Kick emotes only.
+  List<Emote> get kickChannelEmotesList => _channelEmotes.values
+      .where((e) => e.type == EmoteType.kickChannel)
+      .toList();
+
+  /// Get current channel's 7TV emotes only.
+  List<Emote> get sevenTVChannelEmotesList => _channelEmotes.values
+      .where((e) => e.type == EmoteType.sevenTVChannel)
+      .toList();
+
+  /// Get user's subscribed channel emotes grouped by channel name.
+  Map<String, List<Emote>> get userSubEmotesByChannel =>
+      globalAssetsStore.userSubEmotesByChannel;
+
+  /// Get user's subscribed channel emotes (from other channels) - flat list.
+  List<Emote> get userSubEmotesList => globalAssetsStore.userSubEmotesList;
+
+  /// Get Kick global emotes (including emoji).
+  List<Emote> get kickGlobalEmotesList =>
+      globalAssetsStore.kickGlobalEmotesList;
+
+  /// Get 7TV global emotes.
+  List<Emote> get sevenTVGlobalEmotesList =>
+      globalAssetsStore.sevenTVGlobalEmotesList;
+
   /// Check if emote is from Kick.
   bool isKick(Emote emote) =>
       emote.type == EmoteType.kickGlobal || emote.type == EmoteType.kickChannel;
@@ -100,7 +128,7 @@ abstract class ChatAssetsStoreBase with Store {
     try {
       final futures = <Future>[];
 
-      // Ensure global assets are loaded
+      // Ensure global assets are loaded (7TV globals)
       futures.add(
         globalAssetsStore.ensureLoaded(
           showKickEmotes: showKickEmotes,
@@ -108,9 +136,9 @@ abstract class ChatAssetsStoreBase with Store {
         ),
       );
 
-      // Kick channel emotes
+      // Kick channel emotes (this also populates global/emoji emotes)
       if (showKickEmotes) {
-        futures.add(_fetchKickChannelEmotes());
+        futures.add(_fetchKickEmotes());
       }
 
       // 7TV channel emotes
@@ -126,29 +154,85 @@ abstract class ChatAssetsStoreBase with Store {
     _isLoading = false;
   }
 
-  /// Fetch Kick channel emotes.
-  Future<void> _fetchKickChannelEmotes() async {
+  /// Fetch Kick emotes and parse them by group type.
+  /// This populates:
+  /// - Global emotes -> globalAssetsStore
+  /// - Emoji emotes -> globalAssetsStore
+  /// - User's subscribed channel emotes -> globalAssetsStore (grouped by channel)
+  /// - Current channel emotes -> _channelEmotes (filtered by subscription)
+  Future<void> _fetchKickEmotes() async {
     try {
       final groups = await kickApi.getEmotes(channelSlug: channelSlug);
 
-      // Find the group for this channel
-      // The API returns groups for Global, Emojis, and the Channel itself.
-      // The channel group usually has the slug matching the requested channel.
-      final channelGroup = groups.firstWhereOrNull(
-        (g) =>
-            g.slug == channelSlug ||
-            (g.slug?.toLowerCase() == channelSlug.toLowerCase()),
-      );
+      // Check subscription status for current channel
+      final meResponse = await kickApi.getChannelMe(channelSlug: channelSlug);
+      _isSubscribedToChannel = meResponse?.isSubscribed ?? false;
 
-      if (channelGroup != null) {
-        for (final emote in channelGroup.emotes) {
-          final converted = Emote.fromKick(emote, EmoteType.kickChannel);
-          _channelEmotes[converted.name] = converted;
+      final globalEmotes = <Emote>[];
+      final emojiEmotes = <Emote>[];
+
+      for (final group in groups) {
+        // Check if this is a Global group (id is string "Global")
+        if (group.id == 'Global' || group.name == 'Global') {
+          globalEmotes.addAll(
+            group.emotes.map((e) => Emote.fromKick(e, EmoteType.kickGlobal)),
+          );
+          continue;
         }
+
+        // Check if this is an Emoji group (id is string "Emoji")
+        if (group.id == 'Emoji' || group.name == 'Emojis') {
+          emojiEmotes.addAll(
+            group.emotes.map((e) => Emote.fromKick(e, EmoteType.kickGlobal)),
+          );
+          continue;
+        }
+
+        // Check if this is the current channel's emotes
+        if (group.slug?.toLowerCase() == channelSlug.toLowerCase()) {
+          // Current channel emotes - filter by subscription status
+          for (final emote in group.emotes) {
+            // If subscribers_only and user is not subscribed, skip
+            if (emote.subscribersOnly && !_isSubscribedToChannel) {
+              continue;
+            }
+            final converted = Emote.fromKick(emote, EmoteType.kickChannel);
+            _channelEmotes[converted.name] = converted;
+          }
+          continue;
+        }
+
+        // Any other group with numeric ID is a user's subscribed channel
+        // (the API only returns channels the user is subscribed to)
+        // Skip the current channel - it's already shown in "Channel" tab
+        // Use displayName (user.username or name) for the tab label
+        if (group.id is int && group.displayName != null) {
+          // Skip if this is the current channel we're watching
+          if (group.slug?.toLowerCase() == channelSlug.toLowerCase()) {
+            continue;
+          }
+          final channelEmotes = group.emotes
+              .map((e) => Emote.fromKick(e, EmoteType.kickChannel))
+              .toList();
+          if (channelEmotes.isNotEmpty) {
+            globalAssetsStore.addUserSubEmotes(
+              group.displayName!,
+              channelEmotes,
+            );
+          }
+        }
+      }
+
+      // Populate global assets store (only if we got emotes)
+      if (globalEmotes.isNotEmpty) {
+        globalAssetsStore.setGlobalEmotes(globalEmotes);
+      }
+      if (emojiEmotes.isNotEmpty) {
+        globalAssetsStore.setEmojiEmotes(emojiEmotes);
       }
     } catch (e) {
       // Silently fail - channel may not have emotes
-      debugPrint('Error fetching Kick channel emotes: $e');
+      debugPrint('Error fetching Kick emotes: $e');
     }
   }
 

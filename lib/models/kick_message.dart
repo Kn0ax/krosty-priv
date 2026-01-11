@@ -1,8 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
-import 'package:krosty/models/kick_user.dart';
-
 /// Kick chat message model from Pusher WebSocket events.
 ///
 /// Pusher event format:
@@ -51,18 +48,33 @@ class KickChatMessage {
 
   /// Parse message from JSON.
   factory KickChatMessage.fromJson(Map<String, dynamic> json) {
+    // Handle metadata - can be a string "null", actual null, a JSON string, or a Map
+    KickMessageMetadata? metadata;
+    final metadataValue = json['metadata'];
+    if (metadataValue != null && metadataValue != 'null') {
+      if (metadataValue is String) {
+        try {
+          final parsed = jsonDecode(metadataValue) as Map<String, dynamic>;
+          metadata = KickMessageMetadata.fromJson(parsed);
+        } catch (_) {
+          // Invalid JSON string, ignore
+        }
+      } else if (metadataValue is Map<String, dynamic>) {
+        metadata = KickMessageMetadata.fromJson(metadataValue);
+      }
+    }
+
     return KickChatMessage(
       id: json['id'] as String,
-      chatroomId: _parseInt(json['chatroom_id']),
+      // History API uses 'chat_id', WebSocket uses 'chatroom_id'
+      chatroomId: _parseInt(json['chatroom_id'] ?? json['chat_id']),
       content: json['content'] as String? ?? json['message'] as String? ?? '',
       type: json['type'] as String? ?? 'message',
       createdAt: _parseDateTime(json['created_at']),
       sender: KickMessageSender.fromJson(
         json['sender'] as Map<String, dynamic>? ?? {},
       ),
-      metadata: json['metadata'] != null
-          ? KickMessageMetadata.fromJson(json['metadata'] as Map<String, dynamic>)
-          : null,
+      metadata: metadata,
     );
   }
 
@@ -173,7 +185,9 @@ class KickMessageSender {
       username: json['username'] as String? ?? 'Unknown',
       slug: json['slug'] as String? ?? '',
       identity: json['identity'] != null
-          ? KickSenderIdentity.fromJson(json['identity'] as Map<String, dynamic>)
+          ? KickSenderIdentity.fromJson(
+              json['identity'] as Map<String, dynamic>,
+            )
           : null,
     );
   }
@@ -196,10 +210,7 @@ class KickSenderIdentity {
   final String color;
   final List<KickBadgeInfo> badges;
 
-  const KickSenderIdentity({
-    required this.color,
-    required this.badges,
-  });
+  const KickSenderIdentity({required this.color, required this.badges});
 
   factory KickSenderIdentity.fromJson(Map<String, dynamic> json) {
     final badgesList = json['badges'] as List<dynamic>? ?? [];
@@ -218,11 +229,7 @@ class KickBadgeInfo {
   final String? text;
   final int? count;
 
-  const KickBadgeInfo({
-    required this.type,
-    this.text,
-    this.count,
-  });
+  const KickBadgeInfo({required this.type, this.text, this.count});
 
   factory KickBadgeInfo.fromJson(Map<String, dynamic> json) {
     return KickBadgeInfo(
@@ -238,10 +245,7 @@ class KickMessageMetadata {
   final KickOriginalMessage? originalMessage;
   final KickOriginalSender? originalSender;
 
-  const KickMessageMetadata({
-    this.originalMessage,
-    this.originalSender,
-  });
+  const KickMessageMetadata({this.originalMessage, this.originalSender});
 
   factory KickMessageMetadata.fromJson(Map<String, dynamic> json) {
     return KickMessageMetadata(
@@ -264,10 +268,7 @@ class KickOriginalMessage {
   final String id;
   final String content;
 
-  const KickOriginalMessage({
-    required this.id,
-    required this.content,
-  });
+  const KickOriginalMessage({required this.id, required this.content});
 
   factory KickOriginalMessage.fromJson(Map<String, dynamic> json) {
     return KickOriginalMessage(
@@ -282,10 +283,7 @@ class KickOriginalSender {
   final int id;
   final String username;
 
-  const KickOriginalSender({
-    required this.id,
-    required this.username,
-  });
+  const KickOriginalSender({required this.id, required this.username});
 
   factory KickOriginalSender.fromJson(Map<String, dynamic> json) {
     return KickOriginalSender(
@@ -305,11 +303,7 @@ class KickPusherEvent {
   final String? data;
   final String? channel;
 
-  const KickPusherEvent({
-    required this.event,
-    this.data,
-    this.channel,
-  });
+  const KickPusherEvent({required this.event, this.data, this.channel});
 
   factory KickPusherEvent.fromJson(Map<String, dynamic> json) {
     return KickPusherEvent(
@@ -353,10 +347,7 @@ class KickMessageDeletedEvent {
   final String id;
   final KickDeletedMessage message;
 
-  const KickMessageDeletedEvent({
-    required this.id,
-    required this.message,
-  });
+  const KickMessageDeletedEvent({required this.id, required this.message});
 
   factory KickMessageDeletedEvent.fromJson(Map<String, dynamic> json) {
     return KickMessageDeletedEvent(
@@ -375,9 +366,7 @@ class KickDeletedMessage {
   const KickDeletedMessage({required this.id});
 
   factory KickDeletedMessage.fromJson(Map<String, dynamic> json) {
-    return KickDeletedMessage(
-      id: json['id'] as String? ?? '',
-    );
+    return KickDeletedMessage(id: json['id'] as String? ?? '');
   }
 }
 
@@ -504,9 +493,7 @@ class KickLivestreamStartedEvent {
 
   factory KickLivestreamStartedEvent.fromJson(Map<String, dynamic> json) {
     return KickLivestreamStartedEvent(
-      livestreamId: json['livestream_id'] as int? ??
-          json['id'] as int? ??
-          0,
+      livestreamId: json['livestream_id'] as int? ?? json['id'] as int? ?? 0,
     );
   }
 }
@@ -519,9 +506,7 @@ class KickLivestreamStoppedEvent {
 
   factory KickLivestreamStoppedEvent.fromJson(Map<String, dynamic> json) {
     return KickLivestreamStoppedEvent(
-      livestreamId: json['livestream_id'] as int? ??
-          json['id'] as int? ??
-          0,
+      livestreamId: json['livestream_id'] as int? ?? json['id'] as int? ?? 0,
     );
   }
 }

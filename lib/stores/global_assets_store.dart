@@ -31,9 +31,18 @@ abstract class GlobalAssetsStoreBase with Store {
 
   // ============= Global Emotes =============
 
-  /// Global Kick emotes.
+  /// Global Kick emotes (from "Global" group).
   @readonly
   var _kickGlobalEmotes = <Emote>[];
+
+  /// Kick Emoji emotes (from "Emoji" group).
+  @readonly
+  var _kickEmojiEmotes = <Emote>[];
+
+  /// User's subscribed channel emotes grouped by channel name.
+  /// Key is channel name/slug, value is list of emotes from that channel.
+  @readonly
+  var _userSubEmotesByChannel = <String, List<Emote>>{};
 
   /// Global 7TV emotes.
   @readonly
@@ -48,6 +57,14 @@ abstract class GlobalAssetsStoreBase with Store {
     for (final emote in _kickGlobalEmotes) {
       result[emote.name] = emote;
     }
+    for (final emote in _kickEmojiEmotes) {
+      result[emote.name] = emote;
+    }
+    for (final channelEmotes in _userSubEmotesByChannel.values) {
+      for (final emote in channelEmotes) {
+        result[emote.name] = emote;
+      }
+    }
     for (final emote in _sevenTVGlobalEmotes) {
       result[emote.name] = emote;
     }
@@ -57,13 +74,61 @@ abstract class GlobalAssetsStoreBase with Store {
   /// Alias for globalEmoteMap - used by ChatAssetsStore.
   Map<String, Emote> get allEmotes => globalEmoteMap;
 
-  /// Kick emotes as a map (name -> Emote).
+  /// Kick emotes as a map (name -> Emote) - global + emoji + user subs.
   Map<String, Emote> get kickEmotes {
     final result = <String, Emote>{};
     for (final emote in _kickGlobalEmotes) {
       result[emote.name] = emote;
     }
+    for (final emote in _kickEmojiEmotes) {
+      result[emote.name] = emote;
+    }
+    for (final channelEmotes in _userSubEmotesByChannel.values) {
+      for (final emote in channelEmotes) {
+        result[emote.name] = emote;
+      }
+    }
     return result;
+  }
+
+  /// User's subscribed channel emotes grouped by channel name.
+  Map<String, List<Emote>> get userSubEmotesByChannel =>
+      _userSubEmotesByChannel;
+
+  /// User's subscribed channel emotes as a flat list (for backward compat).
+  List<Emote> get userSubEmotesList =>
+      _userSubEmotesByChannel.values.expand((e) => e).toList();
+
+  /// Kick global emotes (including emoji) as a list.
+  List<Emote> get kickGlobalEmotesList => [
+    ..._kickGlobalEmotes,
+    ..._kickEmojiEmotes,
+  ];
+
+  /// 7TV global emotes as a list.
+  List<Emote> get sevenTVGlobalEmotesList => _sevenTVGlobalEmotes;
+
+  // ============= Setters for External Population =============
+
+  /// Set global Kick emotes (called by ChatAssetsStore after parsing response).
+  @action
+  void setGlobalEmotes(List<Emote> emotes) {
+    _kickGlobalEmotes = emotes;
+  }
+
+  /// Set Kick emoji emotes (called by ChatAssetsStore after parsing response).
+  @action
+  void setEmojiEmotes(List<Emote> emotes) {
+    _kickEmojiEmotes = emotes;
+  }
+
+  /// Add emotes from a subscribed channel to the user sub emotes.
+  /// [channelName] is the display name of the channel (e.g., "xQc").
+  @action
+  void addUserSubEmotes(String channelName, List<Emote> emotes) {
+    if (emotes.isEmpty) return;
+    // Create new map to trigger MobX reactivity
+    _userSubEmotesByChannel = {..._userSubEmotesByChannel, channelName: emotes};
   }
 
   // ============= Methods =============
@@ -122,33 +187,7 @@ abstract class GlobalAssetsStoreBase with Store {
     }
 
     await Future.wait([
-      // Kick global emotes
-      if (showKickEmotes)
-        kickApi
-            .getEmotes(
-              channelSlug: 'xqc',
-            ) // Use 'xqc' or any valid channel to get globals
-            .then((groups) {
-              final globals = <Emote>[];
-              for (final group in groups) {
-                // Global and Emoji groups usually have string IDs or specific names
-                if (group.id == 'Global' ||
-                    group.id == 'Emoji' ||
-                    group.name == 'Global' ||
-                    group.name == 'Emojis') {
-                  globals.addAll(
-                    group.emotes.map(
-                      (e) => Emote.fromKick(e, EmoteType.kickGlobal),
-                    ),
-                  );
-                }
-              }
-              _kickGlobalEmotes = globals;
-            })
-            .catchError((e) {
-              _kickGlobalEmotes = onEmoteError(e);
-            }),
-      // 7TV global emotes
+      // 7TV global emotes (the only thing we can fetch without a channel context)
       if (show7TVEmotes)
         sevenTVApi
             .getEmotesGlobal()
@@ -157,6 +196,8 @@ abstract class GlobalAssetsStoreBase with Store {
               _sevenTVGlobalEmotes = onEmoteError(e);
               return _sevenTVGlobalEmotes;
             }),
+      // Note: Kick global/emoji emotes are now populated by ChatAssetsStore
+      // when it fetches emotes for a channel (first channel fetch populates globals)
     ]);
   }
 }

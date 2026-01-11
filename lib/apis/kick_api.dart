@@ -20,6 +20,10 @@ class KickApi extends BaseApiClient {
   static const String _officialBaseUrl = 'https://api.kick.com/public/v1';
   static const String _oauthBaseUrl = 'https://id.kick.com/oauth';
 
+  /// In-flight channel requests for deduplication.
+  /// Prevents multiple concurrent requests to the same channel endpoint.
+  final _inFlightChannelRequests = <String, Future<KickChannel>>{};
+
   KickApi(Dio dio) : super(dio, _internalV1Url);
 
   // ============================================================
@@ -28,7 +32,32 @@ class KickApi extends BaseApiClient {
 
   /// Returns detailed channel info including chatroom_id.
   /// Uses internal API v2 for channel data.
+  ///
+  /// Concurrent requests to the same channel are deduplicated - only one
+  /// network request is made and the result is shared across all callers.
   Future<KickChannel> getChannel({required String channelSlug}) async {
+    final slug = channelSlug.toLowerCase();
+
+    // Check for in-flight request (deduplication)
+    final inFlight = _inFlightChannelRequests[slug];
+    if (inFlight != null) {
+      debugPrint('⏳ Reusing in-flight request for channel: $slug');
+      return inFlight;
+    }
+
+    // Create and track the request
+    final future = _fetchChannel(slug);
+    _inFlightChannelRequests[slug] = future;
+
+    try {
+      return await future;
+    } finally {
+      _inFlightChannelRequests.remove(slug);
+    }
+  }
+
+  /// Internal fetch without deduplication logic.
+  Future<KickChannel> _fetchChannel(String channelSlug) async {
     final data = await get<JsonMap>('$_internalV2Url/channels/$channelSlug');
     return KickChannel.fromJson(data);
   }
@@ -469,18 +498,28 @@ class KickApi extends BaseApiClient {
     }
   }
 
-  /// Check if user is following a channel.
-  /// Uses V2 API: GET /api/v2/channels/{slug}/me which returns is_following.
-  Future<bool> isFollowing({required String channelSlug}) async {
+  /// Get current user's relationship to a channel.
+  /// Returns subscription status, following status, etc.
+  /// Requires authentication.
+  Future<KickChannelMeResponse?> getChannelMe({
+    required String channelSlug,
+  }) async {
     try {
       final data = await get<JsonMap>(
         '$_internalV2Url/channels/$channelSlug/me',
       );
-      return data['is_following'] as bool? ?? false;
+      return KickChannelMeResponse.fromJson(data);
     } on ApiException catch (e) {
-      debugPrint('Failed to check follow status: $e');
-      return false;
+      debugPrint('Failed to get channel /me: $e');
+      return null;
     }
+  }
+
+  /// Check if user is following a channel.
+  /// Convenience wrapper around [getChannelMe].
+  Future<bool> isFollowing({required String channelSlug}) async {
+    final me = await getChannelMe(channelSlug: channelSlug);
+    return me?.isFollowing ?? false;
   }
 
   // ============================================================
@@ -535,11 +574,12 @@ class KickApi extends BaseApiClient {
   // HISTORY ENDPOINTS
   // ============================================================
 
-  /// Get chat history for a chatroom.
-  Future<List<dynamic>> getChatHistory({required int chatroomId}) async {
+  /// Get chat history for a channel.
+  /// Note: Uses channel ID (not chatroom ID) for the history endpoint.
+  Future<List<dynamic>> getChatHistory({required int channelId}) async {
     try {
       final data = await get<JsonMap>(
-        '$_internalV1Url/chat/$chatroomId/history',
+        '$_internalV1Url/chat/$channelId/history',
       );
 
       // Expected structure: { data: { messages: [...] }, ... }
@@ -618,25 +658,49 @@ class KickEmoteGroup {
   final dynamic id; // Int ID for channels, String "Global"/"Emoji" for others
   final String? slug;
   final String? name; // "Global", "Emojis"
+  final KickEmoteGroupUser? user; // User info for subscribed channels
   final List<KickEmoteData> emotes;
 
   const KickEmoteGroup({
     required this.id,
     this.slug,
     this.name,
+    this.user,
     required this.emotes,
   });
+
+  /// Get display name for this emote group.
+  /// For subscribed channels, returns username. For global/emoji, returns name.
+  String? get displayName => user?.username ?? name;
 
   factory KickEmoteGroup.fromJson(Map<String, dynamic> json) {
     return KickEmoteGroup(
       id: json['id'],
       slug: json['slug'] as String?,
       name: json['name'] as String?,
+      user: json['user'] != null
+          ? KickEmoteGroupUser.fromJson(json['user'])
+          : null,
       emotes:
           (json['emotes'] as List<dynamic>?)
               ?.map((e) => KickEmoteData.fromJson(e))
               .toList() ??
           [],
+    );
+  }
+}
+
+/// User info within an emote group (for subscribed channels).
+class KickEmoteGroupUser {
+  final int id;
+  final String username;
+
+  const KickEmoteGroupUser({required this.id, required this.username});
+
+  factory KickEmoteGroupUser.fromJson(Map<String, dynamic> json) {
+    return KickEmoteGroupUser(
+      id: json['id'] as int,
+      username: json['username'] as String,
     );
   }
 }
@@ -657,5 +721,82 @@ class KickSilencedUsersResponse {
     // Pagination structure in provided sample: links: { next: url }, meta: { ... }
     // We might extract page/cursor logic if needed, but simple list for now.
     return KickSilencedUsersResponse(data: data);
+  }
+}
+
+/// User's relationship to a channel (from /channels/{slug}/me).
+class KickChannelMeResponse {
+  final bool isFollowing;
+  final bool isModerator;
+  final bool isSuperAdmin;
+  final KickSubscriptionInfo? subscription;
+  final List<int> bannedUsers;
+  final List<int> mutedUsers;
+
+  const KickChannelMeResponse({
+    required this.isFollowing,
+    required this.isModerator,
+    required this.isSuperAdmin,
+    this.subscription,
+    this.bannedUsers = const [],
+    this.mutedUsers = const [],
+  });
+
+  /// Whether the user is subscribed to this channel.
+  bool get isSubscribed => subscription != null;
+
+  factory KickChannelMeResponse.fromJson(Map<String, dynamic> json) {
+    return KickChannelMeResponse(
+      isFollowing: json['is_following'] as bool? ?? false,
+      isModerator: json['is_moderator'] as bool? ?? false,
+      isSuperAdmin: json['is_super_admin'] as bool? ?? false,
+      subscription: json['subscription'] != null
+          ? KickSubscriptionInfo.fromJson(
+              json['subscription'] as Map<String, dynamic>,
+            )
+          : null,
+      bannedUsers:
+          (json['banned_users'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          [],
+      mutedUsers:
+          (json['muted_users'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          [],
+    );
+  }
+}
+
+/// Subscription info from /channels/{slug}/me.
+class KickSubscriptionInfo {
+  final int id;
+  final int channelId;
+  final int subscriberId;
+  final String? type;
+  final int? months;
+  final DateTime? createdAt;
+
+  const KickSubscriptionInfo({
+    required this.id,
+    required this.channelId,
+    required this.subscriberId,
+    this.type,
+    this.months,
+    this.createdAt,
+  });
+
+  factory KickSubscriptionInfo.fromJson(Map<String, dynamic> json) {
+    return KickSubscriptionInfo(
+      id: json['id'] as int? ?? 0,
+      channelId: json['channel_id'] as int? ?? 0,
+      subscriberId: json['subscriber_id'] as int? ?? 0,
+      type: json['type'] as String?,
+      months: json['months'] as int?,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+    );
   }
 }
