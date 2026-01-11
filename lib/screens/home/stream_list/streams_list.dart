@@ -22,7 +22,8 @@ class StreamsList extends StatefulWidget {
   /// The type of list to display.
   final ListType listType;
 
-  final String? categorySlug;
+  /// The category ID for filtering streams (only used when listType is category).
+  final int? categoryId;
 
   /// The scroll controller to use for scroll to top functionality.
   final ScrollController? scrollController;
@@ -32,7 +33,7 @@ class StreamsList extends StatefulWidget {
   const StreamsList({
     super.key,
     required this.listType,
-    this.categorySlug,
+    this.categoryId,
     this.scrollController,
     this.showJumpButton = false,
   });
@@ -63,7 +64,7 @@ class _StreamsListState extends State<StreamsList>
       settingsStore: context.read<SettingsStore>(),
       kickApi: context.read<KickApi>(),
       listType: widget.listType,
-      categorySlug: widget.categorySlug,
+      categoryId: widget.categoryId,
       scrollController: widget.scrollController ?? _scrollController,
     );
   }
@@ -276,7 +277,7 @@ class _StreamsListState extends State<StreamsList>
                                           showThumbnail:
                                               settingsStore.showThumbnails,
                                           showCategory:
-                                              widget.categorySlug == null,
+                                              widget.categoryId == null,
                                           showPinOption: true,
                                           isPinned: false,
                                         )
@@ -286,7 +287,7 @@ class _StreamsListState extends State<StreamsList>
                                           showThumbnail:
                                               settingsStore.showThumbnails,
                                           showCategory:
-                                              widget.categorySlug == null,
+                                              widget.categoryId == null,
                                           showPinOption: true,
                                           isPinned: false,
                                         ),
@@ -360,7 +361,7 @@ class _StreamsListState extends State<StreamsList>
                                           showThumbnail:
                                               settingsStore.showThumbnails,
                                           showCategory:
-                                              widget.categorySlug == null,
+                                              widget.categoryId == null,
                                           showPinOption: false,
                                           isPinned: false,
                                         )
@@ -370,7 +371,7 @@ class _StreamsListState extends State<StreamsList>
                                           showThumbnail:
                                               settingsStore.showThumbnails,
                                           showCategory:
-                                              widget.categorySlug == null,
+                                              widget.categoryId == null,
                                           showPinOption: false,
                                           isPinned: false,
                                         ),

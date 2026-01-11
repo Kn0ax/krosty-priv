@@ -287,19 +287,18 @@ class StreamInfoBar extends StatelessWidget {
                               triggerMode: tooltipTriggerMode,
                               child: tappableCategory
                                   ? GestureDetector(
-                                      onDoubleTap: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => CategoryStreams(
-                                            categorySlug:
-                                                streamInfo
-                                                    ?.categories
-                                                    ?.first
-                                                    .slug ??
-                                                '',
-                                          ),
-                                        ),
-                                      ),
+                                      onDoubleTap: () {
+                                        final cat = streamInfo?.categories?.first;
+                                        if (cat != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  CategoryStreams(category: cat),
+                                            ),
+                                          );
+                                        }
+                                      },
                                       child: Text(
                                         streamInfo?.categoryName ?? '',
                                         style: _getBaseTextStyle(

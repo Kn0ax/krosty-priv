@@ -87,9 +87,7 @@ KickCategory _$KickCategoryFromJson(Map<String, dynamic> json) => KickCategory(
   description: json['description'] as String?,
   deletedAt: json['deleted_at'] as String?,
   viewers: (json['viewers'] as num?)?.toInt(),
-  banner: json['banner'] == null
-      ? null
-      : KickCategoryBanner.fromJson(json['banner'] as Map<String, dynamic>),
+  banner: _kickCategoryBannerFromJson(json['banner']),
 );
 
 KickCategoryBanner _$KickCategoryBannerFromJson(Map<String, dynamic> json) =>
@@ -148,6 +146,8 @@ KickLivestreamsResponse _$KickLivestreamsResponseFromJson(
   lastPage: (json['last_page'] as num?)?.toInt(),
   perPage: (json['per_page'] as num?)?.toInt(),
   total: (json['total'] as num?)?.toInt(),
+  nextCursor: json['next_cursor'] as String?,
+  prevCursor: json['prev_cursor'] as String?,
 );
 
 KickLivestreamItem _$KickLivestreamItemFromJson(Map<String, dynamic> json) =>
@@ -201,7 +201,7 @@ KickCategoriesResponse _$KickCategoriesResponseFromJson(
       .toList(),
   currentPage: (json['current_page'] as num?)?.toInt(),
   lastPage: (json['last_page'] as num?)?.toInt(),
-  perPage: (json['per_page'] as num?)?.toInt(),
+  perPage: _perPageFromJson(json['per_page']),
   total: (json['total'] as num?)?.toInt(),
 );
 

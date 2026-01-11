@@ -170,14 +170,17 @@ class StreamCard extends StatelessWidget {
           if (showCategory) ...[
             InkWell(
               onTap: streamInfo.categoryName.isNotEmpty
-                  ? () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CategoryStreams(
-                          categorySlug: streamInfo.categories?.first.slug ?? '',
-                        ),
-                      ),
-                    )
+                  ? () {
+                      final cat = streamInfo.category ?? streamInfo.categories?.first;
+                      if (cat != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CategoryStreams(category: cat),
+                          ),
+                        );
+                      }
+                    }
                   : null,
               child: Tooltip(
                 message: category,

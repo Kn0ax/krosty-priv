@@ -149,50 +149,6 @@ mixin _$ListStore on ListStoreBase, Store {
     );
   }
 
-  late final _$_categoryDetailsAtom = Atom(
-    name: 'ListStoreBase._categoryDetails',
-    context: context,
-  );
-
-  KickCategory? get categoryDetails {
-    _$_categoryDetailsAtom.reportRead();
-    return super._categoryDetails;
-  }
-
-  @override
-  KickCategory? get _categoryDetails => categoryDetails;
-
-  @override
-  set _categoryDetails(KickCategory? value) {
-    _$_categoryDetailsAtom.reportWrite(value, super._categoryDetails, () {
-      super._categoryDetails = value;
-    });
-  }
-
-  late final _$_isCategoryDetailsLoadingAtom = Atom(
-    name: 'ListStoreBase._isCategoryDetailsLoading',
-    context: context,
-  );
-
-  bool get isCategoryDetailsLoading {
-    _$_isCategoryDetailsLoadingAtom.reportRead();
-    return super._isCategoryDetailsLoading;
-  }
-
-  @override
-  bool get _isCategoryDetailsLoading => isCategoryDetailsLoading;
-
-  @override
-  set _isCategoryDetailsLoading(bool value) {
-    _$_isCategoryDetailsLoadingAtom.reportWrite(
-      value,
-      super._isCategoryDetailsLoading,
-      () {
-        super._isCategoryDetailsLoading = value;
-      },
-    );
-  }
-
   late final _$showJumpButtonAtom = Atom(
     name: 'ListStoreBase.showJumpButton',
     context: context,
@@ -295,18 +251,6 @@ mixin _$ListStore on ListStoreBase, Store {
   @override
   Future<void> refreshStreams() {
     return _$refreshStreamsAsyncAction.run(() => super.refreshStreams());
-  }
-
-  late final _$_getCategoryDetailsAsyncAction = AsyncAction(
-    'ListStoreBase._getCategoryDetails',
-    context: context,
-  );
-
-  @override
-  Future<void> _getCategoryDetails() {
-    return _$_getCategoryDetailsAsyncAction.run(
-      () => super._getCategoryDetails(),
-    );
   }
 
   @override

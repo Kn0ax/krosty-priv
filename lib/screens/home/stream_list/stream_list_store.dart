@@ -24,17 +24,15 @@ abstract class ListStoreBase with Store {
   /// The type of list that this store is handling.
   final ListType listType;
 
-  /// The category slug to use when fetching streams if the [listType] is [ListType.category].
-  final String? categorySlug;
+  /// The category ID to use when filtering streams by category.
+  final int? categoryId;
 
   /// The scroll controller used for handling scroll to top (if provided).
   final ScrollController? scrollController;
 
-  /// The current page for pagination (featured/category only).
-  int? _currentPage;
-
-  /// The last page number (for knowing when there are no more results).
-  int? _lastPage;
+  /// Cursor for streams pagination (top/category).
+  String? _streamsCursor;
+  bool _hasMoreStreams = true;
 
   /// Cursor for offline channels pagination.
   int _offlineChannelsCursor = 0;
@@ -51,7 +49,7 @@ abstract class ListStoreBase with Store {
       // Live streams from /user/livestreams don't have pagination
       return false;
     }
-    return _lastPage != null && (_currentPage ?? 1) < _lastPage!;
+    return _hasMoreStreams;
   }
 
   /// Whether there are more offline channels to load.
@@ -60,10 +58,7 @@ abstract class ListStoreBase with Store {
       !_isOfflineChannelsLoading && _hasMoreOfflineChannels;
 
   @computed
-  bool get isLoading =>
-      _isAllStreamsLoading ||
-      _isCategoryDetailsLoading ||
-      _isOfflineChannelsLoading;
+  bool get isLoading => _isAllStreamsLoading || _isOfflineChannelsLoading;
 
   /// The list of the fetched streams (for non-followed tabs and live followed).
   @readonly
@@ -78,12 +73,6 @@ abstract class ListStoreBase with Store {
 
   @readonly
   bool _isOfflineChannelsLoading = false;
-
-  @readonly
-  KickCategory? _categoryDetails;
-
-  @readonly
-  var _isCategoryDetailsLoading = false;
 
   /// Whether or not the scroll to top button is visible.
   @observable
@@ -117,7 +106,7 @@ abstract class ListStoreBase with Store {
     required this.settingsStore,
     required this.kickApi,
     required this.listType,
-    this.categorySlug,
+    this.categoryId,
     this.scrollController,
   }) {
     if (scrollController != null) {
@@ -131,14 +120,10 @@ abstract class ListStoreBase with Store {
       });
     }
 
-    if (listType == ListType.category && categorySlug != null) {
-      _getCategoryDetails();
-    }
-
     getStreams();
   }
 
-  /// Fetches the streams based on the type and current page/cursor.
+  /// Fetches the streams based on the type and current cursor.
   @action
   Future<void> getStreams() async {
     _isAllStreamsLoading = true;
@@ -154,26 +139,13 @@ abstract class ListStoreBase with Store {
           _loadOfflineChannels();
         }
       } else {
-        // For top/category, use the standard response
-        final KickLivestreamsResponse response;
-        switch (listType) {
-          case ListType.followed:
-            // This case is handled above
-            throw StateError('Unreachable');
-          case ListType.top:
-            response = await kickApi.getFeaturedLivestreams(
-              page: _currentPage ?? 1,
-            );
-            break;
-          case ListType.category:
-            response = await kickApi.getLivestreamsByCategory(
-              categorySlug: categorySlug!,
-              page: _currentPage ?? 1,
-            );
-            break;
-        }
+        // For top/category, use the unified livestreams endpoint
+        final response = await kickApi.getLivestreams(
+          categoryId: listType == ListType.category ? categoryId : null,
+          afterCursor: _streamsCursor,
+        );
 
-        final isFirstLoad = (_currentPage ?? 1) == 1;
+        final isFirstLoad = _streamsCursor == null;
 
         if (isFirstLoad) {
           _allStreams = response.data.asObservable();
@@ -181,9 +153,9 @@ abstract class ListStoreBase with Store {
           _allStreams.addAll(response.data);
         }
 
-        // Page-based pagination
-        _lastPage = response.lastPage;
-        _currentPage = (_currentPage ?? 1) + 1;
+        // Update cursor-based pagination state
+        _streamsCursor = response.nextCursor;
+        _hasMoreStreams = response.nextCursor != null;
       }
 
       _error = null;
@@ -243,30 +215,15 @@ abstract class ListStoreBase with Store {
     await _loadOfflineChannels();
   }
 
-  /// Resets the page/cursor and then fetches the streams.
+  /// Resets the cursor and then fetches the streams.
   @action
   Future<void> refreshStreams() async {
-    _currentPage = null;
-    _lastPage = null;
+    _streamsCursor = null;
+    _hasMoreStreams = true;
     _offlineChannelsCursor = 0;
     _hasMoreOfflineChannels = true;
     _offlineFollowedChannels.clear();
     await getStreams();
-  }
-
-  @action
-  Future<void> _getCategoryDetails() async {
-    if (categorySlug == null) return;
-
-    _isCategoryDetailsLoading = true;
-
-    try {
-      _categoryDetails = await kickApi.getCategory(categorySlug: categorySlug!);
-    } catch (e) {
-      debugPrint('Failed to get category details: $e');
-    }
-
-    _isCategoryDetailsLoading = false;
   }
 
   /// Checks the last time the streams were refreshed and updates them if it has been more than 5 minutes.

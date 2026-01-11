@@ -3,24 +3,24 @@ import 'package:json_annotation/json_annotation.dart';
 part 'category.g.dart';
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
-class CategoryTwitch {
+class Category {
   final String boxArtUrl;
   final String id;
   final String name;
 
-  const CategoryTwitch(this.boxArtUrl, this.id, this.name);
+  const Category(this.boxArtUrl, this.id, this.name);
 
-  factory CategoryTwitch.fromJson(Map<String, dynamic> json) =>
-      _$CategoryTwitchFromJson(json);
+  factory Category.fromJson(Map<String, dynamic> json) =>
+      _$CategoryFromJson(json);
 }
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
-class CategoriesTwitch {
-  final List<CategoryTwitch> data;
+class Categories {
+  final List<Category> data;
   final Map<String, String>? pagination;
 
-  const CategoriesTwitch(this.data, this.pagination);
+  const Categories(this.data, this.pagination);
 
-  factory CategoriesTwitch.fromJson(Map<String, dynamic> json) =>
-      _$CategoriesTwitchFromJson(json);
+  factory Categories.fromJson(Map<String, dynamic> json) =>
+      _$CategoriesFromJson(json);
 }

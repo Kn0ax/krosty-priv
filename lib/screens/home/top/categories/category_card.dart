@@ -33,10 +33,7 @@ class CategoryCard extends StatelessWidget {
           ? () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => CategoryStreams(
-                  categorySlug: category.slug, // Updated to use slug
-                  categoryId: category.id.toString(), // Kept for compatibility if needed, but safer to use slug
-                ),
+                builder: (context) => CategoryStreams(category: category),
               ),
             )
           : null,

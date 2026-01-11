@@ -12,6 +12,14 @@ KickVerifiedInfo? _verifiedFromJson(dynamic json) {
   return null;
 }
 
+/// Helper to parse 'per_page' field which can be string or number.
+int? _perPageFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is num) return json.toInt();
+  if (json is String) return int.tryParse(json);
+  return null;
+}
+
 /// Kick channel model from /api/v2/channels/{slug} endpoint.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickChannel {
@@ -217,6 +225,17 @@ class KickThumbnail {
   String? get imageUrl => src ?? url;
 }
 
+KickCategoryBanner? _kickCategoryBannerFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is String) {
+    return KickCategoryBanner(url: json, responsive: json);
+  }
+  if (json is Map<String, dynamic>) {
+    return KickCategoryBanner.fromJson(json);
+  }
+  return null;
+}
+
 /// Kick category model.
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class KickCategory {
@@ -230,6 +249,7 @@ class KickCategory {
   @JsonKey(name: 'deleted_at')
   final String? deletedAt;
   final int? viewers;
+  @JsonKey(fromJson: _kickCategoryBannerFromJson)
   final KickCategoryBanner? banner;
 
   const KickCategory({
@@ -360,10 +380,13 @@ class KickChannelSearch {
 }
 
 /// Wrapper for paginated livestream responses.
+/// Supports both legacy page-based and new cursor-based pagination.
 @JsonSerializable(createToJson: false)
 class KickLivestreamsResponse {
   @JsonKey(name: 'data', defaultValue: <KickLivestreamItem>[])
   final List<KickLivestreamItem> data;
+
+  // Legacy page-based pagination fields
   @JsonKey(name: 'current_page')
   final int? currentPage;
   @JsonKey(name: 'last_page')
@@ -372,19 +395,56 @@ class KickLivestreamsResponse {
   final int? perPage;
   final int? total;
 
+  // Cursor-based pagination fields
+  @JsonKey(name: 'next_cursor')
+  final String? nextCursor;
+  @JsonKey(name: 'prev_cursor')
+  final String? prevCursor;
+
   const KickLivestreamsResponse({
     this.data = const <KickLivestreamItem>[],
     this.currentPage,
     this.lastPage,
     this.perPage,
     this.total,
+    this.nextCursor,
+    this.prevCursor,
   });
 
   factory KickLivestreamsResponse.fromJson(Map<String, dynamic> json) =>
       _$KickLivestreamsResponseFromJson(json);
 
-  bool get hasMore =>
-      currentPage != null && lastPage != null && currentPage! < lastPage!;
+  /// Factory for parsing the new /api/v1/livestreams endpoint response.
+  /// Structure: { data: { livestreams: [...], pagination: { next_cursor, prev_cursor } } }
+  factory KickLivestreamsResponse.fromLivestreamsJson(Map<String, dynamic> json) {
+    final dataWrapper = json['data'] as Map<String, dynamic>?;
+    if (dataWrapper == null) {
+      return const KickLivestreamsResponse();
+    }
+
+    final livestreams = (dataWrapper['livestreams'] as List<dynamic>?)
+            ?.map((e) => KickLivestreamItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    final pagination = dataWrapper['pagination'] as Map<String, dynamic>?;
+    return KickLivestreamsResponse(
+      data: livestreams,
+      nextCursor: pagination?['next_cursor'] as String?,
+      prevCursor: pagination?['prev_cursor'] as String?,
+    );
+  }
+
+  /// Whether more data is available (works for both pagination styles).
+  bool get hasMore {
+    // Cursor-based: has more if nextCursor exists
+    if (nextCursor != null) return true;
+    // Legacy page-based
+    if (currentPage != null && lastPage != null) {
+      return currentPage! < lastPage!;
+    }
+    return false;
+  }
 }
 
 /// Kick livestream item from list endpoints (includes channel info).
@@ -512,7 +572,7 @@ class KickCategoriesResponse {
   final int? currentPage;
   @JsonKey(name: 'last_page')
   final int? lastPage;
-  @JsonKey(name: 'per_page')
+  @JsonKey(name: 'per_page', fromJson: _perPageFromJson)
   final int? perPage;
   final int? total;
 

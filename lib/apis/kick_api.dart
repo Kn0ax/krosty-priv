@@ -5,6 +5,7 @@ import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/models/kick_channel_user_info.dart';
 import 'package:krosty/models/kick_silenced_user.dart';
 import 'package:krosty/models/kick_user.dart';
+import 'package:krosty/utils.dart';
 
 /// The Kick API service for making API calls.
 ///
@@ -36,7 +37,7 @@ class KickApi extends BaseApiClient {
   /// Concurrent requests to the same channel are deduplicated - only one
   /// network request is made and the result is shared across all callers.
   Future<KickChannel> getChannel({required String channelSlug}) async {
-    final slug = channelSlug.toLowerCase();
+    final slug = normalizeSlug(channelSlug.toLowerCase());
 
     // Check for in-flight request (deduplication)
     final inFlight = _inFlightChannelRequests[slug];
@@ -72,7 +73,34 @@ class KickApi extends BaseApiClient {
   // LIVESTREAM ENDPOINTS (Internal API)
   // ============================================================
 
+  /// Returns a paginated list of livestreams sorted by viewer count.
+  ///
+  /// Uses the new unified endpoint that supports:
+  /// - Cursor-based pagination via [afterCursor]
+  /// - Optional category filtering via [categoryId]
+  /// - Configurable [limit] (default 24)
+  Future<KickLivestreamsResponse> getLivestreams({
+    int limit = 24,
+    int? categoryId,
+    String? afterCursor,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'limit': limit,
+      'sort': 'viewer_count_desc',
+    };
+    if (categoryId != null) queryParams['category_id'] = categoryId;
+    if (afterCursor != null) queryParams['after'] = afterCursor;
+
+    final data = await get<JsonMap>(
+      '$_internalV1Url/livestreams',
+      queryParameters: queryParams,
+    );
+
+    return KickLivestreamsResponse.fromLivestreamsJson(data);
+  }
+
   /// Returns a list of featured livestreams.
+  @Deprecated('Use getLivestreams() instead for better pagination support')
   Future<KickLivestreamsResponse> getFeaturedLivestreams({
     int? page,
     String lang = 'en', // TODO: switch to locale
@@ -107,6 +135,7 @@ class KickApi extends BaseApiClient {
   }
 
   /// Returns livestreams for a specific category.
+  @Deprecated('Use getLivestreams(categoryId: id) instead')
   Future<KickLivestreamsResponse> getLivestreamsByCategory({
     required String categorySlug,
     int? page,
@@ -115,7 +144,7 @@ class KickApi extends BaseApiClient {
     if (page != null) queryParams['page'] = page.toString();
 
     final data = await get<JsonMap>(
-      '$_internalV2Url/categories/$categorySlug/streams',
+      '$_internalV2Url/categories/${normalizeSlug(categorySlug)}/streams',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
@@ -180,7 +209,7 @@ class KickApi extends BaseApiClient {
     required String userSlug,
   }) async {
     final data = await get<JsonMap>(
-      '$_internalV2Url/channels/$channelSlug/users/$userSlug',
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/users/${normalizeSlug(userSlug)}',
     );
     return KickChannelUserInfo.fromJson(data);
   }
@@ -191,12 +220,12 @@ class KickApi extends BaseApiClient {
 
   /// Returns top/popular categories.
   Future<KickCategoriesResponse> getTopCategories({int? page}) async {
-    final queryParams = <String, dynamic>{};
+    final queryParams = <String, dynamic>{'limit': 32};
     if (page != null) queryParams['page'] = page.toString();
 
     final data = await get<JsonMap>(
-      '$_internalV2Url/subcategories',
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      'https://kick.com/api/v1/subcategories',
+      queryParameters: queryParams,
     );
 
     return KickCategoriesResponse.fromJson(data);
@@ -210,7 +239,9 @@ class KickApi extends BaseApiClient {
 
   /// Returns category info by slug.
   Future<KickCategory> getCategory({required String categorySlug}) async {
-    final data = await get<JsonMap>('$_internalV1Url/categories/$categorySlug');
+    final data = await get<JsonMap>(
+      '$_internalV1Url/categories/${normalizeSlug(categorySlug)}',
+    );
     return KickCategory.fromJson(data);
   }
 
@@ -359,7 +390,7 @@ class KickApi extends BaseApiClient {
     try {
       // Direct call to main domain endpoint - returns a List of Groups
       final data = await get<List<dynamic>>(
-        'https://kick.com/emotes/$channelSlug',
+        'https://kick.com/emotes/${normalizeSlug(channelSlug)}',
       );
 
       return data.map((json) => KickEmoteGroup.fromJson(json)).toList();
@@ -478,7 +509,9 @@ class KickApi extends BaseApiClient {
   /// Uses V2 API: POST /api/v2/channels/{slug}/follow
   Future<bool> followChannel({required String channelSlug}) async {
     try {
-      await post<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
+      await post<dynamic>(
+        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/follow',
+      );
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to follow channel: $e');
@@ -490,7 +523,9 @@ class KickApi extends BaseApiClient {
   /// Uses V2 API: DELETE /api/v2/channels/{slug}/follow
   Future<bool> unfollowChannel({required String channelSlug}) async {
     try {
-      await delete<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
+      await delete<dynamic>(
+        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/follow',
+      );
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to unfollow channel: $e');
@@ -506,7 +541,7 @@ class KickApi extends BaseApiClient {
   }) async {
     try {
       final data = await get<JsonMap>(
-        '$_internalV2Url/channels/$channelSlug/me',
+        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/me',
       );
       return KickChannelMeResponse.fromJson(data);
     } on ApiException catch (e) {
