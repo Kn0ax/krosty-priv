@@ -209,7 +209,7 @@ class KickApi extends BaseApiClient {
     required String userSlug,
   }) async {
     final data = await get<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/users/${normalizeSlug(userSlug)}',
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/users/$userSlug',
     );
     return KickChannelUserInfo.fromJson(data);
   }
