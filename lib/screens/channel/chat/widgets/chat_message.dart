@@ -40,7 +40,7 @@ class ChatMessage extends StatelessWidget {
       context: context,
       builder: (context) => ChatUserModal(
         chatStore: chatStore,
-        username: message.sender.username,
+        username: message.sender.slug,
         userId: message.sender.id.toString(),
         displayName: message.sender.username,
       ),
@@ -51,22 +51,25 @@ class ChatMessage extends StatelessWidget {
     if (isModal) return;
 
     final kickApi = context.read<KickApi>();
-    kickApi.getChannel(channelSlug: nickname).then((channel) {
-      if (context.mounted) {
-        showModalBottomSheetWithProperFocus(
-          isScrollControlled: true,
-          context: context,
-          builder: (context) => ChatUserModal(
-            chatStore: chatStore,
-            username: channel.slug,
-            userId: channel.user.id.toString(),
-            displayName: channel.user?.username ?? channel.slug,
-          ),
-        );
-      }
-    }).catchError((_) {
-      // User not found, just ignore
-    });
+    kickApi
+        .getChannel(channelSlug: nickname)
+        .then((channel) {
+          if (context.mounted) {
+            showModalBottomSheetWithProperFocus(
+              isScrollControlled: true,
+              context: context,
+              builder: (context) => ChatUserModal(
+                chatStore: chatStore,
+                username: channel.slug,
+                userId: channel.user.id.toString(),
+                displayName: channel.user?.username ?? channel.slug,
+              ),
+            );
+          }
+        })
+        .catchError((_) {
+          // User not found, just ignore
+        });
   }
 
   Future<void> copyMessage() async {
@@ -180,7 +183,8 @@ class ChatMessage extends StatelessWidget {
         }
         // Deleted messages
         else if (message.isDeleted) {
-          final showDeleted = chatStore.settings.showDeletedMessages ||
+          final showDeleted =
+              chatStore.settings.showDeletedMessages ||
               chatStore.revealedMessageIds.contains(message.id);
 
           renderMessage = Opacity(

@@ -35,22 +35,16 @@ class ChatUserModal extends StatefulWidget {
 }
 
 class _ChatUserModalState extends State<ChatUserModal> {
-  late Future<_UserModalData> _dataFuture;
+  late Future<KickChannelUserInfo> _dataFuture;
 
   @override
   void initState() {
     super.initState();
     final kickApi = context.read<KickApi>();
-    _dataFuture = Future.wait([
-      kickApi.getChannelUserInfo(
-        channelSlug: widget.chatStore.channelSlug,
-        userSlug: widget.username,
-      ),
-      kickApi.getChannel(channelSlug: widget.chatStore.channelSlug),
-    ]).then((results) => _UserModalData(
-      userInfo: results[0] as KickChannelUserInfo,
-      channel: results[1] as KickChannel,
-    ));
+    _dataFuture = kickApi.getChannelUserInfo(
+      channelSlug: widget.chatStore.channelSlug,
+      userSlug: widget.username,
+    );
   }
 
   @override
@@ -63,13 +57,13 @@ class _ChatUserModalState extends State<ChatUserModal> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(name),
-          FutureBuilder<_UserModalData>(
+          FutureBuilder<KickChannelUserInfo>(
             future: _dataFuture,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 return _buildUserInfo(
-                  snapshot.data!.userInfo,
-                  snapshot.data!.channel.subscriberBadges,
+                  snapshot.data!,
+                  widget.chatStore.assetsStore.subscriberBadges,
                 );
               }
               return const SizedBox.shrink();
@@ -107,8 +101,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
             IconButton(
               tooltip: 'Reply',
               onPressed: () {
-                widget.chatStore.textController.text =
-                    '@${widget.username} ';
+                widget.chatStore.textController.text = '@${widget.username} ';
                 Navigator.pop(context);
                 widget.chatStore.safeRequestFocus();
               },
@@ -171,7 +164,10 @@ class _ChatUserModalState extends State<ChatUserModal> {
     // Get badge image widget
     Widget badgeImage;
     if (badge.type == 'subscriber' && badge.count != null) {
-      final subBadgeUrl = _getSubscriberBadgeUrl(badge.count!, subscriberBadges);
+      final subBadgeUrl = _getSubscriberBadgeUrl(
+        badge.count!,
+        subscriberBadges,
+      );
       if (subBadgeUrl != null) {
         badgeImage = FrostyCachedNetworkImage(
           imageUrl: subBadgeUrl,
@@ -262,27 +258,27 @@ class _ChatUserModalState extends State<ChatUserModal> {
     if (userInfo.followingSince != null) {
       final date = DateTime.tryParse(userInfo.followingSince!);
       if (date != null) {
-        items.add(_buildInfoChip(
-          Icons.favorite_rounded,
-          'Following since ${DateFormat.yMMMd().format(date)}',
-        ));
+        items.add(
+          _buildInfoChip(
+            Icons.favorite_rounded,
+            'Following since ${DateFormat.yMMMd().format(date)}',
+          ),
+        );
       }
     }
 
     if (userInfo.subscribedFor != null && userInfo.subscribedFor! > 0) {
-      items.add(_buildInfoChip(
-        Icons.star_rounded,
-        '${userInfo.subscribedFor} month sub',
-      ));
+      items.add(
+        _buildInfoChip(
+          Icons.star_rounded,
+          '${userInfo.subscribedFor} month sub',
+        ),
+      );
     }
 
     if (items.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 4,
-      children: items,
-    );
+    return Wrap(spacing: 8, runSpacing: 4, children: items);
   }
 
   Widget _buildInfoChip(IconData icon, String text) {
@@ -363,9 +359,9 @@ class _ChatUserModalState extends State<ChatUserModal> {
             ),
           ),
           child: DefaultTextStyle(
-            style: DefaultTextStyle.of(context).style.copyWith(
-              fontSize: widget.chatStore.settings.fontSize,
-            ),
+            style: DefaultTextStyle.of(
+              context,
+            ).style.copyWith(fontSize: widget.chatStore.settings.fontSize),
             child: FrostyScrollbar(
               child: ListView.builder(
                 reverse: true,
@@ -383,12 +379,4 @@ class _ChatUserModalState extends State<ChatUserModal> {
       },
     );
   }
-}
-
-/// Helper class to hold both user info and channel data.
-class _UserModalData {
-  final KickChannelUserInfo userInfo;
-  final KickChannel channel;
-
-  const _UserModalData({required this.userInfo, required this.channel});
 }
