@@ -216,16 +216,19 @@ class KickSenderIdentity {
 class KickBadgeInfo {
   final String type;
   final String? text;
+  final int? count;
 
   const KickBadgeInfo({
     required this.type,
     this.text,
+    this.count,
   });
 
   factory KickBadgeInfo.fromJson(Map<String, dynamic> json) {
     return KickBadgeInfo(
       type: json['type'] as String? ?? '',
       text: json['text'] as String?,
+      count: json['count'] as int?,
     );
   }
 }

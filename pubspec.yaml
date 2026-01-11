@@ -133,6 +133,7 @@ flutter:
 
     assets:
         - assets/icons/logo.svg
+        - assets/icons/badges/
         - assets/fonts/
         - assets/release-notes.md
 

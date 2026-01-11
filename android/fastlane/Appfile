@@ -1,1 +1,1 @@
-package_name("com.tommychow.krosty") # e.g. com.krausefx.app
+package_name("dev.kn0.krosty") # e.g. com.krausefx.app

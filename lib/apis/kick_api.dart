@@ -2,8 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:krosty/apis/base_api_client.dart';
 import 'package:krosty/models/kick_channel.dart';
-import 'package:krosty/models/kick_user.dart';
+import 'package:krosty/models/kick_channel_user_info.dart';
 import 'package:krosty/models/kick_silenced_user.dart';
+import 'package:krosty/models/kick_user.dart';
 
 /// The Kick API service for making API calls.
 ///
@@ -141,6 +142,18 @@ class KickApi extends BaseApiClient {
       debugPrint('Failed to get user by calling getChannel: $e');
       rethrow;
     }
+  }
+
+  /// Returns user info in the context of a specific channel.
+  /// Includes badges, mod status, following/subscription info for that channel.
+  Future<KickChannelUserInfo> getChannelUserInfo({
+    required String channelSlug,
+    required String userSlug,
+  }) async {
+    final data = await get<JsonMap>(
+      '$_internalV2Url/channels/$channelSlug/users/$userSlug',
+    );
+    return KickChannelUserInfo.fromJson(data);
   }
 
   // ============================================================
@@ -457,13 +470,13 @@ class KickApi extends BaseApiClient {
   }
 
   /// Check if user is following a channel.
-  /// Uses V2 API: GET /api/v2/channels/{slug}/follow
+  /// Uses V2 API: GET /api/v2/channels/{slug}/me which returns is_following.
   Future<bool> isFollowing({required String channelSlug}) async {
     try {
-      await get<dynamic>('$_internalV2Url/channels/$channelSlug/follow');
-      return true;
-    } on NotFoundException {
-      return false;
+      final data = await get<JsonMap>(
+        '$_internalV2Url/channels/$channelSlug/me',
+      );
+      return data['is_following'] as bool? ?? false;
     } on ApiException catch (e) {
       debugPrint('Failed to check follow status: $e');
       return false;

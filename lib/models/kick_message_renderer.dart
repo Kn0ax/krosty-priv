@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,7 +65,7 @@ extension KickMessageRenderer on KickChatMessage {
     }
 
     // Add Kick badges
-    _addKickBadges(context, span, badgeSize, launchExternal);
+    _addKickBadges(context, span, badgeSize, launchExternal, assetsStore);
 
     // Add username
     _addUsername(span, context, onTapName);
@@ -122,9 +121,10 @@ extension KickMessageRenderer on KickChatMessage {
     List<InlineSpan> span,
     double badgeSize,
     bool launchExternal,
+    ChatAssetsStore assetsStore,
   ) {
     for (final badge in senderBadges) {
-      final badgeWidget = _createKickBadgeWidget(badge, badgeSize);
+      final badgeWidget = _createKickBadgeWidget(badge, badgeSize, assetsStore);
       if (badgeWidget != null) {
         span.add(
           WidgetSpan(
@@ -143,7 +143,33 @@ extension KickMessageRenderer on KickChatMessage {
   }
 
   /// Create a badge widget for Kick badges.
-  Widget? _createKickBadgeWidget(KickBadgeInfo badge, double size) {
+  Widget? _createKickBadgeWidget(
+    KickBadgeInfo badge,
+    double size,
+    ChatAssetsStore assetsStore,
+  ) {
+    // Handle subscriber badges with channel-specific images
+    if (badge.type == 'subscriber' && badge.count != null) {
+      final subBadgeUrl = assetsStore.getSubscriberBadgeUrl(badge.count!);
+      if (subBadgeUrl != null) {
+        return FrostyCachedNetworkImage(
+          imageUrl: subBadgeUrl,
+          width: size,
+          height: size,
+        );
+      }
+      // Fallback to star icon if no custom badge
+      return Icon(Icons.star, size: size, color: _getBadgeColor(badge.type));
+    }
+
+    final badgeAsset = _getBadgeAsset(badge.type);
+
+    // Use kickicons for known badge types
+    if (badgeAsset != null) {
+      return Image.asset(badgeAsset, width: size, height: size);
+    }
+
+    // Fallback to icon
     final iconData = _getBadgeIcon(badge.type);
     final color = _getBadgeColor(badge.type);
 
@@ -151,7 +177,7 @@ extension KickMessageRenderer on KickChatMessage {
       return Icon(iconData, size: size, color: color);
     }
 
-    // For custom badges with URLs, use cached network image
+    // For custom badges with text
     if (badge.text != null) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -173,22 +199,33 @@ extension KickMessageRenderer on KickChatMessage {
     return null;
   }
 
-  IconData? _getBadgeIcon(String type) {
+  String? _getBadgeAsset(String type) {
     switch (type) {
       case 'broadcaster':
-        return Icons.videocam;
+        return 'assets/icons/badges/kick-broadcaster.png';
       case 'moderator':
-        return Icons.shield;
+        return 'assets/icons/badges/kick-moderator.png';
       case 'vip':
-        return Icons.diamond;
+        return 'assets/icons/badges/kick-vip.png';
       case 'verified':
-        return Icons.verified;
+        return 'assets/icons/badges/kick-verified.png';
+      case 'og':
+        return 'assets/icons/badges/kick-og.png';
+      case 'founder':
+        return 'assets/icons/badges/kick-founder.png';
+      case 'staff':
+        return 'assets/icons/badges/kick-staff.png';
+      case 'sub_gifter':
+        return 'assets/icons/badges/kick-sub_gifter.png';
+      default:
+        return null;
+    }
+  }
+
+  IconData? _getBadgeIcon(String type) {
+    switch (type) {
       case 'subscriber':
         return Icons.star;
-      case 'og':
-        return Icons.local_fire_department;
-      case 'founder':
-        return Icons.workspace_premium;
       default:
         return null;
     }

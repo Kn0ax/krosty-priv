@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/seventv_api.dart';
 import 'package:krosty/models/emotes.dart';
+import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:mobx/mobx.dart';
 
@@ -30,6 +31,10 @@ abstract class ChatAssetsStoreBase with Store {
   /// Emotes specific to the current channel.
   @readonly
   ObservableMap<String, Emote> _channelEmotes = ObservableMap();
+
+  /// Subscriber badges for the current channel.
+  @readonly
+  List<KickSubscriberBadge> _subscriberBadges = [];
 
   /// Combined emotes (channel + global) for quick lookup.
   @computed
@@ -154,6 +159,11 @@ abstract class ChatAssetsStoreBase with Store {
       final channel = await kickApi.getChannel(channelSlug: channelSlug);
       final userId = channel.user.id;
 
+      // Store subscriber badges from channel info
+      if (channel.subscriberBadges != null) {
+        _subscriberBadges = channel.subscriberBadges!;
+      }
+
       // Use user_id (not slug) for 7TV API
       final (_, emotes) = await sevenTVApi.getEmotesChannel(userId: userId);
 
@@ -163,6 +173,22 @@ abstract class ChatAssetsStoreBase with Store {
     } catch (e) {
       // Silently fail - 7TV may not be connected or channel may not exist
     }
+  }
+
+  /// Get the subscriber badge URL for a given month count.
+  String? getSubscriberBadgeUrl(int months) {
+    if (_subscriberBadges.isEmpty) return null;
+
+    // Find the highest tier badge that the user qualifies for
+    final sortedBadges = [..._subscriberBadges]
+      ..sort((a, b) => b.months.compareTo(a.months));
+
+    for (final badge in sortedBadges) {
+      if (months >= badge.months) {
+        return badge.badgeImage?.src;
+      }
+    }
+    return null;
   }
 
   /// Clear all channel-specific assets.
