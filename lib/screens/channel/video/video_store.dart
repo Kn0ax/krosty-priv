@@ -152,16 +152,13 @@ abstract class VideoStoreBase with Store {
     });
 
     // Reaction for overlay toggle - reload player if needed
-    _disposeOverlayReaction = reaction(
-      (_) => settingsStore.showOverlay,
-      (_) {
-        // Re-initialize overlay visibility when toggle changes
-        if (settingsStore.showOverlay) {
-          _overlayVisible = true;
-          _scheduleOverlayHide();
-        }
-      },
-    );
+    _disposeOverlayReaction = reaction((_) => settingsStore.showOverlay, (_) {
+      // Re-initialize overlay visibility when toggle changes
+      if (settingsStore.showOverlay) {
+        _overlayVisible = true;
+        _scheduleOverlayHide();
+      }
+    });
 
     // Check initial state and start timer if already in chat-only mode
     if (!settingsStore.showVideo) {
@@ -329,10 +326,6 @@ abstract class VideoStoreBase with Store {
         _playbackUrl = playbackUrl;
       });
 
-      if (playbackUrl != null) {
-        await _ivsController.play(playbackUrl);
-      }
-
       _initialLoadComplete = true;
     } catch (e) {
       debugPrint('Failed to initialize stream: $e');
@@ -383,7 +376,9 @@ abstract class VideoStoreBase with Store {
         final success = await _ivsController.setQuality(quality.name);
         if (success) {
           _isAutoQuality = false;
-          _streamQualityIndex = _availableStreamQualities.indexOf(newStreamQuality);
+          _streamQualityIndex = _availableStreamQualities.indexOf(
+            newStreamQuality,
+          );
           debugPrint('Set quality to: ${quality.name}');
         }
       }
