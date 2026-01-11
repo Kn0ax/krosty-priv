@@ -102,7 +102,7 @@ class _SearchResultsChannelsState extends State<SearchResultsChannels> {
               ),
             );
           case FutureStatus.fulfilled:
-            final results = (future.result as List<KickChannelSearch>);
+            final results = future.result as List<KickChannelSearch>;
 
             return SliverList.list(
               children: [

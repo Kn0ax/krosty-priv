@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:krosty/screens/channel/chat/widgets/chat_tabs.dart';
@@ -10,9 +12,6 @@ import 'package:krosty/screens/channel/video/stream_info_bar.dart';
 import 'package:krosty/screens/channel/video/video.dart';
 import 'package:krosty/screens/channel/video/video_overlay.dart';
 import 'package:krosty/screens/channel/video/video_store.dart';
-import 'package:krosty/apis/kick_api.dart';
-import 'package:krosty/apis/seventv_api.dart';
-import 'package:krosty/screens/channel/chat/stores/chat_assets_store.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/stores/global_assets_store.dart';
@@ -393,8 +392,9 @@ class _VideoChatState extends State<VideoChat>
               displayName: _chatStore.displayName,
               isCompact: true,
               isOffline: streamInfo == null,
-              isInSharedChatMode: false,
               showTextShadows: false,
+              overrideStreamTitle: _chatStore.streamTitle,
+              overrideCategory: _chatStore.streamCategory,
             ),
             flexibleSpace: BlurredContainer(
               gradientDirection: GradientDirection.up,

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -164,26 +164,23 @@ abstract class AuthBase with Store {
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
-            debugPrint('🔐 [AUTH] ' + 'Navigation request: ${request.url}');
+            debugPrint('🔐 [AUTH] Navigation request: ${request.url}');
             return _handleNavigation(request: request, routeAfter: routeAfter);
           },
           onWebResourceError: (error) {
             debugPrint(
-              '🔐 [AUTH] ' +
-                  'WebView error: ${error.description} (${error.errorCode})',
+              '🔐 [AUTH] WebView error: ${error.description} (${error.errorCode})',
             );
           },
           onPageStarted: (url) {
-            debugPrint('🔐 [AUTH] ' + 'Page started loading: $url');
+            debugPrint('🔐 [AUTH] Page started loading: $url');
           },
           onPageFinished: (url) async {
-            debugPrint('🔐 [AUTH] ' + 'Page finished loading: $url');
+            debugPrint('🔐 [AUTH] Page finished loading: $url');
 
             // Auto-click login button if we're on the login page
             if (url.contains('kick.com/login') && !_loginButtonClicked) {
-              debugPrint(
-                '🔐 [AUTH] ' + 'On login page, attempting auto-click...',
-              );
+              debugPrint('🔐 [AUTH] On login page, attempting auto-click...');
               await _autoClickLoginButton(webViewController);
             }
             // Start periodic cookie checking once page is loaded
@@ -330,81 +327,6 @@ abstract class AuthBase with Store {
       debugPrint('🔐 [AUTH] ❌ Cookie check error: $e');
       debugPrint('🔐 [AUTH] Stack: $stack');
       // Continue checking, don't stop on errors
-    }
-  }
-
-  /// Extract cookies from WebView after successful login.
-  /// This is now a fallback method, with periodic checking being primary.
-  Future<void> _extractCookiesFromWebView(
-    WebViewController controller,
-    Widget? routeAfter,
-  ) async {
-    try {
-      // Execute JavaScript to get cookies and check if logged in
-      final result = await controller.runJavaScriptReturningResult('''
-        (function() {
-          // Check if user is logged in by looking for user data
-          const userDataScript = document.querySelector('script[id="__NEXT_DATA__"]');
-          let userData = null;
-
-          if (userDataScript) {
-            try {
-              const data = JSON.parse(userDataScript.textContent);
-              if (data.props?.pageProps?.user || data.props?.initialState?.user) {
-                userData = data.props?.pageProps?.user || data.props?.initialState?.user;
-              }
-            } catch (e) {}
-          }
-
-          // Get cookies
-          const cookies = document.cookie;
-
-          return JSON.stringify({
-            cookies: cookies,
-            userData: userData,
-            loggedIn: userData !== null
-          });
-        })()
-      ''');
-
-      final jsonStr = result.toString();
-      // Remove quotes if present (JavaScript returns quoted string)
-      final cleanJson = jsonStr.startsWith('"') ? jsonDecode(jsonStr) : jsonStr;
-      final data = jsonDecode(cleanJson is String ? cleanJson : jsonStr);
-
-      if (data['loggedIn'] == true) {
-        // Parse cookies
-        final cookieString = data['cookies'] as String? ?? '';
-        await _parseCookies(cookieString);
-
-        // Store user data if available
-        if (data['userData'] != null) {
-          await _storage.write(
-            key: _userDataKey,
-            value: jsonEncode(data['userData']),
-          );
-        }
-
-        // Initialize user store
-        await user.init();
-
-        if (user.details != null) {
-          _isLoggedIn = true;
-          _error = null;
-
-          // Navigate away from login
-          if (routeAfter != null) {
-            navigatorKey.currentState?.pop();
-            navigatorKey.currentState?.push(
-              MaterialPageRoute(builder: (context) => routeAfter),
-            );
-          } else {
-            navigatorKey.currentState?.pop();
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Failed to extract cookies: $e');
     }
   }
 

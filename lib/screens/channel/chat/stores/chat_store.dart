@@ -61,6 +61,29 @@ abstract class ChatStoreBase with Store {
   /// The channel ID for API calls (e.g., chat history).
   int? channelId;
 
+  /// The livestream ID (if channel is live). Used for private livestream subscriptions.
+  int? livestreamId;
+
+  /// Current stream title (updated via Pusher events).
+  @observable
+  String? streamTitle;
+
+  /// Current stream category (updated via Pusher events).
+  @observable
+  String? streamCategory;
+
+  /// Whether the current user is a moderator in this channel.
+  bool isModerator = false;
+
+  /// Whether the current user is the channel host/owner.
+  bool isChannelHost = false;
+
+  /// The Pusher socket ID (received on connection, needed for private channel auth).
+  String? _pusherSocketId;
+
+  /// Set of subscribed Pusher channel names (to prevent duplicate subscriptions).
+  final _subscribedChannels = <String>{};
+
   /// The channel's display name to show on widgets.
   final String displayName;
 
@@ -196,6 +219,58 @@ abstract class ChatStoreBase with Store {
 
   @observable
   KickChatMessage? replyingToMessage;
+
+  /// The currently pinned message in the chat (if any).
+  @observable
+  KickPinnedMessageEvent? pinnedMessage;
+
+  /// The currently active poll in the chat (if any).
+  @observable
+  KickPollUpdateEvent? activePoll;
+
+  /// The currently active prediction in the channel (if any).
+  @observable
+  KickPredictionEvent? activePrediction;
+
+  // ============================================================
+  // LOCAL VOTE TRACKING (persists until event ends)
+  // ============================================================
+
+  /// Whether the user has voted on the current poll (local tracking).
+  @observable
+  bool hasVotedOnPoll = false;
+
+  /// The option index the user voted for on the current poll.
+  @observable
+  int? pollVotedOptionIndex;
+
+  /// Whether the user has bet on the current prediction (local tracking).
+  @observable
+  bool hasVotedOnPrediction = false;
+
+  /// The outcome ID the user bet on for the current prediction.
+  @observable
+  String? predictionVotedOutcomeId;
+
+  /// The amount the user bet on the current prediction.
+  @observable
+  int? predictionVoteAmount;
+
+  // ============================================================
+  // PANEL MINIMIZE STATES
+  // ============================================================
+
+  /// Whether the pinned message panel is minimized.
+  @observable
+  bool isPinnedMessageMinimized = false;
+
+  /// Whether the poll panel is minimized.
+  @observable
+  bool isPollMinimized = false;
+
+  /// Whether the prediction panel is minimized.
+  @observable
+  bool isPredictionMinimized = false;
 
   /// Emotes matching the current autocomplete search term.
   @computed
@@ -351,13 +426,25 @@ abstract class ChatStoreBase with Store {
 
       switch (event.event) {
         case KickPusherEventTypes.connectionEstablished:
-          debugPrint('Pusher connected');
-          _subscribeToChatroom();
+          // Parse socket_id from connection data for private channel auth
+          if (event.parsedData != null) {
+            _pusherSocketId = event.parsedData!['socket_id'] as String?;
+            debugPrint('Pusher connected with socket_id: $_pusherSocketId');
+          }
+          _subscribeToAllChannels();
           break;
 
         case KickPusherEventTypes.subscriptionSucceeded:
-          debugPrint('Subscribed to chatroom $chatroomId');
-          _onConnected();
+          // Track which channel was subscribed
+          final subscribedChannel = json['channel'] as String?;
+          if (subscribedChannel != null) {
+            _subscribedChannels.add(subscribedChannel);
+            debugPrint('Subscribed to: $subscribedChannel');
+          }
+          // Only trigger _onConnected when primary chatroom is subscribed
+          if (subscribedChannel == 'chatrooms.$chatroomId.v2') {
+            _onConnected();
+          }
           break;
 
         case KickPusherEventTypes.ping:
@@ -390,8 +477,85 @@ abstract class ChatStoreBase with Store {
           _handleChatroomClear();
           break;
 
+        // Pinned message events
+        case KickPusherEventTypes.pinnedMessageCreated:
+        case KickPusherEventTypes.messagePinned:
+          _handlePinnedMessageCreated(event);
+          break;
+
+        case KickPusherEventTypes.pinnedMessageDeleted:
+        case KickPusherEventTypes.messageUnpinned:
+          _handlePinnedMessageDeleted();
+          break;
+
+        // Poll events
+        case KickPusherEventTypes.pollUpdate:
+        case KickPusherEventTypes.pollCreated:
+          _handlePollUpdate(event);
+          break;
+
+        case KickPusherEventTypes.pollDelete:
+        case KickPusherEventTypes.pollDeleted:
+          _handlePollDeleted();
+          break;
+
+        // Prediction events
+        case KickPusherEventTypes.predictionCreated:
+        case KickPusherEventTypes.predictionUpdated:
+          _handlePredictionUpdate(event);
+          break;
+
+        // Subscription events (show as notices)
+        case KickPusherEventTypes.subscriptionEvent:
+        case KickPusherEventTypes.subscriptionCreated:
+        case KickPusherEventTypes.subscriptionRenewed:
+          _handleSubscriptionEvent(event);
+          break;
+
+        case KickPusherEventTypes.giftedSubscription:
+        case KickPusherEventTypes.subscriptionGifted:
+          _handleGiftedSubscriptionEvent(event);
+          break;
+
+        // Follow events (show as notices)
+        case KickPusherEventTypes.followerAdded:
+          _handleFollowEvent(event, isFollowing: true);
+          break;
+
+        case KickPusherEventTypes.followerDeleted:
+          _handleFollowEvent(event, isFollowing: false);
+          break;
+
+        // Raid events
+        case KickPusherEventTypes.hostReceived:
+          _handleRaidEvent(event);
+          break;
+
+        // Kicks gifted
+        case KickPusherEventTypes.kicksGifted:
+          _handleKicksGiftedEvent(event);
+          break;
+
+        // Reward redeemed
+        case KickPusherEventTypes.redeemedReward:
+          _handleRewardRedeemedEvent(event);
+          break;
+
         case KickPusherEventTypes.error:
           debugPrint('Pusher error: ${event.data}');
+          break;
+
+        // Stream info updates
+        case KickPusherEventTypes.titleChanged:
+          _handleTitleChanged(event);
+          break;
+
+        case KickPusherEventTypes.categoryChanged:
+          _handleCategoryChanged(event);
+          break;
+
+        case KickPusherEventTypes.livestreamUpdated:
+          _handleLivestreamUpdated(event);
           break;
 
         default:
@@ -402,13 +566,77 @@ abstract class ChatStoreBase with Store {
     }
   }
 
-  /// Subscribe to the chatroom channel.
-  void _subscribeToChatroom() {
+  /// Subscribe to all relevant Pusher channels based on user role.
+  ///
+  /// Public channels (always subscribed):
+  /// - chatroom_{chatroomId} - Chatroom events
+  /// - chatrooms.{chatroomId} - Chatroom events (alternative format)
+  /// - chatrooms.{chatroomId}.v2 - Chat messages (v2 format)
+  /// - channel_{channelId} - Stream status, kicks gifted
+  /// - channel.{channelId} - Stream status (alternative format)
+  /// - predictions-channel-{channelId} - Predictions
+  ///
+  /// Private channels (only if moderator/host, requires auth):
+  /// - private-chatroom_{chatroomId} - Mod events
+  /// - private-channel_{channelId} - Follows, subs, rewards
+  /// - private-livestream_{livestreamId} - Raids, title changes
+  void _subscribeToAllChannels() {
+    _subscribedChannels.clear();
+
+    // Subscribe to all public chatroom channels
+    _subscribeToPublicChannel('chatroom_$chatroomId');
+    _subscribeToPublicChannel('chatrooms.$chatroomId');
+    _subscribeToPublicChannel('chatrooms.$chatroomId.v2');
+
+    if (channelId != null) {
+      // Subscribe to all public channel variants
+      _subscribeToPublicChannel('channel_$channelId');
+      _subscribeToPublicChannel('channel.$channelId');
+      _subscribeToPublicChannel('predictions-channel-$channelId');
+    }
+
+    // Subscribe to private channels if user has mod/host privileges
+    if ((isModerator || isChannelHost) && auth.isLoggedIn) {
+      _subscribeToPrivateChannel('private-chatroom_$chatroomId');
+      if (channelId != null) {
+        _subscribeToPrivateChannel('private-channel_$channelId');
+      }
+      if (livestreamId != null) {
+        _subscribeToPrivateChannel('private-livestream_$livestreamId');
+      }
+    }
+  }
+
+  /// Subscribe to a public Pusher channel.
+  void _subscribeToPublicChannel(String channelName) {
     final subscribePayload = jsonEncode({
       'event': 'pusher:subscribe',
-      'data': {'channel': 'chatrooms.$chatroomId.v2'},
+      'data': {'channel': channelName},
     });
     _channel?.sink.add(subscribePayload);
+  }
+
+  /// Subscribe to a private Pusher channel (requires authentication).
+  Future<void> _subscribeToPrivateChannel(String channelName) async {
+    if (_pusherSocketId == null) {
+      debugPrint('Cannot subscribe to private channel: no socket_id');
+      return;
+    }
+
+    try {
+      final authToken = await kickApi.authenticatePusherChannel(
+        socketId: _pusherSocketId!,
+        channelName: channelName,
+      );
+
+      final subscribePayload = jsonEncode({
+        'event': 'pusher:subscribe',
+        'data': {'channel': channelName, 'auth': authToken},
+      });
+      _channel?.sink.add(subscribePayload);
+    } catch (e) {
+      debugPrint('Failed to auth private channel $channelName: $e');
+    }
   }
 
   /// Called when successfully connected and subscribed.
@@ -624,6 +852,364 @@ abstract class ChatStoreBase with Store {
     );
   }
 
+  // ============================================================
+  // NEW EVENT HANDLERS (Pinned, Poll, Prediction, Notices)
+  // ============================================================
+
+  /// Handle pinned message created event.
+  @action
+  void _handlePinnedMessageCreated(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      pinnedMessage = KickPinnedMessageEvent.fromJson(data);
+      debugPrint('Message pinned: ${pinnedMessage?.message.content}');
+    } catch (e) {
+      debugPrint('Error handling pinned message: $e');
+    }
+  }
+
+  /// Handle pinned message deleted event.
+  @action
+  void _handlePinnedMessageDeleted() {
+    pinnedMessage = null;
+    isPinnedMessageMinimized = false;
+    debugPrint('Pinned message removed');
+  }
+
+  /// Handle poll update event.
+  @action
+  void _handlePollUpdate(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final newPoll = KickPollUpdateEvent.fromJson(data);
+      // Reset vote tracking if it's a new poll (compare by title since no id)
+      if (activePoll == null || activePoll!.poll.title != newPoll.poll.title) {
+        hasVotedOnPoll = false;
+        pollVotedOptionIndex = null;
+        isPollMinimized = false;
+      }
+      activePoll = newPoll;
+      debugPrint('Poll updated: ${activePoll?.poll.title}');
+    } catch (e) {
+      debugPrint('Error handling poll update: $e');
+    }
+  }
+
+  /// Handle poll deleted event.
+  @action
+  void _handlePollDeleted() {
+    activePoll = null;
+    hasVotedOnPoll = false;
+    pollVotedOptionIndex = null;
+    isPollMinimized = false;
+    debugPrint('Poll ended/deleted');
+  }
+
+  /// Handle prediction created/updated event.
+  @action
+  void _handlePredictionUpdate(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final newPrediction = KickPredictionEvent.fromJson(data);
+      // Reset vote tracking if it's a new prediction
+      if (activePrediction == null ||
+          activePrediction!.id != newPrediction.id) {
+        hasVotedOnPrediction = false;
+        predictionVotedOutcomeId = null;
+        predictionVoteAmount = null;
+        isPredictionMinimized = false;
+      }
+      activePrediction = newPrediction;
+      debugPrint(
+        'Prediction updated: ${activePrediction?.title} (${activePrediction?.state})',
+      );
+
+      // Clear prediction if it's resolved or cancelled
+      if (activePrediction?.isResolved == true ||
+          activePrediction?.isCancelled == true) {
+        // Keep it visible briefly, then clear
+        Future.delayed(const Duration(seconds: 10), () {
+          if (activePrediction?.id == newPrediction.id) {
+            activePrediction = null;
+            hasVotedOnPrediction = false;
+            predictionVotedOutcomeId = null;
+            predictionVoteAmount = null;
+            isPredictionMinimized = false;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error handling prediction update: $e');
+    }
+  }
+
+  // ============================================================
+  // STREAM INFO UPDATE HANDLERS
+  // ============================================================
+
+  /// Handle stream title changed event.
+  @action
+  void _handleTitleChanged(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      // TitleChanged event: { "title": "New Stream Title" }
+      final newTitle = data['title'] as String?;
+      if (newTitle != null) {
+        streamTitle = newTitle;
+        debugPrint('Stream title changed: $newTitle');
+      }
+    } catch (e) {
+      debugPrint('Error handling title changed: $e');
+    }
+  }
+
+  /// Handle stream category changed event.
+  @action
+  void _handleCategoryChanged(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      // CategoryChanged event: { "category": { "name": "...", ... } }
+      final category = data['category'] as Map<String, dynamic>?;
+      final categoryName = category?['name'] as String?;
+      if (categoryName != null) {
+        streamCategory = categoryName;
+        debugPrint('Stream category changed: $categoryName');
+      }
+    } catch (e) {
+      debugPrint('Error handling category changed: $e');
+    }
+  }
+
+  /// Handle livestream updated event (may include title, category, etc).
+  @action
+  void _handleLivestreamUpdated(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      // LivestreamUpdated event may contain session_title and category
+      final title =
+          data['session_title'] as String? ?? data['title'] as String?;
+      if (title != null) {
+        streamTitle = title;
+        debugPrint('Livestream title updated: $title');
+      }
+
+      final category = data['category'] as Map<String, dynamic>?;
+      final categoryName = category?['name'] as String?;
+      if (categoryName != null) {
+        streamCategory = categoryName;
+        debugPrint('Livestream category updated: $categoryName');
+      }
+    } catch (e) {
+      debugPrint('Error handling livestream updated: $e');
+    }
+  }
+
+  // ============================================================
+  // VOTE ACTION METHODS
+  // ============================================================
+
+  /// Vote on the active poll.
+  @action
+  Future<void> voteOnPoll(int optionIndex) async {
+    if (hasVotedOnPoll || activePoll == null) return;
+    try {
+      await kickApi.voteOnPoll(
+        channelSlug: channelSlug,
+        optionIndex: optionIndex,
+      );
+      hasVotedOnPoll = true;
+      pollVotedOptionIndex = optionIndex;
+    } catch (e) {
+      debugPrint('Error voting on poll: $e');
+      updateNotification('Failed to vote on poll');
+    }
+  }
+
+  /// Bet on a prediction outcome.
+  @action
+  Future<void> betOnPrediction(String outcomeId, int amount) async {
+    if (hasVotedOnPrediction || activePrediction == null) return;
+    try {
+      await kickApi.voteOnPrediction(
+        channelSlug: channelSlug,
+        outcomeId: outcomeId,
+        amount: amount,
+      );
+      hasVotedOnPrediction = true;
+      predictionVotedOutcomeId = outcomeId;
+      predictionVoteAmount = amount;
+    } catch (e) {
+      debugPrint('Error betting on prediction: $e');
+      updateNotification('Failed to place bet');
+    }
+  }
+
+  /// Handle subscription event - show as chat notice.
+  @action
+  void _handleSubscriptionEvent(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final subEvent = KickSubscriptionEvent.fromJson(data);
+      final username = subEvent.user?.username ?? subEvent.username;
+      final months = subEvent.months;
+
+      final message = months > 1
+          ? '$username resubscribed for $months months!'
+          : '$username subscribed!';
+
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: message,
+          chatroomId: chatroomId ?? 0,
+          noticeType: 'subscription',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error handling subscription event: $e');
+    }
+  }
+
+  /// Handle gifted subscription event - show as chat notice.
+  @action
+  void _handleGiftedSubscriptionEvent(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final giftEvent = KickGiftedSubscriptionEvent.fromJson(data);
+      final gifter = giftEvent.gifter?.username ?? 'Anonymous';
+      final count = giftEvent.giftCount;
+
+      final message = count > 1
+          ? '$gifter gifted $count subscriptions!'
+          : '$gifter gifted a subscription!';
+
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: message,
+          chatroomId: chatroomId ?? 0,
+          noticeType: 'gift',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error handling gifted subscription event: $e');
+    }
+  }
+
+  /// Handle follow event - show as chat notice.
+  @action
+  void _handleFollowEvent(KickPusherEvent event, {required bool isFollowing}) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final followEvent = KickChannelFollowEvent.fromJson(data);
+      final username = followEvent.user?.username ?? 'Someone';
+
+      if (isFollowing) {
+        messageBuffer.add(
+          KickChatMessage.createNotice(
+            message: '$username followed!',
+            chatroomId: chatroomId ?? 0,
+            noticeType: 'follow',
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling follow event: $e');
+    }
+  }
+
+  /// Handle raid event - show as chat notice.
+  @action
+  void _handleRaidEvent(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final raidEvent = KickRaidEvent.fromJson(data);
+      final raider = raidEvent.host.user?.username ?? 'Someone';
+      final viewers = raidEvent.host.viewersCount;
+
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: '$raider raided with $viewers viewers!',
+          chatroomId: chatroomId ?? 0,
+          noticeType: 'raid',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error handling raid event: $e');
+    }
+  }
+
+  /// Handle kicks gifted event - show as chat notice.
+  @action
+  void _handleKicksGiftedEvent(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final kicksEvent = KickKicksGiftedEvent.fromJson(data);
+      final sender = kicksEvent.sender?.username ?? 'Someone';
+      final amount = kicksEvent.gift?.amount ?? 0;
+      final giftName = kicksEvent.gift?.name ?? 'Kicks';
+
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: '$sender sent $amount $giftName!',
+          chatroomId: chatroomId ?? 0,
+          noticeType: 'kicks',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error handling kicks gifted event: $e');
+    }
+  }
+
+  /// Handle reward redeemed event - show as chat notice.
+  @action
+  void _handleRewardRedeemedEvent(KickPusherEvent event) {
+    final data = event.parsedData;
+    if (data == null) return;
+
+    try {
+      final rewardEvent = KickRewardRedeemedEvent.fromJson(data);
+      final username = rewardEvent.user?.username ?? 'Someone';
+      final rewardTitle = rewardEvent.reward.title;
+
+      var message = '$username redeemed "$rewardTitle"';
+      if (rewardEvent.reward.userInput != null &&
+          rewardEvent.reward.userInput!.isNotEmpty) {
+        message += ': ${rewardEvent.reward.userInput}';
+      }
+
+      messageBuffer.add(
+        KickChatMessage.createNotice(
+          message: message,
+          chatroomId: chatroomId ?? 0,
+          noticeType: 'reward',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error handling reward redeemed event: $e');
+    }
+  }
+
   // Fetch the assets used in chat including emotes.
   @action
   Future<void> getAssets() async {
@@ -651,15 +1237,33 @@ abstract class ChatStoreBase with Store {
         final channel = await kickApi.getChannel(channelSlug: channelSlug);
         chatroomId = channel.chatroom.id;
         channelId = channel.id;
+
+        // Check if current user is the channel host
+        final currentUsername = auth.user.details?.username.toLowerCase();
+        if (currentUsername != null &&
+            currentUsername == channel.slug.toLowerCase()) {
+          isChannelHost = true;
+        }
       } catch (e) {
         debugPrint('Failed to get chatroom ID: $e');
         _messages.add(
           KickChatMessage.createNotice(
             message: 'Failed to load chat info.',
-            chatroomId: 0,
           ),
         );
         return;
+      }
+    }
+
+    // Check moderator status from /me endpoint (only when logged in)
+    if (auth.isLoggedIn && !isChannelHost) {
+      try {
+        final meResponse = await kickApi.getChannelMe(channelSlug: channelSlug);
+        if (meResponse != null) {
+          isModerator = meResponse.isModerator;
+        }
+      } catch (e) {
+        debugPrint('Failed to check moderator status: $e');
       }
     }
 
@@ -924,10 +1528,21 @@ abstract class ChatStoreBase with Store {
       var success = false;
       // Send message via Kick API
       if (chatroomId != null) {
+        // Build reply data if replying to a message
+        KickReplyData? replyData;
+        if (replyingToMessage != null) {
+          replyData = KickReplyData(
+            messageId: replyingToMessage!.id,
+            messageContent: replyingToMessage!.content,
+            senderId: replyingToMessage!.sender.id,
+            senderUsername: replyingToMessage!.sender.username,
+          );
+        }
+
         success = await kickApi.sendChatMessage(
           chatroomId: chatroomId!,
           content: contentToSend,
-          replyToMessageId: replyingToMessage?.id,
+          replyTo: replyData,
         );
       }
 

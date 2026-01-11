@@ -8,9 +8,9 @@ part of 'blocked_users_store.dart';
 
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
-mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
+mixin _$BlockedUsersStore on BlockedUsersStoreBase, Store {
   late final _$blockedUsersAtom = Atom(
-    name: '_BlockedUsersStore.blockedUsers',
+    name: 'BlockedUsersStoreBase.blockedUsers',
     context: context,
   );
 
@@ -28,7 +28,7 @@ mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
   }
 
   late final _$isLoadingAtom = Atom(
-    name: '_BlockedUsersStore.isLoading',
+    name: 'BlockedUsersStoreBase.isLoading',
     context: context,
   );
 
@@ -46,7 +46,7 @@ mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
   }
 
   late final _$errorMessageAtom = Atom(
-    name: '_BlockedUsersStore.errorMessage',
+    name: 'BlockedUsersStoreBase.errorMessage',
     context: context,
   );
 
@@ -64,7 +64,7 @@ mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
   }
 
   late final _$fetchBlockedUsersAsyncAction = AsyncAction(
-    '_BlockedUsersStore.fetchBlockedUsers',
+    'BlockedUsersStoreBase.fetchBlockedUsers',
     context: context,
   );
 
@@ -74,7 +74,7 @@ mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
   }
 
   late final _$blockUserAsyncAction = AsyncAction(
-    '_BlockedUsersStore.blockUser',
+    'BlockedUsersStoreBase.blockUser',
     context: context,
   );
 
@@ -84,7 +84,7 @@ mixin _$BlockedUsersStore on _BlockedUsersStore, Store {
   }
 
   late final _$unblockUserAsyncAction = AsyncAction(
-    '_BlockedUsersStore.unblockUser',
+    'BlockedUsersStoreBase.unblockUser',
     context: context,
   );
 

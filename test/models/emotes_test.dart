@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:krosty/models/emotes.dart';
 import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/emotes.dart';
 
 void main() {
   group('Emote.fromKick', () {

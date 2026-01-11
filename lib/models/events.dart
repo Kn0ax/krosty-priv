@@ -1,5 +1,5 @@
-import 'package:krosty/models/emotes.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:krosty/models/emotes.dart';
 
 part 'events.g.dart';
 

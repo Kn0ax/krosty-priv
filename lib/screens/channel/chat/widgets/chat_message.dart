@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -62,7 +61,7 @@ class ChatMessage extends StatelessWidget {
                 chatStore: chatStore,
                 username: channel.slug,
                 userId: channel.user.id.toString(),
-                displayName: channel.user?.username ?? channel.slug,
+                displayName: channel.user.username,
               ),
             );
           }
@@ -153,9 +152,148 @@ class ChatMessage extends StatelessWidget {
             leading: const Icon(Icons.reply),
             title: const Text('Reply to message'),
           ),
+
+          // Mod actions (only visible to moderators/hosts)
+          if (chatStore.isModerator || chatStore.isChannelHost) ...[
+            const Divider(indent: 12, endIndent: 12),
+            ListTile(
+              onTap: () async {
+                Navigator.pop(context);
+                await _deleteMessage(context);
+              },
+              leading: const Icon(Icons.delete_outline, color: Colors.orange),
+              title: const Text('Delete message'),
+            ),
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+                _showTimeoutDialog(context);
+              },
+              leading: const Icon(Icons.timer_outlined, color: Colors.orange),
+              title: const Text('Timeout user'),
+            ),
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+                _showBanConfirmation(context);
+              },
+              leading: const Icon(Icons.block, color: Colors.red),
+              title: const Text('Ban user'),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Delete this message (mod action).
+  Future<void> _deleteMessage(BuildContext context) async {
+    final kickApi = context.read<KickApi>();
+    try {
+      await kickApi.deleteChatMessage(
+        chatroomId: chatStore.chatroomId ?? 0,
+        messageId: message.id,
+      );
+      chatStore.updateNotification('Message deleted');
+    } catch (e) {
+      chatStore.updateNotification('Failed to delete message');
+    }
+  }
+
+  /// Show timeout duration picker dialog.
+  void _showTimeoutDialog(BuildContext context) {
+    final durations = [
+      (60, '1 minute'),
+      (300, '5 minutes'),
+      (600, '10 minutes'),
+      (1800, '30 minutes'),
+      (3600, '1 hour'),
+      (86400, '1 day'),
+      (604800, '1 week'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => ListView(
+        shrinkWrap: true,
+        primary: false,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Timeout ${message.sender.username}',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+          ),
+          const Divider(),
+          ...durations.map(
+            (d) => ListTile(
+              onTap: () async {
+                Navigator.pop(context);
+                await _timeoutUser(context, d.$1);
+              },
+              title: Text(d.$2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Timeout the user (mod action).
+  Future<void> _timeoutUser(BuildContext context, int durationSeconds) async {
+    final kickApi = context.read<KickApi>();
+    try {
+      await kickApi.timeoutUser(
+        channelSlug: chatStore.channelSlug,
+        username: message.sender.slug,
+        durationSeconds: durationSeconds,
+      );
+      chatStore.updateNotification('${message.sender.username} timed out');
+    } catch (e) {
+      chatStore.updateNotification('Failed to timeout user');
+    }
+  }
+
+  /// Show ban confirmation dialog.
+  void _showBanConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ban user'),
+        content: Text(
+          'Are you sure you want to permanently ban ${message.sender.username}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _banUser(context);
+            },
+            child: const Text('Ban'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Ban the user permanently (mod action).
+  Future<void> _banUser(BuildContext context) async {
+    final kickApi = context.read<KickApi>();
+    try {
+      await kickApi.banUser(
+        channelSlug: chatStore.channelSlug,
+        username: message.sender.slug,
+      );
+      chatStore.updateNotification('${message.sender.username} banned');
+    } catch (e) {
+      chatStore.updateNotification('Failed to ban user');
+    }
   }
 
   @override
@@ -170,7 +308,6 @@ class ChatMessage extends StatelessWidget {
 
     return Observer(
       builder: (context) {
-        Color? highlightColor;
         final Widget renderMessage;
 
         // System messages (notices, connection status, etc.)
@@ -317,8 +454,8 @@ class ChatMessage extends StatelessWidget {
           padding: EdgeInsets.only(
             top: chatStore.settings.messageSpacing / 2,
             bottom: chatStore.settings.messageSpacing / 2,
-            left: isReplyInThread ? 16 : (highlightColor == null ? 12 : 0),
-            right: highlightColor == null ? 12 : 0,
+            left: isReplyInThread ? 16 : 12,
+            right: 12,
           ),
           child: messageWithIcon,
         );
@@ -331,19 +468,7 @@ class ChatMessage extends StatelessWidget {
               )
             : paddedMessage;
 
-        // Color the message if the color has been set.
-        final coloredMessage = highlightColor == null
-            ? dividedMessage
-            : Container(
-                padding: const EdgeInsets.only(left: 8, right: 12),
-                decoration: BoxDecoration(
-                  color: highlightColor.withValues(alpha: 0.1),
-                  border: Border(
-                    left: BorderSide(color: highlightColor, width: 4),
-                  ),
-                ),
-                child: dividedMessage,
-              );
+        final coloredMessage = dividedMessage;
 
         final finalMessage = InkWell(
           onTap: () {

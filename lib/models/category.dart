@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+// Force rebuild
+
 part 'category.g.dart';
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)

@@ -362,7 +362,6 @@ class _StreamsListState extends State<StreamsList>
                                               settingsStore.showThumbnails,
                                           showCategory:
                                               widget.categoryId == null,
-                                          showPinOption: false,
                                           isPinned: false,
                                         )
                                       : StreamCard(
@@ -372,7 +371,6 @@ class _StreamsListState extends State<StreamsList>
                                               settingsStore.showThumbnails,
                                           showCategory:
                                               widget.categoryId == null,
-                                          showPinOption: false,
                                           isPinned: false,
                                         ),
                                 );

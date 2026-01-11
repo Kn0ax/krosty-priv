@@ -3,18 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:krosty/constants.dart';
+import 'package:intl/intl.dart';
 import 'package:krosty/main.dart';
 import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
 import 'package:krosty/screens/channel/chat/details/chat_modes.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/settings/settings.dart';
-import 'package:krosty/utils.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/animated_scroll_border.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
 import 'package:krosty/widgets/section_header.dart';
-import 'package:intl/intl.dart';
 
 class ChatDetails extends StatefulWidget {
   final ChatDetailsStore chatDetailsStore;
@@ -156,12 +153,6 @@ class _ChatDetailsState extends State<ChatDetails> {
     );
   }
 
-  void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
   bool _hasActiveModes() {
     final roomState = widget.chatDetailsStore.roomState;
     return roomState.subscribersMode ||
@@ -271,7 +262,6 @@ class _ChatDetailsState extends State<ChatDetails> {
             },
           ),
 
-
           ListTile(
             leading: const Icon(Icons.add_comment_rounded),
             title: const Text('Add chat'),
@@ -335,5 +325,3 @@ class _ChatDetailsState extends State<ChatDetails> {
     super.dispose();
   }
 }
-
-

@@ -54,8 +54,6 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
         return IvsVideoPlayer(
           url: playbackUrl,
           controller: widget.videoStore.ivsController,
-          autoPlay: true,
-          showOverlayControls: false, // We use custom overlay
           loadingWidget: const Center(
             child: CircularProgressIndicator(color: Colors.white),
           ),

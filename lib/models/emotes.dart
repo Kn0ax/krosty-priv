@@ -1,7 +1,6 @@
 import 'package:collection/collection.dart';
-import 'package:krosty/apis/kick_api.dart';
-
 import 'package:json_annotation/json_annotation.dart';
+import 'package:krosty/apis/kick_api.dart';
 
 part 'emotes.g.dart';
 

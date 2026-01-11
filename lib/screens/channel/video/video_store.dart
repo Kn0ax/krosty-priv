@@ -62,6 +62,9 @@ abstract class VideoStoreBase with Store {
   /// The timer that handles periodic stream info updates.
   Timer? _streamInfoTimer;
 
+  /// The timer that handles periodic viewer count updates in video mode.
+  Timer? _viewerCountTimer;
+
   /// Tracks the last time stream info was updated to prevent double refresh.
   DateTime? _lastStreamInfoUpdate;
 
@@ -86,6 +89,10 @@ abstract class VideoStoreBase with Store {
   /// The current stream info, used for displaying relevant info on the overlay.
   @readonly
   KickLivestreamItem? _streamInfo;
+
+  /// The current livestream ID for fetching viewer count updates.
+  /// This is stored separately to avoid needing full channel data for updates.
+  int? _currentLivestreamId;
 
   /// The offline channel info, used for displaying channel details when offline.
   @readonly
@@ -141,10 +148,12 @@ abstract class VideoStoreBase with Store {
       showVideo,
     ) {
       if (showVideo) {
-        // In video mode, stop the timer since overlay taps handle refreshing
+        // In video mode, stop the stream info timer and start viewer count timer
         _stopStreamInfoTimer();
+        _startViewerCountTimer();
       } else {
-        // In chat-only mode, start the timer for automatic updates
+        // In chat-only mode, start the stream info timer and stop viewer count timer
+        _stopViewerCountTimer();
         _startStreamInfoTimer();
         // Ensure overlay timer is active for clean UI
         _scheduleOverlayHide();
@@ -160,10 +169,12 @@ abstract class VideoStoreBase with Store {
       }
     });
 
-    // Check initial state and start timer if already in chat-only mode
+    // Check initial state and start appropriate timer
     if (!settingsStore.showVideo) {
       _startStreamInfoTimer();
       _scheduleOverlayHide();
+    } else {
+      _startViewerCountTimer();
     }
 
     // On Android, enable auto PiP mode (setAutoEnterEnabled) if the device supports it.
@@ -289,6 +300,11 @@ abstract class VideoStoreBase with Store {
       // Update stream info from the same API response
       if (channel.isLive) {
         final livestream = channel.livestream!;
+        // Store the livestream ID for lightweight viewer count updates
+        final livestreamId = livestream.id is int
+            ? livestream.id as int
+            : int.tryParse(livestream.id.toString());
+        _currentLivestreamId = livestreamId;
         runInAction(() {
           _streamInfo = KickLivestreamItem(
             id: livestream.id,
@@ -313,6 +329,7 @@ abstract class VideoStoreBase with Store {
           _offlineChannelInfo = null;
         });
       } else {
+        _currentLivestreamId = null;
         runInAction(() {
           _streamInfo = null;
           _offlineChannelInfo = channel;
@@ -400,8 +417,6 @@ abstract class VideoStoreBase with Store {
     if (_overlayVisible) {
       _overlayVisible = false;
     } else {
-      updateStreamInfo(forceUpdate: true);
-
       _overlayVisible = true;
       _scheduleOverlayHide();
     }
@@ -423,6 +438,57 @@ abstract class VideoStoreBase with Store {
     if (_streamInfoTimer?.isActive == true) {
       _streamInfoTimer?.cancel();
       _streamInfoTimer = null;
+    }
+  }
+
+  /// Starts the periodic viewer count timer for video mode (every 30 seconds).
+  void _startViewerCountTimer() {
+    // Only start if not already active
+    if (_viewerCountTimer?.isActive != true) {
+      _viewerCountTimer = Timer.periodic(
+        const Duration(seconds: 30),
+        (_) => _updateViewerCountOnly(),
+      );
+    }
+  }
+
+  /// Stops the periodic viewer count timer.
+  void _stopViewerCountTimer() {
+    if (_viewerCountTimer?.isActive == true) {
+      _viewerCountTimer?.cancel();
+      _viewerCountTimer = null;
+    }
+  }
+
+  /// Updates only the viewer count using the lightweight endpoint.
+  @action
+  Future<void> _updateViewerCountOnly() async {
+    if (_currentLivestreamId == null || _streamInfo == null) return;
+
+    try {
+      final viewerCount = await kickApi.getLivestreamViewerCount(
+        livestreamId: _currentLivestreamId!,
+      );
+      if (viewerCount != null) {
+        _streamInfo = KickLivestreamItem(
+          id: _streamInfo!.id,
+          slug: _streamInfo!.slug,
+          channelId: _streamInfo!.channelId,
+          createdAt: _streamInfo!.createdAt,
+          startTime: _streamInfo!.startTime,
+          sessionTitle: _streamInfo!.sessionTitle,
+          isLive: _streamInfo!.isLive,
+          viewerCount: viewerCount,
+          thumbnail: _streamInfo!.thumbnail,
+          categories: _streamInfo!.categories,
+          tags: _streamInfo!.tags,
+          isMature: _streamInfo!.isMature,
+          language: _streamInfo!.language,
+          channel: _streamInfo!.channel,
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to update viewer count: $e');
     }
   }
 
@@ -474,12 +540,53 @@ abstract class VideoStoreBase with Store {
 
     _lastStreamInfoUpdate = now;
 
+    // If we have a livestream ID and stream info, use the lightweight
+    // current-viewers endpoint instead of fetching full channel data
+    if (_currentLivestreamId != null && _streamInfo != null) {
+      try {
+        final viewerCount = await kickApi.getLivestreamViewerCount(
+          livestreamId: _currentLivestreamId!,
+        );
+        if (viewerCount != null) {
+          // Update the viewer count in the existing stream info
+          _streamInfo = KickLivestreamItem(
+            id: _streamInfo!.id,
+            slug: _streamInfo!.slug,
+            channelId: _streamInfo!.channelId,
+            createdAt: _streamInfo!.createdAt,
+            startTime: _streamInfo!.startTime,
+            sessionTitle: _streamInfo!.sessionTitle,
+            isLive: _streamInfo!.isLive,
+            viewerCount: viewerCount,
+            thumbnail: _streamInfo!.thumbnail,
+            categories: _streamInfo!.categories,
+            tags: _streamInfo!.tags,
+            isMature: _streamInfo!.isMature,
+            language: _streamInfo!.language,
+            channel: _streamInfo!.channel,
+          );
+        }
+        return;
+      } catch (e) {
+        debugPrint(
+          'Failed to update viewer count, falling back to full refresh: $e',
+        );
+        // Fall through to full channel fetch if lightweight update fails
+      }
+    }
+
+    // Full channel fetch - used for initial load or when stream state changes
     try {
       final channel = await kickApi.getChannel(channelSlug: userLogin);
 
       if (channel.isLive) {
         // Create a synthetic KickLivestreamItem from the channel data
         final livestream = channel.livestream!;
+        // Store the livestream ID for lightweight updates
+        final livestreamId = livestream.id is int
+            ? livestream.id as int
+            : int.tryParse(livestream.id.toString());
+        _currentLivestreamId = livestreamId;
         _streamInfo = KickLivestreamItem(
           id: livestream.id,
           slug: livestream.slug,
@@ -508,6 +615,7 @@ abstract class VideoStoreBase with Store {
           _playbackUrl = channel.playbackUrl;
         }
       } else {
+        _currentLivestreamId = null;
         _streamInfo = null;
         _offlineChannelInfo = channel;
         _paused = true;
@@ -522,6 +630,7 @@ abstract class VideoStoreBase with Store {
       }
     } catch (e) {
       _overlayTimer?.cancel();
+      _currentLivestreamId = null;
       _streamInfo = null;
       _offlineChannelInfo = null;
       _paused = true;
@@ -662,6 +771,7 @@ abstract class VideoStoreBase with Store {
     // Cancel all timers
     _overlayTimer?.cancel();
     _streamInfoTimer?.cancel();
+    _viewerCountTimer?.cancel();
 
     // Dispose reactions
     _disposeOverlayReaction();

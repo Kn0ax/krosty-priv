@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/home/top/categories/category_streams.dart';
 import 'package:krosty/utils.dart';
@@ -6,7 +7,6 @@ import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/widgets/live_indicator.dart';
 import 'package:krosty/widgets/profile_picture.dart';
 import 'package:krosty/widgets/uptime.dart';
-import 'package:intl/intl.dart';
 
 class StreamInfoBar extends StatelessWidget {
   final KickLivestreamItem? streamInfo;
@@ -25,6 +25,12 @@ class StreamInfoBar extends StatelessWidget {
   final bool showTextShadows;
   final String? displayName;
 
+  /// Override stream title from Pusher event (takes precedence over streamInfo).
+  final String? overrideStreamTitle;
+
+  /// Override category from Pusher event (takes precedence over streamInfo).
+  final String? overrideCategory;
+
   const StreamInfoBar({
     super.key,
     this.streamInfo,
@@ -42,6 +48,8 @@ class StreamInfoBar extends StatelessWidget {
     this.isOffline = false,
     this.showTextShadows = true,
     this.displayName,
+    this.overrideStreamTitle,
+    this.overrideCategory,
   });
 
   static const _iconShadow = [
@@ -88,9 +96,13 @@ class StreamInfoBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use override values from Pusher events if available, fall back to streamInfo
     final streamTitle = isOffline
         ? (offlineChannelInfo?.user.username.trim() ?? '')
-        : (streamInfo?.streamTitle ?? '').trim();
+        : (overrideStreamTitle ?? streamInfo?.streamTitle ?? '').trim();
+    final categoryName = isOffline
+        ? (offlineChannelInfo?.recentCategories?.first.name ?? '')
+        : (overrideCategory ?? streamInfo?.categoryName ?? '');
     final streamerName = isOffline
         ? getReadableName(
             offlineChannelInfo?.user.username ?? displayName ?? '',
@@ -124,8 +136,8 @@ class StreamInfoBar extends StatelessWidget {
               child: ProfilePicture(
                 userLogin: isOffline
                     ? (offlineChannelInfo?.user.slug.isNotEmpty == true
-                        ? offlineChannelInfo?.user.slug ?? ''
-                        : displayName ?? '')
+                          ? offlineChannelInfo?.user.slug ?? ''
+                          : displayName ?? '')
                     : (streamInfo?.channelSlug ?? ''),
                 profileUrl: isOffline
                     ? offlineChannelInfo?.profilePicUrl
@@ -180,8 +192,7 @@ class StreamInfoBar extends StatelessWidget {
                                       ?.recentCategories
                                       ?.isNotEmpty ??
                                   false)
-                            : (streamInfo?.categoryName.isNotEmpty ??
-                                  false)))) ...[
+                            : categoryName.isNotEmpty))) ...[
                   Row(
                     children: [
                       if (isOffline && showOfflineIndicator) ...[
@@ -267,13 +278,13 @@ class StreamInfoBar extends StatelessWidget {
                         ],
                         if (!isOffline &&
                             showCategory &&
-                            (streamInfo?.categoryName.isNotEmpty ?? false) &&
+                            categoryName.isNotEmpty &&
                             (showUptime || showViewerCount)) ...[
                           const SizedBox(width: 8),
                         ],
                         if (!isOffline &&
                             showCategory &&
-                            (streamInfo?.categoryName.isNotEmpty ?? false)) ...[
+                            categoryName.isNotEmpty) ...[
                           Icon(
                             Icons.gamepad,
                             size: secondLineSize,
@@ -283,24 +294,27 @@ class StreamInfoBar extends StatelessWidget {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Tooltip(
-                              message: streamInfo?.categoryName ?? '',
+                              message: categoryName,
                               triggerMode: tooltipTriggerMode,
                               child: tappableCategory
                                   ? GestureDetector(
                                       onDoubleTap: () {
-                                        final cat = streamInfo?.categories?.first;
+                                        final cat =
+                                            streamInfo?.categories?.first;
                                         if (cat != null) {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  CategoryStreams(category: cat),
+                                                  CategoryStreams(
+                                                    category: cat,
+                                                  ),
                                             ),
                                           );
                                         }
                                       },
                                       child: Text(
-                                        streamInfo?.categoryName ?? '',
+                                        categoryName,
                                         style: _getBaseTextStyle(
                                           context,
                                           secondLineSize,
@@ -310,7 +324,7 @@ class StreamInfoBar extends StatelessWidget {
                                       ),
                                     )
                                   : Text(
-                                      streamInfo?.categoryName ?? '',
+                                      categoryName,
                                       style: _getBaseTextStyle(
                                         context,
                                         secondLineSize,

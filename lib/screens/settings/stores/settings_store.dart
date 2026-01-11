@@ -1,5 +1,5 @@
-import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:mobx/mobx.dart';
 
 part 'settings_store.g.dart';

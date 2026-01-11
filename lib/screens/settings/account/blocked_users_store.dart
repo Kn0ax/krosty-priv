@@ -5,15 +5,16 @@ import 'package:mobx/mobx.dart';
 
 part 'blocked_users_store.g.dart';
 
-class BlockedUsersStore = _BlockedUsersStore with _$BlockedUsersStore;
+class BlockedUsersStore = BlockedUsersStoreBase with _$BlockedUsersStore;
 
-abstract class _BlockedUsersStore with Store {
+abstract class BlockedUsersStoreBase with Store {
   final KickApi _kickApi;
 
-  _BlockedUsersStore(this._kickApi);
+  BlockedUsersStoreBase(this._kickApi);
 
   @observable
-  ObservableList<KickSilencedUser> blockedUsers = ObservableList<KickSilencedUser>();
+  ObservableList<KickSilencedUser> blockedUsers =
+      ObservableList<KickSilencedUser>();
 
   @observable
   bool isLoading = false;

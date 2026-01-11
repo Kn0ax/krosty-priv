@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/seventv_api.dart';
-import 'package:krosty/screens/settings/stores/auth_store.dart';
-import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:provider/provider.dart';
 

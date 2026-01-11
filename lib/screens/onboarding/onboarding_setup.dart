@@ -1,9 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-// import removed: flutter_colorpicker
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/screens/onboarding/onboarding_scaffold.dart';
 import 'package:krosty/screens/onboarding/onboarding_welcome.dart';
@@ -12,7 +10,6 @@ import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
 import 'package:krosty/widgets/accent_color_setting.dart';
 import 'package:krosty/widgets/theme_selection_setting.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class OnboardingSetup extends StatelessWidget {
   const OnboardingSetup({super.key});

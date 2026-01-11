@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/constants.dart';
@@ -13,7 +12,6 @@ import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/widgets/frosty_cached_network_image.dart';
 import 'package:krosty/widgets/section_header.dart';
 import 'package:krosty/widgets/settings_page_layout.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class ChatSettings extends StatefulWidget {
   final SettingsStore settingsStore;
@@ -285,7 +283,6 @@ class _ChatSettingsState extends State<ChatSettings> {
             onChanged: (newValue) =>
                 settingsStore.showRecentMessages = newValue,
           ),
-
         ],
       ),
     );

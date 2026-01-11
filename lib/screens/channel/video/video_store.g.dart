@@ -257,6 +257,18 @@ mixin _$VideoStore on VideoStoreBase, Store {
     );
   }
 
+  late final _$_updateViewerCountOnlyAsyncAction = AsyncAction(
+    'VideoStoreBase._updateViewerCountOnly',
+    context: context,
+  );
+
+  @override
+  Future<void> _updateViewerCountOnly() {
+    return _$_updateViewerCountOnlyAsyncAction.run(
+      () => super._updateViewerCountOnly(),
+    );
+  }
+
   late final _$updateStreamInfoAsyncAction = AsyncAction(
     'VideoStoreBase.updateStreamInfo',
     context: context,

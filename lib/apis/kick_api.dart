@@ -18,7 +18,7 @@ class KickApi extends BaseApiClient {
   static const String _internalV2Url = 'https://kick.com/api/v2';
 
   // Official API base URL (documented, OAuth endpoints)
-  static const String _officialBaseUrl = 'https://api.kick.com/public/v1';
+  //  static const String _officialBaseUrl = 'https://api.kick.com/public/v1';
   static const String _oauthBaseUrl = 'https://id.kick.com/oauth';
 
   /// In-flight channel requests for deduplication.
@@ -97,6 +97,30 @@ class KickApi extends BaseApiClient {
     );
 
     return KickLivestreamsResponse.fromLivestreamsJson(data);
+  }
+
+  /// Returns the current viewer count for a livestream.
+  ///
+  /// Uses the lightweight /current-viewers endpoint which is much faster
+  /// than fetching full channel data. The [livestreamId] is the livestream ID
+  /// from the channel's livestream object.
+  ///
+  /// Returns null if the viewer count cannot be fetched.
+  Future<int?> getLivestreamViewerCount({required int livestreamId}) async {
+    try {
+      final data = await get<JsonList>(
+        'https://kick.com/current-viewers?ids[]=$livestreamId',
+      );
+
+      if (data.isNotEmpty) {
+        final item = data.first as Map<String, dynamic>;
+        return item['viewers'] as int?;
+      }
+      return null;
+    } on ApiException catch (e) {
+      debugPrint('Failed to get livestream viewer count: $e');
+      return null;
+    }
   }
 
   /// Returns a list of featured livestreams.
@@ -344,18 +368,31 @@ class KickApi extends BaseApiClient {
   // ============================================================
 
   /// Send a chat message (requires authentication).
+  ///
+  /// For replies, provide [replyToMessage] and [replyToSender] with full data.
+  /// The API requires type "reply" with complete original message content and sender info.
   Future<bool> sendChatMessage({
     required int chatroomId,
     required String content,
-    String? replyToMessageId,
+    KickReplyData? replyTo,
   }) async {
     try {
-      final data = <String, dynamic>{'content': content, 'type': 'message'};
+      final data = <String, dynamic>{'content': content};
 
-      if (replyToMessageId != null) {
+      if (replyTo != null) {
+        data['type'] = 'reply';
         data['metadata'] = {
-          'original_message': {'id': replyToMessageId},
+          'original_message': {
+            'id': replyTo.messageId,
+            'content': replyTo.messageContent,
+          },
+          'original_sender': {
+            'id': replyTo.senderId,
+            'username': replyTo.senderUsername,
+          },
         };
+      } else {
+        data['type'] = 'message';
       }
 
       await post<dynamic>(
@@ -370,14 +407,125 @@ class KickApi extends BaseApiClient {
   }
 
   /// Delete a chat message (requires authentication + mod permissions).
-  Future<bool> deleteChatMessage({required String messageId}) async {
+  ///
+  /// Uses the V2 endpoint: DELETE /api/v2/chatrooms/{chatroomId}/messages/{messageId}
+  Future<bool> deleteChatMessage({
+    required int chatroomId,
+    required String messageId,
+  }) async {
     try {
-      await delete<dynamic>('$_internalV1Url/chat/$messageId');
+      await delete<dynamic>(
+        '$_internalV2Url/chatrooms/$chatroomId/messages/$messageId',
+      );
       return true;
     } on ApiException catch (e) {
       debugPrint('Failed to delete chat message: $e');
       return false;
     }
+  }
+
+  // ============================================================
+  // PUSHER AUTHENTICATION
+  // ============================================================
+
+  /// Authenticate a Pusher private channel subscription.
+  ///
+  /// Required for subscribing to private channels like:
+  /// - `private-chatroom_{chatroomId}`
+  /// - `private-channel_{channelId}`
+  /// - `private-livestream_{livestreamId}`
+  ///
+  /// Returns the auth string to send in the Pusher subscribe payload.
+  Future<String> authenticatePusherChannel({
+    required String socketId,
+    required String channelName,
+  }) async {
+    final data = await post<JsonMap>(
+      'https://kick.com/broadcasting/auth',
+      data: {'socket_id': socketId, 'channel_name': channelName},
+    );
+    return data['auth'] as String;
+  }
+
+  // ============================================================
+  // MODERATION ENDPOINTS
+  // ============================================================
+
+  /// Timeout a user in a channel (requires mod/host permissions).
+  ///
+  /// [durationSeconds] - timeout duration in seconds (e.g., 60, 300, 600, 3600)
+  Future<void> timeoutUser({
+    required String channelSlug,
+    required String username,
+    required int durationSeconds,
+    String reason = '',
+  }) async {
+    await post<JsonMap>(
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans',
+      data: {
+        'banned_username': username,
+        'permanent': false,
+        'duration': durationSeconds,
+        'reason': reason,
+      },
+    );
+  }
+
+  /// Ban a user permanently from a channel (requires mod/host permissions).
+  Future<void> banUser({
+    required String channelSlug,
+    required String username,
+    String reason = '',
+  }) async {
+    await post<JsonMap>(
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans',
+      data: {'banned_username': username, 'permanent': true, 'reason': reason},
+    );
+  }
+
+  /// Unban a user from a channel (requires mod/host permissions).
+  Future<void> unbanUser({
+    required String channelSlug,
+    required String username,
+  }) async {
+    await delete<dynamic>(
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans/$username',
+    );
+  }
+
+  // ============================================================
+  // PREDICTION & POLL ENDPOINTS (Viewer Participation)
+  // ============================================================
+
+  /// Vote on an active prediction (place a bet).
+  ///
+  /// [amount] - The number of channel points/Kicks to bet
+  /// [outcomeId] - The ID of the outcome to bet on
+  ///
+  /// Returns the updated prediction state and user's vote info.
+  Future<KickPredictionVoteResponse> voteOnPrediction({
+    required String channelSlug,
+    required String outcomeId,
+    required int amount,
+  }) async {
+    final data = await post<JsonMap>(
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/predictions/vote',
+      data: {'outcome_id': outcomeId, 'amount': amount},
+    );
+    return KickPredictionVoteResponse.fromJson(data);
+  }
+
+  /// Vote on an active poll.
+  ///
+  /// [optionIndex] - The 0-based index of the poll option (0-5 for up to 6 options)
+  Future<void> voteOnPoll({
+    required String channelSlug,
+    required int optionIndex,
+  }) async {
+    await post<JsonMap>(
+      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/polls/vote',
+      data: {'id': optionIndex},
+    );
   }
 
   // ============================================================
@@ -832,6 +980,138 @@ class KickSubscriptionInfo {
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)
           : null,
+    );
+  }
+}
+
+/// Data required for sending a reply message.
+///
+/// The Kick API requires both the original message content and sender info
+/// when sending a reply (type: "reply").
+class KickReplyData {
+  final String messageId;
+  final String messageContent;
+  final int senderId;
+  final String senderUsername;
+
+  const KickReplyData({
+    required this.messageId,
+    required this.messageContent,
+    required this.senderId,
+    required this.senderUsername,
+  });
+}
+
+/// Response from voting on a prediction.
+class KickPredictionVoteResponse {
+  final KickPredictionData prediction;
+  final KickUserVote userVote;
+  final String? message;
+
+  const KickPredictionVoteResponse({
+    required this.prediction,
+    required this.userVote,
+    this.message,
+  });
+
+  factory KickPredictionVoteResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>? ?? json;
+    return KickPredictionVoteResponse(
+      prediction: KickPredictionData.fromJson(
+        data['prediction'] as Map<String, dynamic>? ?? {},
+      ),
+      userVote: KickUserVote.fromJson(
+        data['user_vote'] as Map<String, dynamic>? ?? {},
+      ),
+      message: json['message'] as String?,
+    );
+  }
+}
+
+/// Prediction data from vote response.
+class KickPredictionData {
+  final String id;
+  final int channelId;
+  final String title;
+  final String state;
+  final List<KickPredictionOutcomeData> outcomes;
+  final int duration;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const KickPredictionData({
+    required this.id,
+    required this.channelId,
+    required this.title,
+    required this.state,
+    required this.outcomes,
+    required this.duration,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory KickPredictionData.fromJson(Map<String, dynamic> json) {
+    final outcomesList = json['outcomes'] as List<dynamic>? ?? [];
+    return KickPredictionData(
+      id: json['id'] as String? ?? '',
+      channelId: json['channel_id'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      state: json['state'] as String? ?? '',
+      outcomes: outcomesList
+          .map(
+            (o) =>
+                KickPredictionOutcomeData.fromJson(o as Map<String, dynamic>),
+          )
+          .toList(),
+      duration: json['duration'] as int? ?? 0,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
+    );
+  }
+}
+
+/// Prediction outcome data from vote response.
+class KickPredictionOutcomeData {
+  final String id;
+  final String title;
+  final int totalVoteAmount;
+  final int voteCount;
+  final double returnRate;
+
+  const KickPredictionOutcomeData({
+    required this.id,
+    required this.title,
+    required this.totalVoteAmount,
+    required this.voteCount,
+    required this.returnRate,
+  });
+
+  factory KickPredictionOutcomeData.fromJson(Map<String, dynamic> json) {
+    return KickPredictionOutcomeData(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      totalVoteAmount: json['total_vote_amount'] as int? ?? 0,
+      voteCount: json['vote_count'] as int? ?? 0,
+      returnRate: (json['return_rate'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+/// User's vote on a prediction.
+class KickUserVote {
+  final String outcomeId;
+  final int totalVoteAmount;
+
+  const KickUserVote({required this.outcomeId, required this.totalVoteAmount});
+
+  factory KickUserVote.fromJson(Map<String, dynamic> json) {
+    return KickUserVote(
+      outcomeId: json['outcome_id'] as String? ?? '',
+      totalVoteAmount: json['total_vote_amount'] as int? ?? 0,
     );
   }
 }

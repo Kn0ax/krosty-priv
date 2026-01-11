@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/channel/channel.dart';
 import 'package:krosty/screens/home/top/categories/category_streams.dart';
@@ -13,7 +14,6 @@ import 'package:krosty/widgets/frosty_photo_view_dialog.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:krosty/widgets/uptime.dart';
 import 'package:krosty/widgets/user_actions_modal.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 /// A tappable card widget that displays a stream's thumbnail and details.
@@ -42,9 +42,7 @@ class StreamCard extends StatelessWidget {
         '${streamInfo.thumbnailUrl}-${time.day}-${time.hour}-${time.minute ~/ 5}';
 
     // Append width and height query parameters to get lower quality thumbnails
-    final thumbnailUrl = streamInfo.thumbnailUrl != null
-        ? '${streamInfo.thumbnailUrl}'
-        : '';
+    final thumbnailUrl = streamInfo.thumbnailUrl ?? '';
 
     final thumbnail = AspectRatio(
       aspectRatio: 16 / 9,
@@ -171,12 +169,14 @@ class StreamCard extends StatelessWidget {
             InkWell(
               onTap: streamInfo.categoryName.isNotEmpty
                   ? () {
-                      final cat = streamInfo.category ?? streamInfo.categories?.first;
+                      final cat =
+                          streamInfo.category ?? streamInfo.categories?.first;
                       if (cat != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CategoryStreams(category: cat),
+                            builder: (context) =>
+                                CategoryStreams(category: cat),
                           ),
                         );
                       }

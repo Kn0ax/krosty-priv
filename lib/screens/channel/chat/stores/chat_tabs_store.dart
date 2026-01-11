@@ -1,3 +1,4 @@
+import 'package:json_annotation/json_annotation.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/seventv_api.dart';
 import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
@@ -6,7 +7,6 @@ import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/stores/global_assets_store.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:mobx/mobx.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -201,7 +201,8 @@ abstract class ChatTabsStoreBase with Store {
   void _restoreSecondaryTabs({int? primaryChatroomId}) {
     for (final persisted in settingsStore.secondaryTabs) {
       // Skip if this is the same as the primary tab (already added)
-      if (primaryChatroomId != null && persisted.chatroomId == primaryChatroomId) {
+      if (primaryChatroomId != null &&
+          persisted.chatroomId == primaryChatroomId) {
         continue;
       }
 
@@ -250,7 +251,9 @@ abstract class ChatTabsStoreBase with Store {
     }
 
     // Check for duplicate channel
-    final existingIndex = _tabs.indexWhere((tab) => tab.channelSlug == channelSlug);
+    final existingIndex = _tabs.indexWhere(
+      (tab) => tab.channelSlug == channelSlug,
+    );
     if (existingIndex != -1) {
       // Switch to existing tab instead of adding duplicate
       setActiveTab(existingIndex);

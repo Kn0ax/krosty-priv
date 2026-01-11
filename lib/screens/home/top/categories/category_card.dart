@@ -17,16 +17,8 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate the dimmensions of the box art based on the current dimmensions of the screen.
-    final size = MediaQuery.of(context).size;
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final artWidth = (size.width * pixelRatio) ~/ 5;
-    final artHeight = (artWidth * (4 / 3)).toInt();
-
-    // Append width and height query parameters to get lower quality thumbnails
-    final bannerUrl = category.banner?.url != null
-        ? '${category.banner?.url}?width=$artWidth&height=$artHeight&quality=80'
-        : '';
+    // Calculate the dimensions of the box art based on the current dimensions of the screen.
+    // (unused width/height were removed as the FrostyCachedNetworkImage handles sizing)
 
     return InkWell(
       onTap: isTappable
