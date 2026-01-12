@@ -48,9 +48,7 @@ class _PredictionPanelState extends State<PredictionPanel> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.tertiary.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: colorScheme.tertiary.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -169,14 +167,11 @@ class _PredictionPanelState extends State<PredictionPanel> {
     );
   }
 
-  String _formatAmount(int amount) {
-    if (amount >= 1000000) {
-      return '${(amount / 1000000).toStringAsFixed(1)}M';
-    } else if (amount >= 1000) {
-      return '${(amount / 1000).toStringAsFixed(1)}K';
-    }
-    return amount.toString();
-  }
+  String _formatAmount(int amount) => switch (amount) {
+    >= 1000000 => '${(amount / 1000000).toStringAsFixed(1)}M',
+    >= 1000 => '${(amount / 1000).toStringAsFixed(1)}K',
+    _ => amount.toString(),
+  };
 }
 
 class _PredictionOutcome extends StatelessWidget {
@@ -224,8 +219,8 @@ class _PredictionOutcome extends StatelessWidget {
               color: isSelected || isUserChoice
                   ? color
                   : isWinner
-                      ? Colors.amber
-                      : colorScheme.outline.withValues(alpha: 0.3),
+                  ? Colors.amber
+                  : colorScheme.outline.withValues(alpha: 0.3),
               width: isSelected || isUserChoice || isWinner ? 2 : 1,
             ),
           ),
@@ -239,9 +234,7 @@ class _PredictionOutcome extends StatelessWidget {
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: percentage / 100,
-                      child: Container(
-                        color: color.withValues(alpha: 0.2),
-                      ),
+                      child: Container(color: color.withValues(alpha: 0.2)),
                     ),
                   ),
                 // Content
@@ -272,9 +265,8 @@ class _PredictionOutcome extends StatelessWidget {
                                     title,
                                     style: TextStyle(
                                       color: colorScheme.onSurface,
-                                      fontWeight: isSelected ||
-                                              isUserChoice ||
-                                              isWinner
+                                      fontWeight:
+                                          isSelected || isUserChoice || isWinner
                                           ? FontWeight.w600
                                           : FontWeight.normal,
                                     ),
@@ -373,8 +365,9 @@ class _BetAmountSelector extends StatelessWidget {
                             ? colorScheme.onPrimaryContainer
                             : colorScheme.onSurfaceVariant,
                         fontSize: 12,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -408,47 +401,55 @@ class _PredictionStateChip extends StatelessWidget {
 
   const _PredictionStateChip({required this.state});
 
+  /// Get chip styling based on prediction state.
+  static ({Color bg, Color text, String label}) _getStateStyle(
+    String state,
+    ColorScheme colorScheme,
+  ) {
+    return switch (state) {
+      KickPredictionState.active => (
+        bg: Colors.green.shade100,
+        text: Colors.green.shade800,
+        label: 'OPEN',
+      ),
+      KickPredictionState.locked => (
+        bg: Colors.orange.shade100,
+        text: Colors.orange.shade800,
+        label: 'LOCKED',
+      ),
+      KickPredictionState.resolved => (
+        bg: Colors.blue.shade100,
+        text: Colors.blue.shade800,
+        label: 'RESOLVED',
+      ),
+      KickPredictionState.cancelled => (
+        bg: colorScheme.errorContainer,
+        text: colorScheme.onErrorContainer,
+        label: 'CANCELLED',
+      ),
+      _ => (
+        bg: colorScheme.surfaceContainerHigh,
+        text: colorScheme.onSurfaceVariant,
+        label: state.toUpperCase(),
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    Color backgroundColor;
-    Color textColor;
-    String label;
-
-    switch (state) {
-      case KickPredictionState.active:
-        backgroundColor = Colors.green.shade100;
-        textColor = Colors.green.shade800;
-        label = 'OPEN';
-      case KickPredictionState.locked:
-        backgroundColor = Colors.orange.shade100;
-        textColor = Colors.orange.shade800;
-        label = 'LOCKED';
-      case KickPredictionState.resolved:
-        backgroundColor = Colors.blue.shade100;
-        textColor = Colors.blue.shade800;
-        label = 'RESOLVED';
-      case KickPredictionState.cancelled:
-        backgroundColor = colorScheme.errorContainer;
-        textColor = colorScheme.onErrorContainer;
-        label = 'CANCELLED';
-      default:
-        backgroundColor = colorScheme.surfaceContainerHigh;
-        textColor = colorScheme.onSurfaceVariant;
-        label = state.toUpperCase();
-    }
+    final style = _getStateStyle(state, colorScheme);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: style.bg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        label,
+        style.label,
         style: TextStyle(
-          color: textColor,
+          color: style.text,
           fontSize: 10,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,

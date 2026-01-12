@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:krosty/apis/base_api_client.dart';
 import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/models/kick_channel_user_info.dart';
+import 'package:krosty/models/kick_chatroom_state.dart';
 import 'package:krosty/models/kick_silenced_user.dart';
 import 'package:krosty/models/kick_user.dart';
 import 'package:krosty/utils.dart';
@@ -63,6 +64,53 @@ class KickApi extends BaseApiClient {
     return KickChannel.fromJson(data);
   }
 
+  /// Returns chatroom state/settings including chat modes and restrictions.
+  ///
+  /// This includes slow mode, followers-only mode, subscribers-only mode,
+  /// emotes-only mode, account age requirements, etc.
+  Future<KickChatroomState> getChatroomState({
+    required String channelSlug,
+  }) async {
+    final slug = normalizeSlug(channelSlug.toLowerCase());
+    final data = await get<JsonMap>('$_internalV2Url/channels/$slug/chatroom');
+    return KickChatroomState.fromJson(data);
+  }
+
+  // ============================================================
+  // SEARCH HELPERS
+  // ============================================================
+
+  /// Shared Typesense search implementation.
+  /// Returns list of document maps from search hits.
+  Future<List<Map<String, dynamic>>> _searchTypesense({
+    required String preset,
+    required String query,
+  }) async {
+    final data = await post<JsonMap>(
+      'https://search.kick.com/multi_search',
+      data: {
+        'searches': [
+          {'preset': preset, 'q': query},
+        ],
+      },
+      headers: {'x-typesense-api-key': 'nXIMW0iEN6sMujFYjFuhdrSwVow3pDQu'},
+    );
+
+    final results = data['results'] as List<dynamic>?;
+    if (results == null || results.isEmpty) return [];
+
+    final hits = results[0]['hits'] as List<dynamic>?;
+    if (hits == null) return [];
+
+    return hits.map((hit) => hit['document'] as Map<String, dynamic>).toList();
+  }
+
+  /// Parse search ID which may be int or string.
+  int _parseSearchId(dynamic id) {
+    if (id is int) return id;
+    return int.tryParse(id.toString()) ?? 0;
+  }
+
   /// Returns channel info by ID.
   Future<KickChannel> getChannelById({required int channelId}) async {
     // Internal API doesn't have direct ID lookup, use slug from search
@@ -84,16 +132,14 @@ class KickApi extends BaseApiClient {
     int? categoryId,
     String? afterCursor,
   }) async {
-    final queryParams = <String, dynamic>{
-      'limit': limit,
-      'sort': 'viewer_count_desc',
-    };
-    if (categoryId != null) queryParams['category_id'] = categoryId;
-    if (afterCursor != null) queryParams['after'] = afterCursor;
-
     final data = await get<JsonMap>(
       '$_internalV1Url/livestreams',
-      queryParameters: queryParams,
+      queryParameters: {
+        'limit': limit,
+        'sort': 'viewer_count_desc',
+        if (categoryId != null) 'category_id': categoryId,
+        if (afterCursor != null) 'after': afterCursor,
+      },
     );
 
     return KickLivestreamsResponse.fromLivestreamsJson(data);
@@ -129,32 +175,23 @@ class KickApi extends BaseApiClient {
     int? page,
     String lang = 'en', // TODO: switch to locale
   }) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page.toString();
-
     final data = await get<JsonMap>(
       '$_internalV1Url/livestreams/featured?language=$lang',
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      queryParameters: page != null ? {'page': page.toString()} : null,
     );
 
     // Featured endpoint has structure: { data: { livestreams: [...] } }
     // Unlike others which are { data: [...] }
     final livestreamsData = data['data'];
-    List<KickLivestreamItem> livestreams = [];
-
-    if (livestreamsData is Map && livestreamsData['livestreams'] is List) {
-      livestreams = (livestreamsData['livestreams'] as List)
-          .map((e) => KickLivestreamItem.fromJson(e))
-          .toList();
-    } else if (livestreamsData is List) {
-      // Fallback in case structure changes
-      livestreams = livestreamsData
-          .map((e) => KickLivestreamItem.fromJson(e))
-          .toList();
-    }
+    final livestreams = switch (livestreamsData) {
+      {'livestreams': final List items} =>
+        items.map((e) => KickLivestreamItem.fromJson(e)).toList(),
+      final List items =>
+        items.map((e) => KickLivestreamItem.fromJson(e)).toList(),
+      _ => <KickLivestreamItem>[],
+    };
 
     // Featured response doesn't seem to include standard pagination meta
-    // So we return a wrapper with just the data
     return KickLivestreamsResponse(data: livestreams);
   }
 
@@ -164,12 +201,9 @@ class KickApi extends BaseApiClient {
     required String categorySlug,
     int? page,
   }) async {
-    final queryParams = <String, dynamic>{};
-    if (page != null) queryParams['page'] = page.toString();
-
     final data = await get<JsonMap>(
       '$_internalV2Url/categories/${normalizeSlug(categorySlug)}/streams',
-      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      queryParameters: page != null ? {'page': page.toString()} : null,
     );
 
     return KickLivestreamsResponse.fromJson(data);
@@ -278,36 +312,18 @@ class KickApi extends BaseApiClient {
     required String query,
   }) async {
     try {
-      final data = await post<JsonMap>(
-        'https://search.kick.com/multi_search',
-        data: {
-          'searches': [
-            {'preset': 'channel_search', 'q': query},
-          ],
-        },
-        headers: {'x-typesense-api-key': 'nXIMW0iEN6sMujFYjFuhdrSwVow3pDQu'},
+      final hits = await _searchTypesense(
+        preset: 'channel_search',
+        query: query,
       );
 
-      // Response structure: { results: [ { hits: [ { document: {...} } ] } ] }
-      final results = data['results'] as List<dynamic>?;
-      if (results == null || results.isEmpty) return [];
-
-      final hits = results[0]['hits'] as List<dynamic>?;
-      if (hits == null) return [];
-
-      return hits.map((hit) {
-        final doc = hit['document'] as Map<String, dynamic>;
-        // Map search document to KickChannelSearch
-        // Note: Search API might return string IDs, handle parsing
-        final id = doc['id'] is int
-            ? doc['id'] as int
-            : int.tryParse(doc['id'].toString()) ?? 0;
-
+      return hits.map((doc) {
+        final id = _parseSearchId(doc['id']);
         return KickChannelSearch(
           id: id,
           slug: doc['slug'] as String? ?? '',
           username: doc['username'] as String? ?? '',
-          profilePic: doc['profile_pic'] as String?, // Might be null in search
+          profilePic: doc['profile_pic'] as String?,
           isLive: doc['is_live'] as bool? ?? false,
           isVerified: doc['verified'] as bool? ?? false,
           viewerCount: doc['viewer_count'] as int?,
@@ -323,38 +339,20 @@ class KickApi extends BaseApiClient {
   /// Search for categories by query.
   Future<List<KickCategory>> searchCategories({required String query}) async {
     try {
-      final data = await post<JsonMap>(
-        'https://search.kick.com/multi_search',
-        data: {
-          'searches': [
-            {'preset': 'category_search', 'q': query},
-          ],
-        },
-        headers: {'x-typesense-api-key': 'nXIMW0iEN6sMujFYjFuhdrSwVow3pDQu'},
+      final hits = await _searchTypesense(
+        preset: 'category_search',
+        query: query,
       );
 
-      final results = data['results'] as List<dynamic>?;
-      if (results == null || results.isEmpty) return [];
-
-      final hits = results[0]['hits'] as List<dynamic>?;
-      if (hits == null) return [];
-
-      return hits.map((hit) {
-        final doc = hit['document'] as Map<String, dynamic>;
-        final id = doc['id'] is int
-            ? doc['id'] as int
-            : int.tryParse(doc['id'].toString()) ?? 0;
-
-        // Map search document to KickCategory
-        // Search doc has 'src' for banner, map to KickCategoryBanner
+      return hits.map((doc) {
+        final id = _parseSearchId(doc['id']);
+        final bannerUrl = doc['src'] as String?;
         return KickCategory(
           id: id,
           categoryId: doc['category_id'] as int?,
           name: doc['name'] as String? ?? '',
           slug: doc['slug'] as String? ?? '',
-          banner: doc['src'] != null
-              ? KickCategoryBanner(url: doc['src'] as String)
-              : null,
+          banner: bannerUrl != null ? KickCategoryBanner(url: bannerUrl) : null,
         );
       }).toList();
     } catch (e) {

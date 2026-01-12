@@ -17,6 +17,28 @@ mixin _$ChatStore on ChatStoreBase, Store {
         () => super.renderMessages,
         name: 'ChatStoreBase.renderMessages',
       )).value;
+  Computed<bool>? _$isChatBlockedComputed;
+
+  @override
+  bool get isChatBlocked => (_$isChatBlockedComputed ??= Computed<bool>(
+    () => super.isChatBlocked,
+    name: 'ChatStoreBase.isChatBlocked',
+  )).value;
+  Computed<bool>? _$isSlowModeActiveComputed;
+
+  @override
+  bool get isSlowModeActive => (_$isSlowModeActiveComputed ??= Computed<bool>(
+    () => super.isSlowModeActive,
+    name: 'ChatStoreBase.isSlowModeActive',
+  )).value;
+  Computed<String?>? _$chatBlockedReasonComputed;
+
+  @override
+  String? get chatBlockedReason =>
+      (_$chatBlockedReasonComputed ??= Computed<String?>(
+        () => super.chatBlockedReason,
+        name: 'ChatStoreBase.chatBlockedReason',
+      )).value;
   Computed<List<Emote>>? _$matchingEmotesComputed;
 
   @override
@@ -561,6 +583,104 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
   }
 
+  late final _$chatroomStateAtom = Atom(
+    name: 'ChatStoreBase.chatroomState',
+    context: context,
+  );
+
+  @override
+  KickChatroomState get chatroomState {
+    _$chatroomStateAtom.reportRead();
+    return super.chatroomState;
+  }
+
+  @override
+  set chatroomState(KickChatroomState value) {
+    _$chatroomStateAtom.reportWrite(value, super.chatroomState, () {
+      super.chatroomState = value;
+    });
+  }
+
+  late final _$isFollowingChannelAtom = Atom(
+    name: 'ChatStoreBase.isFollowingChannel',
+    context: context,
+  );
+
+  @override
+  bool get isFollowingChannel {
+    _$isFollowingChannelAtom.reportRead();
+    return super.isFollowingChannel;
+  }
+
+  @override
+  set isFollowingChannel(bool value) {
+    _$isFollowingChannelAtom.reportWrite(value, super.isFollowingChannel, () {
+      super.isFollowingChannel = value;
+    });
+  }
+
+  late final _$isSubscribedToChannelAtom = Atom(
+    name: 'ChatStoreBase.isSubscribedToChannel',
+    context: context,
+  );
+
+  @override
+  bool get isSubscribedToChannel {
+    _$isSubscribedToChannelAtom.reportRead();
+    return super.isSubscribedToChannel;
+  }
+
+  @override
+  set isSubscribedToChannel(bool value) {
+    _$isSubscribedToChannelAtom.reportWrite(
+      value,
+      super.isSubscribedToChannel,
+      () {
+        super.isSubscribedToChannel = value;
+      },
+    );
+  }
+
+  late final _$lastMessageSentAtAtom = Atom(
+    name: 'ChatStoreBase.lastMessageSentAt',
+    context: context,
+  );
+
+  @override
+  DateTime? get lastMessageSentAt {
+    _$lastMessageSentAtAtom.reportRead();
+    return super.lastMessageSentAt;
+  }
+
+  @override
+  set lastMessageSentAt(DateTime? value) {
+    _$lastMessageSentAtAtom.reportWrite(value, super.lastMessageSentAt, () {
+      super.lastMessageSentAt = value;
+    });
+  }
+
+  late final _$slowModeSecondsRemainingAtom = Atom(
+    name: 'ChatStoreBase.slowModeSecondsRemaining',
+    context: context,
+  );
+
+  @override
+  int get slowModeSecondsRemaining {
+    _$slowModeSecondsRemainingAtom.reportRead();
+    return super.slowModeSecondsRemaining;
+  }
+
+  @override
+  set slowModeSecondsRemaining(int value) {
+    _$slowModeSecondsRemainingAtom.reportWrite(
+      value,
+      super.slowModeSecondsRemaining,
+      () {
+        super.slowModeSecondsRemaining = value;
+      },
+    );
+  }
+
   late final _$voteOnPollAsyncAction = AsyncAction(
     'ChatStoreBase.voteOnPoll',
     context: context,
@@ -945,6 +1065,18 @@ mixin _$ChatStore on ChatStoreBase, Store {
   }
 
   @override
+  void _startSlowModeCountdown() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._startSlowModeCountdown',
+    );
+    try {
+      return super._startSlowModeCountdown();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
   void addEmote(Emote emote, {bool autocompleteMode = false}) {
     final _$actionInfo = _$ChatStoreBaseActionController.startAction(
       name: 'ChatStoreBase.addEmote',
@@ -1053,7 +1185,15 @@ predictionVoteAmount: ${predictionVoteAmount},
 isPinnedMessageMinimized: ${isPinnedMessageMinimized},
 isPollMinimized: ${isPollMinimized},
 isPredictionMinimized: ${isPredictionMinimized},
+chatroomState: ${chatroomState},
+isFollowingChannel: ${isFollowingChannel},
+isSubscribedToChannel: ${isSubscribedToChannel},
+lastMessageSentAt: ${lastMessageSentAt},
+slowModeSecondsRemaining: ${slowModeSecondsRemaining},
 renderMessages: ${renderMessages},
+isChatBlocked: ${isChatBlocked},
+isSlowModeActive: ${isSlowModeActive},
+chatBlockedReason: ${chatBlockedReason},
 matchingEmotes: ${matchingEmotes},
 matchingChatters: ${matchingChatters},
 bottomBarHeight: ${bottomBarHeight}

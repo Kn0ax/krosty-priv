@@ -29,9 +29,7 @@ class PollPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.secondary.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: colorScheme.secondary.withValues(alpha: 0.3)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -68,8 +66,9 @@ class PollPanel extends StatelessWidget {
               final index = entry.key;
               final option = entry.value;
               final votes = option.votes;
-              final percentage =
-                  totalVotes > 0 ? (votes / totalVotes * 100) : 0.0;
+              final percentage = totalVotes > 0
+                  ? (votes / totalVotes * 100)
+                  : 0.0;
               final isSelected = selectedOptionIndex == index;
               final canVote =
                   !hasVoted && !isCompleted && !isCancelled && onVote != null;
@@ -110,10 +109,7 @@ class PollPanel extends StatelessWidget {
                 else if (isCancelled)
                   Text(
                     'Poll cancelled',
-                    style: TextStyle(
-                      color: colorScheme.error,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: colorScheme.error, fontSize: 12),
                   ),
               ],
             ),
@@ -173,10 +169,11 @@ class _PollOption extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       widthFactor: percentage / 100,
                       child: Container(
-                        color: (isSelected
-                                ? colorScheme.primary
-                                : colorScheme.secondaryContainer)
-                            .withValues(alpha: 0.3),
+                        color:
+                            (isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.secondaryContainer)
+                                .withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -193,8 +190,9 @@ class _PollOption extends StatelessWidget {
                           label,
                           style: TextStyle(
                             color: colorScheme.onSurface,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -230,13 +228,15 @@ class _RemainingTime extends StatelessWidget {
 
   const _RemainingTime({required this.remaining});
 
+  String get _formattedTime {
+    final minutes = remaining ~/ 60;
+    final seconds = remaining % 60;
+    return minutes > 0 ? '${minutes}m ${seconds}s' : '${seconds}s';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final minutes = remaining ~/ 60;
-    final seconds = remaining % 60;
-    final timeStr =
-        minutes > 0 ? '${minutes}m ${seconds}s' : '${seconds}s';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -245,7 +245,7 @@ class _RemainingTime extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        timeStr,
+        _formattedTime,
         style: TextStyle(
           color: colorScheme.onSecondaryContainer,
           fontSize: 12,

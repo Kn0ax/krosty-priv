@@ -87,101 +87,14 @@ class ChatMessage extends StatelessWidget {
     showModalBottomSheetWithProperFocus(
       context: context,
       isScrollControlled: true,
-      builder: (context) => ListView(
-        shrinkWrap: true,
-        primary: false,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text.rich(
-              TextSpan(
-                children: message.generateSpan(
-                  context,
-                  assetsStore: chatStore.assetsStore,
-                  emoteScale: chatStore.settings.emoteScale,
-                  badgeScale: chatStore.settings.badgeScale,
-                  launchExternal: chatStore.settings.launchUrlExternal,
-                  timestamp: chatStore.settings.timestampType,
-                ),
-                style: defaultTextStyle,
-              ),
-            ),
-          ),
-          const Divider(indent: 12, endIndent: 12),
-          ListTile(
-            onTap: () {
-              copyMessage();
-              Navigator.pop(context);
-            },
-            leading: const Icon(Icons.copy),
-            title: const Text('Copy message'),
-          ),
-          ListTile(
-            onTap: () async {
-              await copyMessage();
-
-              final hasChatDelay =
-                  chatStore.settings.showVideo &&
-                  chatStore.settings.chatDelay > 0;
-
-              if (hasChatDelay) {
-                chatStore.updateNotification(
-                  'Chatting is disabled due to message delay (${chatStore.settings.chatDelay.toInt()}s)',
-                );
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
-                return;
-              }
-
-              chatStore.textController.text = message.content;
-              chatStore.safeRequestFocus();
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            },
-            leading: const Icon(Icons.content_paste),
-            title: const Text('Copy message and paste'),
-          ),
-          ListTile(
-            onTap: () {
-              chatStore.replyingToMessage = message;
-              chatStore.safeRequestFocus();
-              Navigator.pop(context);
-            },
-            leading: const Icon(Icons.reply),
-            title: const Text('Reply to message'),
-          ),
-
-          // Mod actions (only visible to moderators/hosts)
-          if (chatStore.isModerator || chatStore.isChannelHost) ...[
-            const Divider(indent: 12, endIndent: 12),
-            ListTile(
-              onTap: () async {
-                Navigator.pop(context);
-                await _deleteMessage(context);
-              },
-              leading: const Icon(Icons.delete_outline, color: Colors.orange),
-              title: const Text('Delete message'),
-            ),
-            ListTile(
-              onTap: () {
-                Navigator.pop(context);
-                _showTimeoutDialog(context);
-              },
-              leading: const Icon(Icons.timer_outlined, color: Colors.orange),
-              title: const Text('Timeout user'),
-            ),
-            ListTile(
-              onTap: () {
-                Navigator.pop(context);
-                _showBanConfirmation(context);
-              },
-              leading: const Icon(Icons.block, color: Colors.red),
-              title: const Text('Ban user'),
-            ),
-          ],
-        ],
+      builder: (context) => _MessageActionsSheet(
+        message: message,
+        chatStore: chatStore,
+        defaultTextStyle: defaultTextStyle,
+        onCopy: copyMessage,
+        onDelete: () => _deleteMessage(context),
+        onTimeout: () => _showTimeoutDialog(context),
+        onBan: () => _showBanConfirmation(context),
       ),
     );
   }
@@ -200,18 +113,19 @@ class ChatMessage extends StatelessWidget {
     }
   }
 
+  /// Timeout duration options (seconds, display label).
+  static const _timeoutDurations = [
+    (60, '1 minute'),
+    (300, '5 minutes'),
+    (600, '10 minutes'),
+    (1800, '30 minutes'),
+    (3600, '1 hour'),
+    (86400, '1 day'),
+    (604800, '1 week'),
+  ];
+
   /// Show timeout duration picker dialog.
   void _showTimeoutDialog(BuildContext context) {
-    final durations = [
-      (60, '1 minute'),
-      (300, '5 minutes'),
-      (600, '10 minutes'),
-      (1800, '30 minutes'),
-      (3600, '1 hour'),
-      (86400, '1 day'),
-      (604800, '1 week'),
-    ];
-
     showModalBottomSheet(
       context: context,
       builder: (context) => ListView(
@@ -226,15 +140,14 @@ class ChatMessage extends StatelessWidget {
             ),
           ),
           const Divider(),
-          ...durations.map(
-            (d) => ListTile(
+          for (final (seconds, label) in _timeoutDurations)
+            ListTile(
               onTap: () async {
                 Navigator.pop(context);
-                await _timeoutUser(context, d.$1);
+                await _timeoutUser(context, seconds);
               },
-              title: Text(d.$2),
+              title: Text(label),
             ),
-          ),
         ],
       ),
     );
@@ -483,6 +396,123 @@ class ChatMessage extends StatelessWidget {
 
         return finalMessage;
       },
+    );
+  }
+}
+
+/// Bottom sheet for message actions (copy, reply, mod actions).
+class _MessageActionsSheet extends StatelessWidget {
+  final KickChatMessage message;
+  final ChatStore chatStore;
+  final TextStyle defaultTextStyle;
+  final VoidCallback onCopy;
+  final VoidCallback onDelete;
+  final VoidCallback onTimeout;
+  final VoidCallback onBan;
+
+  const _MessageActionsSheet({
+    required this.message,
+    required this.chatStore,
+    required this.defaultTextStyle,
+    required this.onCopy,
+    required this.onDelete,
+    required this.onTimeout,
+    required this.onBan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasChatDelay =
+        chatStore.settings.showVideo && chatStore.settings.chatDelay > 0;
+    final isMod = chatStore.isModerator || chatStore.isChannelHost;
+
+    return ListView(
+      shrinkWrap: true,
+      primary: false,
+      children: [
+        // Message preview
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text.rich(
+            TextSpan(
+              children: message.generateSpan(
+                context,
+                assetsStore: chatStore.assetsStore,
+                emoteScale: chatStore.settings.emoteScale,
+                badgeScale: chatStore.settings.badgeScale,
+                launchExternal: chatStore.settings.launchUrlExternal,
+                timestamp: chatStore.settings.timestampType,
+              ),
+              style: defaultTextStyle,
+            ),
+          ),
+        ),
+        const Divider(indent: 12, endIndent: 12),
+
+        // Standard actions
+        ListTile(
+          onTap: () {
+            onCopy();
+            Navigator.pop(context);
+          },
+          leading: const Icon(Icons.copy),
+          title: const Text('Copy message'),
+        ),
+        ListTile(
+          onTap: () async {
+            onCopy();
+            if (hasChatDelay) {
+              chatStore.updateNotification(
+                'Chatting is disabled due to message delay (${chatStore.settings.chatDelay.toInt()}s)',
+              );
+            } else {
+              chatStore.textController.text = message.content;
+              chatStore.safeRequestFocus();
+            }
+            if (context.mounted) Navigator.pop(context);
+          },
+          leading: const Icon(Icons.content_paste),
+          title: const Text('Copy message and paste'),
+        ),
+        ListTile(
+          onTap: () {
+            chatStore.replyingToMessage = message;
+            chatStore.safeRequestFocus();
+            Navigator.pop(context);
+          },
+          leading: const Icon(Icons.reply),
+          title: const Text('Reply to message'),
+        ),
+
+        // Mod actions
+        if (isMod) ...[
+          const Divider(indent: 12, endIndent: 12),
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              onDelete();
+            },
+            leading: const Icon(Icons.delete_outline, color: Colors.orange),
+            title: const Text('Delete message'),
+          ),
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              onTimeout();
+            },
+            leading: const Icon(Icons.timer_outlined, color: Colors.orange),
+            title: const Text('Timeout user'),
+          ),
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              onBan();
+            },
+            leading: const Icon(Icons.block, color: Colors.red),
+            title: const Text('Ban user'),
+          ),
+        ],
+      ],
     );
   }
 }

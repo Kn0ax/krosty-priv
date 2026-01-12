@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/constants.dart';
 import 'package:krosty/models/emotes.dart';
+import 'package:krosty/models/kick_chatroom_state.dart';
 import 'package:krosty/models/kick_message.dart';
 import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_assets_store.dart';
@@ -272,6 +273,79 @@ abstract class ChatStoreBase with Store {
   @observable
   bool isPredictionMinimized = false;
 
+  // ============================================================
+  // CHATROOM STATE (modes & restrictions)
+  // ============================================================
+
+  /// The current chatroom state/settings fetched when joining chat.
+  @observable
+  KickChatroomState chatroomState = KickChatroomState.none;
+
+  /// Whether the current user is following this channel.
+  /// Used to enforce followers-only mode.
+  @observable
+  bool isFollowingChannel = false;
+
+  /// Whether the current user is subscribed to this channel.
+  /// Used to enforce subscribers-only mode.
+  @observable
+  bool isSubscribedToChannel = false;
+
+  /// Timestamp when the last message was sent (for slow mode enforcement).
+  @observable
+  DateTime? lastMessageSentAt;
+
+  /// Remaining seconds until next message can be sent (slow mode countdown).
+  @observable
+  int slowModeSecondsRemaining = 0;
+
+  /// Timer for slow mode countdown.
+  Timer? _slowModeTimer;
+
+  /// Whether chat input is blocked due to chat restrictions.
+  @computed
+  bool get isChatBlocked {
+    if (!auth.isLoggedIn) return true;
+    if (isModerator || isChannelHost) return false;
+
+    // Followers-only mode: must be following
+    if (chatroomState.followersMode.enabled && !isFollowingChannel) {
+      return true;
+    }
+
+    // Subscribers-only mode: must be subscribed
+    if (chatroomState.subscribersMode.enabled && !isSubscribedToChannel) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Whether slow mode is currently enforced (countdown active).
+  @computed
+  bool get isSlowModeActive => slowModeSecondsRemaining > 0;
+
+  /// Message explaining why chat is blocked, or null if not blocked.
+  @computed
+  String? get chatBlockedReason {
+    if (!auth.isLoggedIn) return null;
+    if (isModerator || isChannelHost) return null;
+
+    if (chatroomState.followersMode.enabled && !isFollowingChannel) {
+      final duration = chatroomState.followersMode.minDuration;
+      if (duration > 0) {
+        return 'Followers-only mode (${duration}m)';
+      }
+      return 'Followers-only mode';
+    }
+
+    if (chatroomState.subscribersMode.enabled && !isSubscribedToChannel) {
+      return 'Subscribers-only mode';
+    }
+
+    return null;
+  }
+
   /// Emotes matching the current autocomplete search term.
   @computed
   List<Emote> get matchingEmotes {
@@ -415,6 +489,35 @@ abstract class ChatStoreBase with Store {
           textFieldFocusNode.hasFocus &&
           textController.text.split(' ').last.startsWith('@');
     });
+  }
+
+  // ============================================================
+  // HELPER METHODS
+  // ============================================================
+
+  /// Add a notice message to the message buffer.
+  void _addNotice(String message, {String noticeType = 'system'}) {
+    messageBuffer.add(
+      KickChatMessage.createNotice(
+        message: message,
+        chatroomId: chatroomId ?? 0,
+        noticeType: noticeType,
+      ),
+    );
+  }
+
+  /// Mark all messages from a user as deleted.
+  void _markUserMessagesDeleted(String username) {
+    for (final msg in _messages) {
+      if (msg.sender.username == username) {
+        msg.isDeleted = true;
+      }
+    }
+    for (final msg in messageBuffer) {
+      if (msg.sender.username == username) {
+        msg.isDeleted = true;
+      }
+    }
   }
 
   /// Handle Pusher WebSocket events.
@@ -774,33 +877,20 @@ abstract class ChatStoreBase with Store {
     try {
       final bannedEvent = KickUserBannedEvent.fromJson(data);
       final username = bannedEvent.user.username;
-      final duration = bannedEvent.duration;
-      final permanent = bannedEvent.permanent;
 
       // Mark all messages from banned user as deleted
-      for (final msg in _messages) {
-        if (msg.sender.username == username) {
-          msg.isDeleted = true;
-        }
-      }
-      for (final msg in messageBuffer) {
-        if (msg.sender.username == username) {
-          msg.isDeleted = true;
-        }
-      }
+      _markUserMessagesDeleted(username);
 
       // Show notification
-      final durationText = permanent
-          ? 'permanently banned'
-          : duration != null
-          ? 'timed out for ${duration}s'
-          : 'banned';
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: '$username has been $durationText',
-          chatroomId: chatroomId ?? 0,
-        ),
-      );
+      final durationText = switch ((
+        bannedEvent.permanent,
+        bannedEvent.duration,
+      )) {
+        (true, _) => 'permanently banned',
+        (false, final int duration) => 'timed out for ${duration}s',
+        _ => 'banned',
+      };
+      _addNotice('$username has been $durationText');
     } catch (e) {
       debugPrint('Error handling user banned: $e');
     }
@@ -814,12 +904,7 @@ abstract class ChatStoreBase with Store {
 
     try {
       final unbannedEvent = KickUserUnbannedEvent.fromJson(data);
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: '${unbannedEvent.user.username} has been unbanned',
-          chatroomId: chatroomId ?? 0,
-        ),
-      );
+      _addNotice('${unbannedEvent.user.username} has been unbanned');
     } catch (e) {
       debugPrint('Error handling user unbanned: $e');
     }
@@ -844,12 +929,7 @@ abstract class ChatStoreBase with Store {
   void _handleChatroomClear() {
     _messages.clear();
     messageBuffer.clear();
-    _messages.add(
-      KickChatMessage.createNotice(
-        message: 'Chat has been cleared by a moderator',
-        chatroomId: chatroomId ?? 0,
-      ),
-    );
+    _addNotice('Chat has been cleared by a moderator');
   }
 
   // ============================================================
@@ -1070,14 +1150,7 @@ abstract class ChatStoreBase with Store {
       final message = months > 1
           ? '$username resubscribed for $months months!'
           : '$username subscribed!';
-
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: message,
-          chatroomId: chatroomId ?? 0,
-          noticeType: 'subscription',
-        ),
-      );
+      _addNotice(message, noticeType: 'subscription');
     } catch (e) {
       debugPrint('Error handling subscription event: $e');
     }
@@ -1097,14 +1170,7 @@ abstract class ChatStoreBase with Store {
       final message = count > 1
           ? '$gifter gifted $count subscriptions!'
           : '$gifter gifted a subscription!';
-
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: message,
-          chatroomId: chatroomId ?? 0,
-          noticeType: 'gift',
-        ),
-      );
+      _addNotice(message, noticeType: 'gift');
     } catch (e) {
       debugPrint('Error handling gifted subscription event: $e');
     }
@@ -1121,13 +1187,7 @@ abstract class ChatStoreBase with Store {
       final username = followEvent.user?.username ?? 'Someone';
 
       if (isFollowing) {
-        messageBuffer.add(
-          KickChatMessage.createNotice(
-            message: '$username followed!',
-            chatroomId: chatroomId ?? 0,
-            noticeType: 'follow',
-          ),
-        );
+        _addNotice('$username followed!', noticeType: 'follow');
       }
     } catch (e) {
       debugPrint('Error handling follow event: $e');
@@ -1144,14 +1204,7 @@ abstract class ChatStoreBase with Store {
       final raidEvent = KickRaidEvent.fromJson(data);
       final raider = raidEvent.host.user?.username ?? 'Someone';
       final viewers = raidEvent.host.viewersCount;
-
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: '$raider raided with $viewers viewers!',
-          chatroomId: chatroomId ?? 0,
-          noticeType: 'raid',
-        ),
-      );
+      _addNotice('$raider raided with $viewers viewers!', noticeType: 'raid');
     } catch (e) {
       debugPrint('Error handling raid event: $e');
     }
@@ -1168,14 +1221,7 @@ abstract class ChatStoreBase with Store {
       final sender = kicksEvent.sender?.username ?? 'Someone';
       final amount = kicksEvent.gift?.amount ?? 0;
       final giftName = kicksEvent.gift?.name ?? 'Kicks';
-
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: '$sender sent $amount $giftName!',
-          chatroomId: chatroomId ?? 0,
-          noticeType: 'kicks',
-        ),
-      );
+      _addNotice('$sender sent $amount $giftName!', noticeType: 'kicks');
     } catch (e) {
       debugPrint('Error handling kicks gifted event: $e');
     }
@@ -1191,20 +1237,12 @@ abstract class ChatStoreBase with Store {
       final rewardEvent = KickRewardRedeemedEvent.fromJson(data);
       final username = rewardEvent.user?.username ?? 'Someone';
       final rewardTitle = rewardEvent.reward.title;
+      final userInput = rewardEvent.reward.userInput;
 
-      var message = '$username redeemed "$rewardTitle"';
-      if (rewardEvent.reward.userInput != null &&
-          rewardEvent.reward.userInput!.isNotEmpty) {
-        message += ': ${rewardEvent.reward.userInput}';
-      }
-
-      messageBuffer.add(
-        KickChatMessage.createNotice(
-          message: message,
-          chatroomId: chatroomId ?? 0,
-          noticeType: 'reward',
-        ),
-      );
+      final message = (userInput != null && userInput.isNotEmpty)
+          ? '$username redeemed "$rewardTitle": $userInput'
+          : '$username redeemed "$rewardTitle"';
+      _addNotice(message, noticeType: 'reward');
     } catch (e) {
       debugPrint('Error handling reward redeemed event: $e');
     }
@@ -1247,23 +1285,35 @@ abstract class ChatStoreBase with Store {
       } catch (e) {
         debugPrint('Failed to get chatroom ID: $e');
         _messages.add(
-          KickChatMessage.createNotice(
-            message: 'Failed to load chat info.',
-          ),
+          KickChatMessage.createNotice(message: 'Failed to load chat info.'),
         );
         return;
       }
     }
 
-    // Check moderator status from /me endpoint (only when logged in)
+    // Check moderator status and follow/subscribe status from /me endpoint
     if (auth.isLoggedIn && !isChannelHost) {
       try {
         final meResponse = await kickApi.getChannelMe(channelSlug: channelSlug);
         if (meResponse != null) {
           isModerator = meResponse.isModerator;
+          isFollowingChannel = meResponse.isFollowing;
+          isSubscribedToChannel = meResponse.isSubscribed;
         }
       } catch (e) {
         debugPrint('Failed to check moderator status: $e');
+      }
+    }
+
+    // Fetch chatroom state (modes & restrictions)
+    if (!isReconnect) {
+      try {
+        chatroomState = await kickApi.getChatroomState(channelSlug: channelSlug);
+        debugPrint('Chatroom state: slow=${chatroomState.slowMode.enabled}, '
+            'followers=${chatroomState.followersMode.enabled}, '
+            'subscribers=${chatroomState.subscribersMode.enabled}');
+      } catch (e) {
+        debugPrint('Failed to fetch chatroom state: $e');
       }
     }
 
@@ -1497,12 +1547,43 @@ abstract class ChatStoreBase with Store {
     });
   }
 
+  /// Starts the slow mode countdown after sending a message.
+  @action
+  void _startSlowModeCountdown() {
+    _slowModeTimer?.cancel();
+    slowModeSecondsRemaining = chatroomState.slowMode.messageInterval;
+    lastMessageSentAt = DateTime.now();
+
+    _slowModeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      slowModeSecondsRemaining--;
+      if (slowModeSecondsRemaining <= 0) {
+        slowModeSecondsRemaining = 0;
+        timer.cancel();
+      }
+    });
+  }
+
   /// Sends a chat message.
   @action
   Future<void> sendMessage(String message) async {
     if (message.trim().isEmpty) return;
     if (!auth.isLoggedIn) {
       updateNotification('You must be logged in to chat.');
+      return;
+    }
+
+    // Check if chat is blocked due to restrictions
+    if (isChatBlocked) {
+      final reason = chatBlockedReason;
+      if (reason != null) {
+        updateNotification(reason);
+      }
+      return;
+    }
+
+    // Check slow mode (unless moderator/host)
+    if (!isModerator && !isChannelHost && isSlowModeActive) {
+      updateNotification('Slow mode: wait ${slowModeSecondsRemaining}s');
       return;
     }
 
@@ -1566,6 +1647,14 @@ abstract class ChatStoreBase with Store {
         _isWaitingForAck = false;
         textController.clear();
         replyingToMessage = null;
+
+        // Start slow mode countdown if enabled (and not mod/host)
+        if (!isModerator &&
+            !isChannelHost &&
+            chatroomState.slowMode.enabled &&
+            chatroomState.slowMode.messageInterval > 0) {
+          _startSlowModeCountdown();
+        }
       }
 
       // Start timeout timer
@@ -1664,6 +1753,7 @@ abstract class ChatStoreBase with Store {
     _notificationTimer?.cancel();
     _sendingTimeoutTimer?.cancel();
     _cancelChatDelayCountdown();
+    _slowModeTimer?.cancel();
     sleepTimer?.cancel();
 
     _channelListener?.cancel();

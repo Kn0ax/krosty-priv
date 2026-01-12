@@ -79,24 +79,72 @@ class ChatBottomBar extends StatelessWidget {
                       chatStore.expandChat ||
                       context.isPortrait)
               ? Observer(
-                  builder: (context) => IconButton(
-                    tooltip: chatStore.isWaitingForAck ? 'Sending...' : 'Send',
-                    icon: chatStore.isWaitingForAck
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded),
-                    onPressed:
-                        chatStore.auth.isLoggedIn &&
-                            !chatStore.isWaitingForAck &&
-                            chatStore.isConnected
-                        ? () => chatStore.sendMessage(
-                            chatStore.textController.text,
-                          )
-                        : null,
-                  ),
+                  builder: (context) {
+                    final canSend = chatStore.auth.isLoggedIn &&
+                        !chatStore.isWaitingForAck &&
+                        chatStore.isConnected &&
+                        !chatStore.isChatBlocked &&
+                        !chatStore.isSlowModeActive;
+
+                    String getTooltip() {
+                      if (chatStore.isWaitingForAck) return 'Sending...';
+                      if (chatStore.isChatBlocked) {
+                        return chatStore.chatBlockedReason ?? 'Chat blocked';
+                      }
+                      if (chatStore.isSlowModeActive) {
+                        return 'Slow mode (${chatStore.slowModeSecondsRemaining}s)';
+                      }
+                      return 'Send';
+                    }
+
+                    return IconButton(
+                      tooltip: getTooltip(),
+                      icon: chatStore.isWaitingForAck
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : chatStore.isSlowModeActive
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    const Icon(Icons.send_rounded),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${chatStore.slowModeSecondsRemaining}',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Icon(Icons.send_rounded),
+                      onPressed: canSend
+                          ? () => chatStore.sendMessage(
+                                chatStore.textController.text,
+                              )
+                          : null,
+                    );
+                  },
                 )
               : IconButton(
                   icon: Icon(Icons.adaptive.more_rounded),
@@ -293,8 +341,38 @@ class ChatBottomBar extends StatelessWidget {
                           final isWaitingForAck = chatStore.isWaitingForAck;
                           final isConnected = chatStore.isConnected;
                           final hasConnected = chatStore.hasConnected;
-                          final isEnabled =
-                              isLoggedIn && !isWaitingForAck && isConnected;
+                          final isChatBlocked = chatStore.isChatBlocked;
+                          final chatBlockedReason = chatStore.chatBlockedReason;
+                          final isSlowModeActive = chatStore.isSlowModeActive;
+                          final slowModeSeconds =
+                              chatStore.slowModeSecondsRemaining;
+                          final isEnabled = isLoggedIn &&
+                              !isWaitingForAck &&
+                              isConnected &&
+                              !isChatBlocked;
+
+                          String getHintText() {
+                            if (!isLoggedIn) return loginTooltipMessage;
+                            if (!isConnected) {
+                              return hasConnected
+                                  ? 'Chat disconnected'
+                                  : 'Connecting...';
+                            }
+                            if (chatBlockedReason != null) {
+                              return chatBlockedReason;
+                            }
+                            if (isWaitingForAck) return 'Sending...';
+                            if (isSlowModeActive) {
+                              return 'Slow mode (${slowModeSeconds}s)';
+                            }
+                            if (chatStore.replyingToMessage != null) {
+                              return 'Reply';
+                            }
+                            if (hasChatDelay) {
+                              return 'Chat (${chatStore.settings.chatDelay.toInt()}s delay)';
+                            }
+                            return 'Chat';
+                          }
 
                           return GestureDetector(
                             onTap: !isLoggedIn
@@ -303,7 +381,13 @@ class ChatBottomBar extends StatelessWidget {
                                       loginTooltipMessage,
                                     );
                                   }
-                                : null,
+                                : isChatBlocked && chatBlockedReason != null
+                                    ? () {
+                                        chatStore.updateNotification(
+                                          chatBlockedReason,
+                                        );
+                                      }
+                                    : null,
                             child: ExtendedTextField(
                               textInputAction: TextInputAction.send,
                               focusNode: chatStore.textFieldFocusNode,
@@ -322,33 +406,20 @@ class ChatBottomBar extends StatelessWidget {
                               decoration: InputDecoration(
                                 prefixIcon:
                                     chatStore.settings.emoteMenuButtonOnLeft
-                                    ? emoteMenuButton
-                                    : null,
+                                        ? emoteMenuButton
+                                        : null,
                                 suffixIcon: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 8,
                                   children: [
                                     if (!chatStore
-                                            .settings
-                                            .emoteMenuButtonOnLeft &&
+                                            .settings.emoteMenuButtonOnLeft &&
                                         emoteMenuButton != null)
                                       emoteMenuButton,
                                   ],
                                 ),
                                 hintMaxLines: 1,
-                                hintText: !isLoggedIn
-                                    ? loginTooltipMessage
-                                    : !isConnected
-                                    ? (hasConnected
-                                          ? 'Chat disconnected'
-                                          : 'Connecting...')
-                                    : isWaitingForAck
-                                    ? 'Sending...'
-                                    : chatStore.replyingToMessage != null
-                                    ? 'Reply'
-                                    : hasChatDelay
-                                    ? 'Chat (${chatStore.settings.chatDelay.toInt()}s delay)'
-                                    : 'Chat',
+                                hintText: getHintText(),
                               ),
                               controller: chatStore.textController,
                               onSubmitted: chatStore.sendMessage,
