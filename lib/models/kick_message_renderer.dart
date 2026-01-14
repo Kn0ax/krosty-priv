@@ -331,10 +331,35 @@ extension KickMessageRenderer on KickChatMessage {
     }
 
     // Split message into words and process each
-    final messageWords = messageContent.split(' ');
+    // First, expand Kick emotes mixed with text (e.g., [emote:1:a]text[emote:2:b]) into separate parts
+    final kickEmotePattern = RegExp(r'\[emote:(\d+):([^\]]+)\]');
+    final expandedWords = <String>[];
+    for (final word in messageContent.split(' ')) {
+      if (word.isEmpty) continue;
+      final matches = kickEmotePattern.allMatches(word).toList();
+      if (matches.isNotEmpty) {
+        // Split word into emotes and text segments
+        var lastEnd = 0;
+        for (final match in matches) {
+          // Add text before this emote (if any)
+          if (match.start > lastEnd) {
+            expandedWords.add(word.substring(lastEnd, match.start));
+          }
+          // Add the emote
+          expandedWords.add(match.group(0)!);
+          lastEnd = match.end;
+        }
+        // Add remaining text after last emote (if any)
+        if (lastEnd < word.length) {
+          expandedWords.add(word.substring(lastEnd));
+        }
+      } else {
+        expandedWords.add(word);
+      }
+    }
 
-    for (var i = 0; i < messageWords.length; i++) {
-      final word = messageWords[i];
+    for (var i = 0; i < expandedWords.length; i++) {
+      final word = expandedWords[i];
       if (word.isEmpty) continue;
 
       var emote = emoteToObject[word];
@@ -374,7 +399,7 @@ extension KickMessageRenderer on KickChatMessage {
           _addZeroWidthEmoteStack(
             context,
             span,
-            messageWords,
+            expandedWords,
             i,
             emote,
             emoteToObject,

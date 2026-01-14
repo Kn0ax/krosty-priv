@@ -293,26 +293,4 @@ void main() {
     });
   });
 
-  group('normalizeSlug', () {
-    test('replaces underscores with hyphens', () {
-      expect(normalizeSlug('ankaradaki_balik'), 'ankaradaki-balik');
-    });
-
-    test('handles multiple underscores', () {
-      expect(normalizeSlug('user_name_here'), 'user-name-here');
-    });
-
-    test('leaves slugs without underscores unchanged', () {
-      expect(normalizeSlug('username'), 'username');
-      expect(normalizeSlug('user-name'), 'user-name');
-    });
-
-    test('handles empty string', () {
-      expect(normalizeSlug(''), '');
-    });
-
-    test('handles mixed underscores and hyphens', () {
-      expect(normalizeSlug('user_name-test_123'), 'user-name-test-123');
-    });
-  });
 }

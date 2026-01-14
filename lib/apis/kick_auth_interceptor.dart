@@ -33,6 +33,11 @@ class KickAuthInterceptor extends Interceptor {
       return true;
     }
 
+    // Add auth to kick.com broadcasting/auth (Pusher private channel auth)
+    if (url.contains('kick.com/broadcasting/auth')) {
+      return true;
+    }
+
     // Add auth to kick.com emotes endpoint (requires auth to get user's sub emotes)
     if (url.contains('kick.com/emotes/')) {
       return true;

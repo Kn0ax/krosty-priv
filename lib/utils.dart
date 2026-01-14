@@ -104,12 +104,6 @@ String getReadableName(String displayName, String username) {
   return '$displayName ($username)';
 }
 
-/// Normalizes a Kick slug by replacing underscores with hyphens.
-/// Kick's API requires slugs to use hyphens instead of underscores.
-String normalizeSlug(String slug) {
-  return slug.replaceAll('_', '-');
-}
-
 var _isIPad = false;
 
 bool isIPad() {

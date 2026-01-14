@@ -6,7 +6,6 @@ import 'package:krosty/models/kick_channel_user_info.dart';
 import 'package:krosty/models/kick_chatroom_state.dart';
 import 'package:krosty/models/kick_silenced_user.dart';
 import 'package:krosty/models/kick_user.dart';
-import 'package:krosty/utils.dart';
 
 /// The Kick API service for making API calls.
 ///
@@ -38,7 +37,7 @@ class KickApi extends BaseApiClient {
   /// Concurrent requests to the same channel are deduplicated - only one
   /// network request is made and the result is shared across all callers.
   Future<KickChannel> getChannel({required String channelSlug}) async {
-    final slug = normalizeSlug(channelSlug.toLowerCase());
+    final slug = channelSlug.toLowerCase();
 
     // Check for in-flight request (deduplication)
     final inFlight = _inFlightChannelRequests[slug];
@@ -71,7 +70,7 @@ class KickApi extends BaseApiClient {
   Future<KickChatroomState> getChatroomState({
     required String channelSlug,
   }) async {
-    final slug = normalizeSlug(channelSlug.toLowerCase());
+    final slug = channelSlug.toLowerCase();
     final data = await get<JsonMap>('$_internalV2Url/channels/$slug/chatroom');
     return KickChatroomState.fromJson(data);
   }
@@ -202,7 +201,7 @@ class KickApi extends BaseApiClient {
     int? page,
   }) async {
     final data = await get<JsonMap>(
-      '$_internalV2Url/categories/${normalizeSlug(categorySlug)}/streams',
+      '$_internalV2Url/categories/${categorySlug.toLowerCase()}/streams',
       queryParameters: page != null ? {'page': page.toString()} : null,
     );
 
@@ -262,12 +261,15 @@ class KickApi extends BaseApiClient {
 
   /// Returns user info in the context of a specific channel.
   /// Includes badges, mod status, following/subscription info for that channel.
+  ///
+  /// [channelSlug] - The channel slug as returned by Kick API.
+  /// [username] - The user's username (NOT the slug).
   Future<KickChannelUserInfo> getChannelUserInfo({
     required String channelSlug,
-    required String userSlug,
+    required String username,
   }) async {
     final data = await get<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/users/$userSlug',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/users/$username',
     );
     return KickChannelUserInfo.fromJson(data);
   }
@@ -298,7 +300,7 @@ class KickApi extends BaseApiClient {
   /// Returns category info by slug.
   Future<KickCategory> getCategory({required String categorySlug}) async {
     final data = await get<JsonMap>(
-      '$_internalV1Url/categories/${normalizeSlug(categorySlug)}',
+      '$_internalV1Url/categories/${categorySlug.toLowerCase()}',
     );
     return KickCategory.fromJson(data);
   }
@@ -451,6 +453,8 @@ class KickApi extends BaseApiClient {
 
   /// Timeout a user in a channel (requires mod/host permissions).
   ///
+  /// [channelSlug] - The channel slug (will be normalized with hyphens).
+  /// [username] - The original username (e.g. "cool_user123"), NOT the slug.
   /// [durationSeconds] - timeout duration in seconds (e.g., 60, 300, 600, 3600)
   Future<void> timeoutUser({
     required String channelSlug,
@@ -459,7 +463,7 @@ class KickApi extends BaseApiClient {
     String reason = '',
   }) async {
     await post<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/bans',
       data: {
         'banned_username': username,
         'permanent': false,
@@ -470,24 +474,30 @@ class KickApi extends BaseApiClient {
   }
 
   /// Ban a user permanently from a channel (requires mod/host permissions).
+  ///
+  /// [channelSlug] - The channel slug (will be normalized with hyphens).
+  /// [username] - The original username (e.g. "cool_user123"), NOT the slug.
   Future<void> banUser({
     required String channelSlug,
     required String username,
     String reason = '',
   }) async {
     await post<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/bans',
       data: {'banned_username': username, 'permanent': true, 'reason': reason},
     );
   }
 
   /// Unban a user from a channel (requires mod/host permissions).
+  ///
+  /// [channelSlug] - The channel slug (will be normalized with hyphens).
+  /// [username] - The original username (e.g. "cool_user123"), NOT the slug.
   Future<void> unbanUser({
     required String channelSlug,
     required String username,
   }) async {
     await delete<dynamic>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/bans/$username',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/bans/$username',
     );
   }
 
@@ -507,7 +517,7 @@ class KickApi extends BaseApiClient {
     required int amount,
   }) async {
     final data = await post<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/predictions/vote',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/predictions/vote',
       data: {'outcome_id': outcomeId, 'amount': amount},
     );
     return KickPredictionVoteResponse.fromJson(data);
@@ -521,7 +531,7 @@ class KickApi extends BaseApiClient {
     required int optionIndex,
   }) async {
     await post<JsonMap>(
-      '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/polls/vote',
+      '$_internalV2Url/channels/${channelSlug.toLowerCase()}/polls/vote',
       data: {'id': optionIndex},
     );
   }
@@ -536,7 +546,7 @@ class KickApi extends BaseApiClient {
     try {
       // Direct call to main domain endpoint - returns a List of Groups
       final data = await get<List<dynamic>>(
-        'https://kick.com/emotes/${normalizeSlug(channelSlug)}',
+        'https://kick.com/emotes/${channelSlug.toLowerCase()}',
       );
 
       return data.map((json) => KickEmoteGroup.fromJson(json)).toList();
@@ -656,7 +666,7 @@ class KickApi extends BaseApiClient {
   Future<bool> followChannel({required String channelSlug}) async {
     try {
       await post<dynamic>(
-        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/follow',
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/follow',
       );
       return true;
     } on ApiException catch (e) {
@@ -670,7 +680,7 @@ class KickApi extends BaseApiClient {
   Future<bool> unfollowChannel({required String channelSlug}) async {
     try {
       await delete<dynamic>(
-        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/follow',
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/follow',
       );
       return true;
     } on ApiException catch (e) {
@@ -687,7 +697,7 @@ class KickApi extends BaseApiClient {
   }) async {
     try {
       final data = await get<JsonMap>(
-        '$_internalV2Url/channels/${normalizeSlug(channelSlug)}/me',
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/me',
       );
       return KickChannelMeResponse.fromJson(data);
     } on ApiException catch (e) {

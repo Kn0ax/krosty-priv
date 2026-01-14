@@ -39,7 +39,8 @@ class ChatMessage extends StatelessWidget {
       context: context,
       builder: (context) => ChatUserModal(
         chatStore: chatStore,
-        username: message.sender.slug,
+        username: message.sender.username,
+        userSlug: message.sender.slug,
         userId: message.sender.id.toString(),
         displayName: message.sender.username,
       ),
@@ -59,7 +60,8 @@ class ChatMessage extends StatelessWidget {
               context: context,
               builder: (context) => ChatUserModal(
                 chatStore: chatStore,
-                username: channel.slug,
+                username: channel.user.username,
+                userSlug: channel.user.slug,
                 userId: channel.user.id.toString(),
                 displayName: channel.user.username,
               ),
@@ -159,7 +161,7 @@ class ChatMessage extends StatelessWidget {
     try {
       await kickApi.timeoutUser(
         channelSlug: chatStore.channelSlug,
-        username: message.sender.slug,
+        username: message.sender.username,
         durationSeconds: durationSeconds,
       );
       chatStore.updateNotification('${message.sender.username} timed out');
@@ -201,7 +203,7 @@ class ChatMessage extends StatelessWidget {
     try {
       await kickApi.banUser(
         channelSlug: chatStore.channelSlug,
-        username: message.sender.slug,
+        username: message.sender.username,
       );
       chatStore.updateNotification('${message.sender.username} banned');
     } catch (e) {

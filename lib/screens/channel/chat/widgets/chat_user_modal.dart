@@ -18,7 +18,15 @@ import 'package:provider/provider.dart';
 
 class ChatUserModal extends StatefulWidget {
   final ChatStore chatStore;
+
+  /// The user's original username (e.g. "cool_user123").
+  /// Used for moderation actions (ban/timeout) and display.
   final String username;
+
+  /// The user's URL-friendly slug (e.g. "cool-user123").
+  /// Used for filtering messages and profile picture lookups.
+  final String userSlug;
+
   final String displayName;
   final String userId;
 
@@ -26,6 +34,7 @@ class ChatUserModal extends StatefulWidget {
     super.key,
     required this.chatStore,
     required this.username,
+    required this.userSlug,
     required this.displayName,
     required this.userId,
   });
@@ -43,7 +52,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
     final kickApi = context.read<KickApi>();
     _dataFuture = kickApi.getChannelUserInfo(
       channelSlug: widget.chatStore.channelSlug,
-      userSlug: widget.username,
+      username: widget.username,
     );
   }
 
@@ -79,7 +88,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
   Widget _buildHeader(String name) {
     return ListTile(
       contentPadding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-      leading: ProfilePicture(userLogin: widget.username),
+      leading: ProfilePicture(userLogin: widget.userSlug),
       title: Row(
         children: [
           Flexible(
@@ -114,7 +123,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
               builder: (context) => UserActionsModal(
                 authStore: widget.chatStore.auth,
                 name: name,
-                userLogin: widget.username,
+                userLogin: widget.userSlug,
                 userId: widget.userId,
               ),
             ),
@@ -345,7 +354,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
     return Observer(
       builder: (context) {
         final userMessages = widget.chatStore.messages.reversed
-            .where((message) => message.sender.slug == widget.username)
+            .where((message) => message.sender.slug == widget.userSlug)
             .toList();
 
         if (userMessages.isEmpty) {
