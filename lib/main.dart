@@ -32,6 +32,11 @@ import 'package:url_launcher/url_launcher.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Configure Flutter's image cache for better memory management on Android
+  // Limit to 100 images and 100MB to prevent memory pressure
+  PaintingBinding.instance.imageCache.maximumSize = 100;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
+
   CustomCacheManager.removeOrphanedCacheFiles();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

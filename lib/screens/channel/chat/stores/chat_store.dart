@@ -24,10 +24,12 @@ class ChatStore = ChatStoreBase with _$ChatStore;
 
 abstract class ChatStoreBase with Store {
   /// The total maximum amount of messages in chat.
-  static const _messageLimit = 5000;
+  /// Reduced from 5000 to 3000 for better memory management on Android.
+  static const _messageLimit = 3000;
 
   /// The maximum amount of messages to render when autoscroll is enabled.
-  static const _renderMessageLimit = 100;
+  /// Reduced from 100 to 75 for smoother scrolling performance.
+  static const _renderMessageLimit = 75;
 
   /// Base height of the bottom bar (input field area).
   static const _baseBottomBarHeight = 68.0;
@@ -141,10 +143,21 @@ abstract class ChatStoreBase with Store {
   final messageBuffer = ObservableList<KickChatMessage>();
 
   /// The set of message IDs that have been revealed by the user (for deleted messages).
+  /// Limited to prevent unbounded memory growth.
+  static const _maxRevealedMessages = 100;
   final revealedMessageIds = ObservableSet<String>();
 
   @action
   void revealMessage(String id) {
+    // Trim oldest entries if at capacity
+    if (revealedMessageIds.length >= _maxRevealedMessages) {
+      final toRemove = revealedMessageIds.take(
+        revealedMessageIds.length - _maxRevealedMessages + 1,
+      ).toList();
+      for (final oldId in toRemove) {
+        revealedMessageIds.remove(oldId);
+      }
+    }
     revealedMessageIds.add(id);
   }
 
@@ -745,10 +758,11 @@ abstract class ChatStoreBase with Store {
   /// Called when successfully connected and subscribed.
   @action
   void _onConnected() {
-    // Activate the message buffer
+    // Activate the message buffer with optimized interval
+    // 250ms provides good balance between responsiveness and CPU usage
     _messageBufferTimer?.cancel();
     _messageBufferTimer = Timer.periodic(
-      const Duration(milliseconds: 200),
+      const Duration(milliseconds: 250),
       (timer) => addMessages(),
     );
 
@@ -793,8 +807,8 @@ abstract class ChatStoreBase with Store {
     try {
       final message = KickChatMessage.fromJson(data);
 
-      // Add sender to chat users list
-      chatDetailsStore.chatUsers.add(message.senderName);
+      // Add sender to chat users list (with capacity management)
+      chatDetailsStore.addChatUser(message.senderName);
 
       // Check for blocked users
       if (auth.user.blockedUsernames.contains(
@@ -826,14 +840,15 @@ abstract class ChatStoreBase with Store {
         toSend = null;
       }
 
-      // Maintain message limit
+      // Maintain message limit - flush buffer when paused and buffer is large
       if (!_autoScroll && messageBuffer.length >= _messagesToRemove) {
         _messages.addAll(messageBuffer);
         messageBuffer.clear();
       }
 
+      // Trim messages when over limit using removeRange for efficiency
       if (_messages.length >= _messageLimit) {
-        _messages = _messages.sublist(_messagesToRemove).asObservable();
+        _messages.removeRange(0, _messagesToRemove);
       }
     } catch (e) {
       debugPrint('Error parsing chat message: $e');
@@ -1480,6 +1495,11 @@ abstract class ChatStoreBase with Store {
 
     _messages.addAll(messageBuffer);
     messageBuffer.clear();
+
+    // Trim messages when over limit using removeRange for efficiency
+    if (_messages.length >= _messageLimit) {
+      _messages.removeRange(0, _messagesToRemove);
+    }
   }
 
   /// Cancels the chat delay countdown.
@@ -1769,6 +1789,11 @@ abstract class ChatStoreBase with Store {
     textFieldFocusNode.dispose();
     textController.dispose();
     scrollController.dispose();
+
+    // Clear collections to free memory
+    _messages.clear();
+    messageBuffer.clear();
+    revealedMessageIds.clear();
 
     assetsStore.dispose();
     chatDetailsStore.dispose();

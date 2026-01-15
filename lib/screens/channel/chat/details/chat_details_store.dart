@@ -73,7 +73,18 @@ abstract class ChatDetailsStoreBase with Store {
   var _filterText = '';
 
   /// The list and types of chatters in the chat room.
+  /// Limited to prevent unbounded memory growth during long sessions.
+  static const _maxChatUsers = 1000;
   final chatUsers = SplayTreeSet<String>();
+
+  /// Add a user to the chat users set with capacity management.
+  void addChatUser(String username) {
+    if (chatUsers.length >= _maxChatUsers && !chatUsers.contains(username)) {
+      // Remove oldest entry (first in sorted order)
+      chatUsers.remove(chatUsers.first);
+    }
+    chatUsers.add(username);
+  }
 
   @computed
   Iterable<String> get filteredUsers =>
@@ -109,5 +120,6 @@ abstract class ChatDetailsStoreBase with Store {
     scrollController.dispose();
     textController.dispose();
     textFieldFocusNode.dispose();
+    chatUsers.clear();
   }
 }

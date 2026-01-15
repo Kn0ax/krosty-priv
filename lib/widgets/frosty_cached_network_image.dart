@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:krosty/cache_manager.dart';
 
 /// A wrapper around [CachedNetworkImage] that adds custom defaults for Frosty.
+/// Optimized for memory efficiency with reduced fade durations and memory caching.
 class FrostyCachedNetworkImage extends StatelessWidget {
   final String imageUrl;
   final String? cacheKey;
@@ -40,16 +41,20 @@ class FrostyCachedNetworkImage extends StatelessWidget {
       colorBlendMode: colorBlendMode,
       placeholder: placeholder,
       useOldImageOnUrlChange: useOldImageOnUrlChange,
+      // Reduced fade durations for better performance
       fadeOutDuration: useFade
-          ? const Duration(milliseconds: 500)
+          ? const Duration(milliseconds: 200)
           : Duration.zero,
       fadeInDuration: useFade
-          ? const Duration(milliseconds: 500)
+          ? const Duration(milliseconds: 200)
           : Duration.zero,
       fadeInCurve: Curves.easeOut,
       fadeOutCurve: Curves.easeIn,
       fit: fit,
       cacheManager: CustomCacheManager.instance,
+      // Use memory cache for frequently accessed images (emotes)
+      memCacheWidth: width?.toInt(),
+      memCacheHeight: height?.toInt(),
     );
   }
 }

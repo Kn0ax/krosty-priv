@@ -11,6 +11,7 @@ import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
 /// A widget that displays a single Kick chat message.
+/// Uses RepaintBoundary to isolate repaints and improve scroll performance.
 class ChatMessage extends StatelessWidget {
   final KickChatMessage message;
   final ChatStore chatStore;
@@ -400,15 +401,17 @@ class ChatMessage extends StatelessWidget {
 
         final coloredMessage = dividedMessage;
 
-        final finalMessage = InkWell(
-          onTap: () {
-            FocusScope.of(context).unfocus();
-            if (chatStore.assetsStore.showEmoteMenu) {
-              chatStore.assetsStore.showEmoteMenu = false;
-            }
-          },
-          onLongPress: () => onLongPressMessage(context, defaultTextStyle),
-          child: coloredMessage,
+        final finalMessage = RepaintBoundary(
+          child: InkWell(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+              if (chatStore.assetsStore.showEmoteMenu) {
+                chatStore.assetsStore.showEmoteMenu = false;
+              }
+            },
+            onLongPress: () => onLongPressMessage(context, defaultTextStyle),
+            child: coloredMessage,
+          ),
         );
 
         return finalMessage;

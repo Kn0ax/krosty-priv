@@ -81,6 +81,7 @@ class Chat extends StatelessWidget {
                               ),
                               child: Observer(
                                 builder: (context) {
+                                  final messages = chatStore.renderMessages;
                                   return ListView.builder(
                                     reverse: true,
                                     padding: (listPadding ?? EdgeInsets.zero)
@@ -92,19 +93,20 @@ class Chat extends StatelessWidget {
                                           ),
                                         ),
                                     addAutomaticKeepAlives: false,
+                                    addRepaintBoundaries: true,
                                     controller: chatStore.scrollController,
-                                    itemCount: chatStore.renderMessages.length,
+                                    itemCount: messages.length,
+                                    // Estimate item extent for better scroll performance
+                                    itemExtent: null,
+                                    cacheExtent: 500,
                                     itemBuilder: (context, index) {
                                       // Reverse index for correct display
                                       final message =
-                                          chatStore.renderMessages[chatStore
-                                                  .renderMessages
-                                                  .length -
-                                              1 -
-                                              index];
+                                          messages[messages.length - 1 - index];
 
                                       // Ensure we are passing a KickChatMessage
                                       return ChatMessage(
+                                        key: ValueKey(message.id),
                                         message: message,
                                         chatStore: chatStore,
                                       );
