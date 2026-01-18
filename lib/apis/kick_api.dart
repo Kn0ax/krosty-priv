@@ -488,6 +488,41 @@ class KickApi extends BaseApiClient {
     );
   }
 
+  /// Pin a message in a channel's chatroom (requires mod/host permissions).
+  ///
+  /// [channelSlug] - The channel slug (will be normalized with hyphens).
+  /// [messageId] - The ID of the message to pin.
+  Future<bool> pinMessage({
+    required String channelSlug,
+    required String messageId,
+  }) async {
+    try {
+      await post<dynamic>(
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/pinned-message',
+        data: {'message_id': messageId},
+      );
+      return true;
+    } on ApiException catch (e) {
+      debugPrint('Failed to pin message: $e');
+      return false;
+    }
+  }
+
+  /// Unpin the current pinned message in a channel's chatroom (requires mod/host permissions).
+  ///
+  /// [channelSlug] - The channel slug (will be normalized with hyphens).
+  Future<bool> unpinMessage({required String channelSlug}) async {
+    try {
+      await delete<dynamic>(
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/pinned-message',
+      );
+      return true;
+    } on ApiException catch (e) {
+      debugPrint('Failed to unpin message: $e');
+      return false;
+    }
+  }
+
   /// Unban a user from a channel (requires mod/host permissions).
   ///
   /// [channelSlug] - The channel slug (will be normalized with hyphens).

@@ -97,6 +97,7 @@ class ChatMessage extends StatelessWidget {
         onDelete: () => _deleteMessage(context),
         onTimeout: () => _showTimeoutDialog(context),
         onBan: () => _showBanConfirmation(context),
+        onPin: () => _pinMessage(context),
       ),
     );
   }
@@ -208,6 +209,20 @@ class ChatMessage extends StatelessWidget {
       chatStore.updateNotification('${message.sender.username} banned');
     } catch (e) {
       chatStore.updateNotification('Failed to ban user');
+    }
+  }
+
+  /// Pin this message (mod action).
+  Future<void> _pinMessage(BuildContext context) async {
+    final kickApi = context.read<KickApi>();
+    final success = await kickApi.pinMessage(
+      channelSlug: chatStore.channelSlug,
+      messageId: message.id,
+    );
+    if (success) {
+      chatStore.updateNotification('Message pinned');
+    } else {
+      chatStore.updateNotification('Failed to pin message');
     }
   }
 
@@ -411,6 +426,7 @@ class _MessageActionsSheet extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onTimeout;
   final VoidCallback onBan;
+  final VoidCallback onPin;
 
   const _MessageActionsSheet({
     required this.message,
@@ -420,6 +436,7 @@ class _MessageActionsSheet extends StatelessWidget {
     required this.onDelete,
     required this.onTimeout,
     required this.onBan,
+    required this.onPin,
   });
 
   @override
@@ -489,6 +506,14 @@ class _MessageActionsSheet extends StatelessWidget {
         // Mod actions
         if (isMod) ...[
           const Divider(indent: 12, endIndent: 12),
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              onPin();
+            },
+            leading: const Icon(Icons.push_pin_outlined),
+            title: const Text('Pin message'),
+          ),
           ListTile(
             onTap: () {
               Navigator.pop(context);
