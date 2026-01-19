@@ -8,6 +8,7 @@ import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/services/audio_handler.dart';
 import 'package:mobx/mobx.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
 
@@ -27,6 +28,8 @@ abstract class VideoStoreBase with Store {
   final AuthStore authStore;
 
   final SettingsStore settingsStore;
+
+  final FrostyAudioHandler audioHandler;
 
   /// The [SimplePip] instance used for initiating PiP on Android.
   final pip = SimplePip();
@@ -133,12 +136,24 @@ abstract class VideoStoreBase with Store {
     required this.kickApi,
     required this.authStore,
     required this.settingsStore,
+    required this.audioHandler,
   }) {
     // Initialize the AWS IVS player controller
     _ivsController = IvsPlayerController();
 
     // Setup player state listener
     _ivsController.addListener(_onPlayerStateChanged);
+
+    // Setup audio handler callbacks
+    audioHandler.onPlayCallback = () async {
+      _ivsController.play(_playbackUrl!);
+    };
+    audioHandler.onPauseCallback = () async {
+      _ivsController.pause();
+    };
+    audioHandler.onStopCallback = () async {
+      _ivsController.pause(); // Just pause, don't stop stream to allow resume
+    };
 
     // Initialize the [_overlayTimer] to auto-hide the overlay after a delay (default 5 seconds).
     _scheduleOverlayHide();
@@ -210,9 +225,12 @@ abstract class VideoStoreBase with Store {
         case PlayerState.playing:
           _paused = false;
           _isBuffering = false;
-          // Update Android PiP play state
+          _overlayVisible = true;
+          _scheduleOverlayHide();
+          // Enable Auto PiP (Android 12+)
           if (Platform.isAndroid) {
             pip.setIsPlaying(true);
+            pip.setAutoPipMode(autoEnter: true, aspectRatio: (16, 9));
           }
           break;
         case PlayerState.paused:
@@ -229,16 +247,35 @@ abstract class VideoStoreBase with Store {
           // Update Android PiP play state
           if (Platform.isAndroid) {
             pip.setIsPlaying(false);
+            pip.setAutoPipMode(autoEnter: false);
           }
           break;
         case PlayerState.error:
           _paused = true;
           _isBuffering = false;
           _handlePlaybackError(_ivsController.errorMessage ?? 'Unknown error');
+          if (Platform.isAndroid) {
+            pip.setAutoPipMode(autoEnter: false);
+          }
+          break;
+        case PlayerState.idle:
+          _paused = true;
+          _isBuffering = false;
+          _overlayVisible = true;
+          // Disable Auto PiP
+          if (Platform.isAndroid) {
+            pip.setAutoPipMode(autoEnter: false);
+          }
           break;
         case PlayerState.disposed:
           break;
       }
+
+      // Update audio handler state
+      audioHandler.updatePlaybackState(
+        isPlaying: !_paused,
+        isBuffering: _isBuffering,
+      );
     });
   }
 
@@ -327,6 +364,26 @@ abstract class VideoStoreBase with Store {
             ),
           );
           _offlineChannelInfo = null;
+
+          // Update audio handler metadata
+          final title = _streamInfo?.sessionTitle ?? 'Kick Stream';
+          final artist =
+              _streamInfo?.channel?.user?.username ??
+              _streamInfo?.channel?.slug ??
+              'Kick Streamer';
+
+          // Prioritize banner image or profile pic over stream thumbnail
+          // to avoid 403 errors with protected stream thumbnails
+          final artUri =
+              channel.bannerImage?.url ??
+              channel.user.profilePic ??
+              _streamInfo?.thumbnail?.imageUrl;
+
+          audioHandler.updateMetadata(
+            title: title,
+            artist: artist,
+            artUri: artUri,
+          );
         });
       } else {
         _currentLivestreamId = null;
@@ -682,6 +739,11 @@ abstract class VideoStoreBase with Store {
     // Re-fetch channel data and playback URL
     // This also updates stream info, no need to call updateStreamInfo separately
     await _initializeStream();
+
+    // Explicitly resume playback if we have a URL
+    if (_playbackUrl != null) {
+      await _ivsController.play(_playbackUrl!);
+    }
   }
 
   /// Play or pause the video depending on the current state of [_paused].
@@ -781,5 +843,11 @@ abstract class VideoStoreBase with Store {
     // Remove listener and dispose the IVS controller
     _ivsController.removeListener(_onPlayerStateChanged);
     _ivsController.dispose();
+
+    // Clear audio handler callbacks
+    audioHandler.onPlayCallback = null;
+    audioHandler.onPauseCallback = null;
+    audioHandler.onStopCallback = null;
+    audioHandler.stop();
   }
 }

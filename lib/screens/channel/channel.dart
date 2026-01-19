@@ -14,6 +14,7 @@ import 'package:krosty/screens/channel/video/video_overlay.dart';
 import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/services/audio_handler.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:krosty/theme.dart';
 import 'package:krosty/utils/context_extensions.dart';
@@ -80,6 +81,7 @@ class _VideoChatState extends State<VideoChat>
     kickApi: context.read<KickApi>(),
     authStore: context.read<AuthStore>(),
     settingsStore: context.read<SettingsStore>(),
+    audioHandler: context.read<FrostyAudioHandler>(),
   );
 
   @override

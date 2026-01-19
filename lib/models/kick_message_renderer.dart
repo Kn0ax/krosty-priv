@@ -39,6 +39,16 @@ extension KickMessageRenderer on KickChatMessage {
 
     final span = <InlineSpan>[];
 
+    // Check cache validity (content match + theme brightness match)
+    final currentBrightness = Theme.of(context).brightness;
+    if (cachedSpan != null && cachedBrightness == currentBrightness) {
+      return cachedSpan!;
+    }
+
+    // Clear cache if brightness mismatch (though it would be null or mismatch anyway)
+    clearCache();
+    cachedBrightness = currentBrightness;
+
     // Add timestamp if enabled
     _addTimestamp(span, style, timestamp);
 
@@ -89,6 +99,7 @@ extension KickMessageRenderer on KickChatMessage {
       );
     }
 
+    cachedSpan = span;
     return span;
   }
 

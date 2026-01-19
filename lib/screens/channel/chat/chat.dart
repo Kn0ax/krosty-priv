@@ -93,12 +93,12 @@ class Chat extends StatelessWidget {
                                           ),
                                         ),
                                     addAutomaticKeepAlives: false,
-                                    addRepaintBoundaries: true,
+                                    addRepaintBoundaries: false,
                                     controller: chatStore.scrollController,
                                     itemCount: messages.length,
                                     // Estimate item extent for better scroll performance
                                     itemExtent: null,
-                                    cacheExtent: 500,
+                                    cacheExtent: 1500,
                                     itemBuilder: (context, index) {
                                       // Reverse index for correct display
                                       final message =

@@ -77,6 +77,8 @@ dependencies:
     # Using local copy with updated SDK 1.44.0 for 16KB page alignment fix
     aws_ivs_player:
         path: ../aws_ivs_player
+    audio_service: ^0.18.18
+    audio_session: ^0.2.2
 
 dev_dependencies:
     flutter_test:

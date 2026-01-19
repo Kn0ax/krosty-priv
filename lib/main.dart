@@ -5,11 +5,13 @@ import 'package:advanced_in_app_review/advanced_in_app_review.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:krosty/apis/dio_client.dart';
+import 'package:krosty/services/audio_handler.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/kick_auth_interceptor.dart';
 import 'package:krosty/apis/seventv_api.dart';
@@ -96,6 +98,18 @@ void main() async {
     sevenTVApi: sevenTVApiService,
   );
 
+  // Initialize the audio handler
+  final audioHandler = await AudioService.init(
+    builder: () => FrostyAudioHandler(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'dev.kn0.krosty.channel.audio',
+      androidNotificationChannelName: 'Kick Stream Playback',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+      androidNotificationIcon: 'drawable/ic_notification',
+    ),
+  );
+
   // Create and initialize the authentication store
   final authStore = AuthStore(kickApi: kickApiService);
 
@@ -112,6 +126,7 @@ void main() async {
         Provider<KickApi>.value(value: kickApiService),
         Provider<SevenTVApi>.value(value: sevenTVApiService),
         Provider<GlobalAssetsStore>.value(value: globalAssetsStore),
+        Provider<FrostyAudioHandler>.value(value: audioHandler),
       ],
       child: MyApp(firstRun: firstRun),
     ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 
 /// Kick chat message model from Pusher WebSocket events.
 ///
@@ -20,9 +21,42 @@ class KickChatMessage {
   final KickMessageMetadata? metadata;
 
   // UI state flags (similar to IRCMessage)
-  bool isDeleted;
-  bool isHistorical;
-  bool isSystemMessage;
+  bool _isDeleted;
+  bool _isHistorical;
+  bool _isSystemMessage;
+
+  // Cache for the rendered text spans
+  List<InlineSpan>? cachedSpan;
+  Brightness? cachedBrightness;
+
+  bool get isDeleted => _isDeleted;
+  set isDeleted(bool value) {
+    if (_isDeleted != value) {
+      _isDeleted = value;
+      clearCache();
+    }
+  }
+
+  bool get isHistorical => _isHistorical;
+  set isHistorical(bool value) {
+    if (_isHistorical != value) {
+      _isHistorical = value;
+      clearCache();
+    }
+  }
+
+  bool get isSystemMessage => _isSystemMessage;
+  set isSystemMessage(bool value) {
+    if (_isSystemMessage != value) {
+      _isSystemMessage = value;
+      clearCache();
+    }
+  }
+
+  void clearCache() {
+    cachedSpan = null;
+    cachedBrightness = null;
+  }
 
   KickChatMessage({
     required this.id,
@@ -32,10 +66,12 @@ class KickChatMessage {
     required this.createdAt,
     required this.sender,
     this.metadata,
-    this.isDeleted = false,
-    this.isHistorical = false,
-    this.isSystemMessage = false,
-  });
+    bool isDeleted = false,
+    bool isHistorical = false,
+    bool isSystemMessage = false,
+  }) : _isDeleted = isDeleted,
+       _isHistorical = isHistorical,
+       _isSystemMessage = isSystemMessage;
 
   /// Parse message from Pusher ChatMessageSentEvent.
   factory KickChatMessage.fromPusherEvent(Map<String, dynamic> eventData) {
@@ -204,11 +240,7 @@ class KickMessageSender {
 
   /// Create system sender.
   factory KickMessageSender.system() {
-    return const KickMessageSender(
-      id: 0,
-      username: 'System',
-      slug: 'system',
-    );
+    return const KickMessageSender(id: 0, username: 'System', slug: 'system');
   }
 
   String get displayName => username;
