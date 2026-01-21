@@ -5,20 +5,20 @@ import 'package:audio_session/audio_session.dart';
 ///
 /// Despite the name "AudioHandler", this is used for both Audio and Video content
 /// to provide system-level media controls (notification, lock screen, etc.).
-class FrostyAudioHandler extends BaseAudioHandler {
+class KrostyAudioHandler extends BaseAudioHandler {
   // Callbacks for UI to listen to
   Future<void> Function()? onPlayCallback;
   Future<void> Function()? onPauseCallback;
   Future<void> Function()? onStopCallback;
 
-  FrostyAudioHandler() {
+  KrostyAudioHandler() {
     _initAudioSession();
     _initInitialState();
   }
 
   void _initInitialState() {
     mediaItem.add(
-      const MediaItem(id: 'frosty_init', title: 'Not Playing', album: 'Frosty'),
+      const MediaItem(id: 'krosty_init', title: 'Not Playing', album: 'Krosty'),
     );
     playbackState.add(
       PlaybackState(

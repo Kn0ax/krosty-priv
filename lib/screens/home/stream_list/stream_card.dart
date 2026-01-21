@@ -9,8 +9,8 @@ import 'package:krosty/theme.dart';
 import 'package:krosty/utils.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/blurred_container.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
-import 'package:krosty/widgets/frosty_photo_view_dialog.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_photo_view_dialog.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:krosty/widgets/uptime.dart';
 import 'package:krosty/widgets/user_actions_modal.dart';
@@ -46,7 +46,7 @@ class StreamCard extends StatelessWidget {
 
     final thumbnail = AspectRatio(
       aspectRatio: 16 / 9,
-      child: FrostyCachedNetworkImage(
+      child: KrostyCachedNetworkImage(
         imageUrl: thumbnailUrl,
         cacheKey: cacheKey,
         placeholder: (context, url) => const SkeletonLoader(
@@ -78,7 +78,7 @@ class StreamCard extends StatelessWidget {
           GestureDetector(
             onLongPress: () => showDialog(
               context: context,
-              builder: (context) => FrostyPhotoViewDialog(
+              builder: (context) => KrostyPhotoViewDialog(
                 imageUrl: streamInfo.thumbnailUrl ?? '',
                 cacheKey: cacheKey,
               ),
@@ -100,7 +100,7 @@ class StreamCard extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: context
-                      .watch<FrostyThemes>()
+                      .watch<KrostyThemes>()
                       .dark
                       .colorScheme
                       .onSurface,
@@ -123,7 +123,7 @@ class StreamCard extends StatelessWidget {
             children: [
               // Use profile picture from stream data, fallback to default Kick avatar
               ClipOval(
-                child: FrostyCachedNetworkImage(
+                child: KrostyCachedNetworkImage(
                   width: 20,
                   height: 20,
                   imageUrl: streamInfo.channelProfilePic?.isNotEmpty == true

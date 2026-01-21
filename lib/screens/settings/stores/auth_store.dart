@@ -8,7 +8,7 @@ import 'package:krosty/apis/base_api_client.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/main.dart';
 import 'package:krosty/screens/settings/stores/user_store.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:mobx/mobx.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -447,7 +447,7 @@ abstract class AuthBase with Store {
 
     showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Session Expired',
         message: 'Your session has expired. Please log in again.',
         actions: [
@@ -486,7 +486,7 @@ abstract class AuthBase with Store {
   }) {
     return showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Block User',
         message: 'Are you sure you want to block $targetUser?',
         actions: [

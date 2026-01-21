@@ -32,7 +32,7 @@ class OnboardingSetup extends StatelessWidget {
               SettingsListSwitch(
                 title: 'Share crash logs and analytics',
                 subtitle: const Text(
-                  'Help improve Frosty by sending anonymous crash logs and analytics through Firebase.',
+                  'Help improve Krosty by sending anonymous crash logs and analytics through Firebase.',
                 ),
                 value: settingsStore.shareCrashLogsAndAnalytics,
                 onChanged: (newValue) {

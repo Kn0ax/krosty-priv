@@ -4,7 +4,7 @@ import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
 import 'package:krosty/screens/home/stream_list/streams_list.dart';
 import 'package:krosty/widgets/blurred_container.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 
 /// A widget that displays a list of streams under the provided category.
@@ -111,7 +111,7 @@ class _TransparentCategoryCard extends StatelessWidget {
               borderRadius: const BorderRadius.all(Radius.circular(8)),
               child: AspectRatio(
                 aspectRatio: 3 / 4,
-                child: FrostyCachedNetworkImage(
+                child: KrostyCachedNetworkImage(
                   imageUrl: category.banner?.url ?? '',
                   placeholder: (context, url) => const SkeletonLoader(
                     borderRadius: BorderRadius.all(Radius.circular(8)),

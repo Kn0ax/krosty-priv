@@ -16,7 +16,7 @@ SettingsStore _$SettingsStoreFromJson(
         unknownValue: ThemeType.system,
       ) ??
       ThemeType.system
-  ..accentColor = (json['accentColor'] as num?)?.toInt() ?? 4287710975
+  ..accentColor = (json['accentColor'] as num?)?.toInt() ?? 4283759639
   ..showThumbnails = json['showThumbnails'] as bool? ?? true
   ..largeStreamCard = json['largeStreamCard'] as bool? ?? false
   ..launchUrlExternal = json['launchUrlExternal'] as bool? ?? false

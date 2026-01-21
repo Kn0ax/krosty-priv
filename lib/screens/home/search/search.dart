@@ -9,7 +9,7 @@ import 'package:krosty/screens/home/stream_list/streams_list.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/widgets/alert_message.dart';
 import 'package:krosty/widgets/blurred_container.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 import 'package:krosty/widgets/section_header.dart';
 import 'package:provider/provider.dart';
 
@@ -70,7 +70,7 @@ class _SearchState extends State<Search> {
                   );
                 }
 
-                return FrostyScrollbar(
+                return KrostyScrollbar(
                   controller: widget.scrollController,
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).padding.top + _kSearchBarHeight,
@@ -129,7 +129,7 @@ class _SearchState extends State<Search> {
                   ),
                 );
               }
-              return FrostyScrollbar(
+              return KrostyScrollbar(
                 controller: widget.scrollController,
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).padding.top + _kSearchBarHeight,

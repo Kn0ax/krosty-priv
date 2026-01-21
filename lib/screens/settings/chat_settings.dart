@@ -9,7 +9,7 @@ import 'package:krosty/screens/settings/widgets/settings_list_slider.dart';
 import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
 import 'package:krosty/screens/settings/widgets/settings_muted_words.dart';
 import 'package:krosty/utils/context_extensions.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:krosty/widgets/section_header.dart';
 import 'package:krosty/widgets/settings_page_layout.dart';
 
@@ -51,7 +51,7 @@ class _ChatSettingsState extends State<ChatSettings> {
                           children: [
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
-                              child: FrostyCachedNetworkImage(
+                              child: KrostyCachedNetworkImage(
                                 imageUrl:
                                     'https://static-cdn.jtvnw.net/badges/v1/bbbe0db0-a598-423e-86d0-f9fb98ca1933/3',
                                 height:
@@ -63,7 +63,7 @@ class _ChatSettingsState extends State<ChatSettings> {
                             const TextSpan(text: ' Badge and emote preview. '),
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
-                              child: FrostyCachedNetworkImage(
+                              child: KrostyCachedNetworkImage(
                                 imageUrl:
                                     'https://static-cdn.jtvnw.net/emoticons/v2/425618/default/dark/3.0',
                                 height:

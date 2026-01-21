@@ -6,7 +6,7 @@ import 'package:krosty/screens/channel/video/stream_info_bar.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/utils.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:krosty/widgets/user_actions_modal.dart';
 import 'package:provider/provider.dart';
@@ -45,7 +45,7 @@ class LargeStreamCard extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(8)),
         child: AspectRatio(
           aspectRatio: 16 / 9,
-          child: FrostyCachedNetworkImage(
+          child: KrostyCachedNetworkImage(
             imageUrl: thumbnailUrl,
             cacheKey: cacheKey,
             placeholder: (context, url) => const SkeletonLoader(

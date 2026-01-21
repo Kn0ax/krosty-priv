@@ -50,7 +50,7 @@ class VideoOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaceColor = context
-        .watch<FrostyThemes>()
+        .watch<KrostyThemes>()
         .dark
         .colorScheme
         .onSurface;

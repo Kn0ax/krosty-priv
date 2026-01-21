@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:krosty/main.dart';
 import 'package:krosty/screens/onboarding/login_webview.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:provider/provider.dart';
 
 /// Dio interceptor that catches 401 Unauthorized errors and shows a login dialog
@@ -51,7 +51,7 @@ class UnauthorizedInterceptor extends Interceptor {
       context: context,
       barrierDismissible: false, // User must choose an action
       builder: (BuildContext dialogContext) {
-        return FrostyDialog(
+        return KrostyDialog(
           title: title,
           message: message,
           actions: [

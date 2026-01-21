@@ -10,8 +10,8 @@ import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
 import 'package:krosty/utils.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/alert_message.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 import 'package:krosty/widgets/profile_picture.dart';
 import 'package:krosty/widgets/user_actions_modal.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +178,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
         subscriberBadges,
       );
       if (subBadgeUrl != null) {
-        badgeImage = FrostyCachedNetworkImage(
+        badgeImage = KrostyCachedNetworkImage(
           imageUrl: subBadgeUrl,
           width: 14,
           height: 14,
@@ -371,7 +371,7 @@ class _ChatUserModalState extends State<ChatUserModal> {
             style: DefaultTextStyle.of(
               context,
             ).style.copyWith(fontSize: widget.chatStore.settings.fontSize),
-            child: FrostyScrollbar(
+            child: KrostyScrollbar(
               child: ListView.builder(
                 reverse: true,
                 primary: false,

@@ -8,7 +8,7 @@ import 'package:krosty/models/kick_message.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_assets_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/utils.dart' as utils;
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Regex for matching emoji characters.
@@ -40,8 +40,12 @@ extension KickMessageRenderer on KickChatMessage {
     final span = <InlineSpan>[];
 
     // Check cache validity (content match + theme brightness match)
+    // Skip cache when interactive callbacks are provided since they capture context
     final currentBrightness = Theme.of(context).brightness;
-    if (cachedSpan != null && cachedBrightness == currentBrightness) {
+    final hasInteractiveCallbacks = onTapName != null || onTapPingedUser != null;
+    if (cachedSpan != null &&
+        cachedBrightness == currentBrightness &&
+        !hasInteractiveCallbacks) {
       return cachedSpan!;
     }
 
@@ -163,7 +167,7 @@ extension KickMessageRenderer on KickChatMessage {
     if (badge.type == 'subscriber' && badge.count != null) {
       final subBadgeUrl = assetsStore.getSubscriberBadgeUrl(badge.count!);
       if (subBadgeUrl != null) {
-        return FrostyCachedNetworkImage(
+        return KrostyCachedNetworkImage(
           imageUrl: subBadgeUrl,
           width: size,
           height: size,
@@ -538,7 +542,7 @@ extension KickMessageRenderer on KickChatMessage {
 
     if (baseEmote != null && !baseEmote.zeroWidth) {
       children.add(
-        FrostyCachedNetworkImage(
+        KrostyCachedNetworkImage(
           imageUrl: baseEmote.url,
           height: baseEmote.height != null
               ? baseEmote.height! * emoteScale
@@ -551,7 +555,7 @@ extension KickMessageRenderer on KickChatMessage {
 
     for (final emote in emoteStack) {
       children.add(
-        FrostyCachedNetworkImage(
+        KrostyCachedNetworkImage(
           imageUrl: emote.url,
           height: emote.height != null ? emote.height! * emoteScale : emoteSize,
           width: emote.width != null ? emote.width! * emoteScale : null,
@@ -589,7 +593,7 @@ extension KickMessageRenderer on KickChatMessage {
           emote: emote,
           launchExternal: launchExternal,
         ),
-        child: FrostyCachedNetworkImage(
+        child: KrostyCachedNetworkImage(
           imageUrl: emote.url,
           height: height,
           width: width,
@@ -614,7 +618,7 @@ void showEmoteDetailsBottomSheet(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FrostyCachedNetworkImage(imageUrl: emote.url, height: 96),
+            KrostyCachedNetworkImage(imageUrl: emote.url, height: 96),
             const SizedBox(height: 16),
             Text(emote.name, style: Theme.of(context).textTheme.titleLarge),
             if (emote.realName != null && emote.realName != emote.name)

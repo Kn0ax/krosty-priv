@@ -1,7 +1,7 @@
 import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:krosty/models/emotes.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 
 /// A [SpecialTextSpanBuilder] that renders emote names as inline images.
 ///
@@ -99,7 +99,7 @@ class EmoteTextSpanBuilder extends SpecialTextSpanBuilder {
       alignment: PlaceholderAlignment.middle,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
-        child: FrostyCachedNetworkImage(
+        child: KrostyCachedNetworkImage(
           imageUrl: emote.url,
           height: height,
           width: width,

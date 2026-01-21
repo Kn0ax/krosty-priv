@@ -4,13 +4,12 @@ import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:krosty/cache_manager.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/screens/settings/widgets/release_notes.dart';
 import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
 import 'package:krosty/widgets/alert_message.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,7 +26,7 @@ class _OtherSettingsState extends State<OtherSettings> {
   Future<void> _showConfirmDialog(BuildContext context) {
     return showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Reset all settings',
         message: 'Are you sure you want to reset all settings?',
         actions: [
@@ -65,7 +64,7 @@ class _OtherSettingsState extends State<OtherSettings> {
       children: [
         ListTile(
           leading: const Icon(Icons.info_outline_rounded),
-          title: const Text('About Frosty'),
+          title: const Text('About Krosty'),
           onTap: () async {
             final packageInfo = await PackageInfo.fromPlatform();
 
@@ -73,14 +72,14 @@ class _OtherSettingsState extends State<OtherSettings> {
 
             showAboutDialog(
               context: context,
-              applicationIcon: SvgPicture.asset(
-                'assets/icons/logo.svg',
+              applicationIcon: Image.asset(
+                'assets/icons/logo.png',
                 height: 80,
               ),
               applicationName: packageInfo.appName,
               applicationVersion:
                   'Version ${packageInfo.version} (${packageInfo.buildNumber})',
-              applicationLegalese: '\u{a9} 2026 Tommy Chow',
+              applicationLegalese: '\u{a9} 2026 Kn0ax \n Forked from Frosty by Tommy Chow  \n Licensed under AGPL-3.0',
             );
           },
         ),
@@ -95,7 +94,7 @@ class _OtherSettingsState extends State<OtherSettings> {
           leading: const Icon(Icons.launch_rounded),
           title: const Text('FAQ'),
           onTap: () => launchUrl(
-            Uri.parse('https://www.frostyapp.io/#faq'),
+            Uri.parse('https://krosty.kn0.dev/#faq'),
             mode: widget.settingsStore.launchUrlExternal
                 ? LaunchMode.externalApplication
                 : LaunchMode.inAppBrowserView,
@@ -131,7 +130,7 @@ class _OtherSettingsState extends State<OtherSettings> {
           builder: (_) => SettingsListSwitch(
             title: 'Share crash logs and analytics',
             subtitle: const Text(
-              'Help improve Frosty by sending anonymous crash logs and analytics through Firebase.',
+              'Help improve Krosty by sending anonymous crash logs and analytics through Firebase.',
             ),
             value: widget.settingsStore.shareCrashLogsAndAnalytics,
             onChanged: (newValue) {

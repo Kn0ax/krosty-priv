@@ -6,7 +6,7 @@ import 'package:krosty/models/kick_message_renderer.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/utils/context_extensions.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 class EmoteMenuSection extends StatefulWidget {
@@ -59,7 +59,7 @@ class _EmoteMenuSectionState extends State<EmoteMenuSection>
           child: Padding(
             padding: const EdgeInsets.all(5.0),
             child: Center(
-              child: FrostyCachedNetworkImage(
+              child: KrostyCachedNetworkImage(
                 imageUrl: widget.emotes[index].lowQualityUrl,
                 height:
                     widget.emotes[index].height?.toDouble() ?? defaultEmoteSize,

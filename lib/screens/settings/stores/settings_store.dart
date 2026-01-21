@@ -17,7 +17,7 @@ abstract class _SettingsStoreBase with Store {
   // * General Settings
   // Theme defaults
   static const defaultThemeType = ThemeType.system;
-  static const defaultAccentColor = 0xff9146ff;
+  static const defaultAccentColor = 0xff54fc17; // Kick green
 
   // Stream card defaults
   static const defaultShowThumbnails = true;

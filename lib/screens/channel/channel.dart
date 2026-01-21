@@ -20,7 +20,7 @@ import 'package:krosty/theme.dart';
 import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/widgets/blurred_container.dart';
 import 'package:krosty/widgets/draggable_divider.dart';
-import 'package:krosty/widgets/frosty_notification.dart';
+import 'package:krosty/widgets/krosty_notification.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_pip_mode/actions/pip_actions_layout.dart';
 import 'package:simple_pip_mode/pip_widget.dart';
@@ -81,7 +81,7 @@ class _VideoChatState extends State<VideoChat>
     kickApi: context.read<KickApi>(),
     authStore: context.read<AuthStore>(),
     settingsStore: context.read<SettingsStore>(),
-    audioHandler: context.read<FrostyAudioHandler>(),
+    audioHandler: context.read<KrostyAudioHandler>(),
   );
 
   @override
@@ -355,7 +355,7 @@ class _VideoChatState extends State<VideoChat>
                           padding: EdgeInsets.only(
                             top: chatOnly ? context.safePaddingTop : 0,
                           ),
-                          child: FrostyNotification(
+                          child: KrostyNotification(
                             message: _chatStore.notification!,
                             onDismissed: _chatStore.clearNotification,
                           ),
@@ -437,13 +437,13 @@ class _VideoChatState extends State<VideoChat>
                   visible: settingsStore.fullScreenChatOverlay,
                   maintainState: true,
                   child: Theme(
-                    data: FrostyThemes(
+                    data: KrostyThemes(
                       colorSchemeSeed: Color(settingsStore.accentColor),
                     ).dark,
                     child: DefaultTextStyle(
                       style: context.defaultTextStyle.copyWith(
                         color: context
-                            .watch<FrostyThemes>()
+                            .watch<KrostyThemes>()
                             .dark
                             .colorScheme
                             .onSurface,

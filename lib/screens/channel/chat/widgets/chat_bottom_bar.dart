@@ -10,7 +10,7 @@ import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/blurred_container.dart';
 import 'package:krosty/widgets/chat_input/emote_text_span_builder.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 
 class ChatBottomBar extends StatelessWidget {
   final ChatStore chatStore;
@@ -249,7 +249,7 @@ class ChatBottomBar extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Center(
-                          child: FrostyCachedNetworkImage(
+                          child: KrostyCachedNetworkImage(
                             imageUrl: matchingEmotes[index].url,
                             useFade: false,
                             height:

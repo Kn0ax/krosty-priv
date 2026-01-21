@@ -18,7 +18,7 @@ jobs:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       SECRET: ${{ secrets.SECRET }}
     steps:
-      - name: Checkout Frosty repo
+      - name: Checkout Krosty repo
         uses: actions/checkout@v6
       
       # Setup Java so that we can build the APK.
@@ -50,7 +50,7 @@ jobs:
       - name: Build for Android
         run: |
           flutter build apk --dart-define CLIENT_ID=$CLIENT_ID --dart-define SECRET=$SECRET
-          mv build/app/outputs/flutter-apk/app-release.apk frosty-${{ github.ref_name }}.apk
+          mv build/app/outputs/flutter-apk/app-release.apk krosty-${{ github.ref_name }}.apk
       
       # Create a draft release on GitHub.
       - name: Release
@@ -58,4 +58,4 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
-          files: frosty-${{ github.ref_name }}.apk
+          files: krosty-${{ github.ref_name }}.apk

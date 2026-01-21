@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:krosty/apis/kick_api.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePicture extends StatefulWidget {
@@ -83,7 +83,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
         future: _getProfileImageUrl(),
         builder: (context, snapshot) {
           return snapshot.hasData
-              ? FrostyCachedNetworkImage(
+              ? KrostyCachedNetworkImage(
                   width: diameter,
                   height: diameter,
                   imageUrl: snapshot.data!,

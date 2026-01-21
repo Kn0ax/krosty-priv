@@ -3,8 +3,8 @@ import 'package:krosty/screens/channel/channel.dart';
 import 'package:krosty/screens/settings/account/blocked_users.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/widgets/settings_tile_route.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 
 class AccountOptions extends StatelessWidget {
   final AuthStore authStore;
@@ -14,7 +14,7 @@ class AccountOptions extends StatelessWidget {
   Future<void> _showLogoutDialog(BuildContext context) {
     return showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Log out',
         message: 'Are you sure you want to log out?',
         actions: [
@@ -37,7 +37,7 @@ class AccountOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FrostyScrollbar(
+    return KrostyScrollbar(
       child: ListView(
         shrinkWrap: true,
         primary: false,

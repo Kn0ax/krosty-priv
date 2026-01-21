@@ -404,6 +404,7 @@ class ChatMessage extends StatelessWidget {
         final finalMessage = RepaintBoundary(
           child: InkWell(
             onTap: () {
+              if (!context.mounted) return;
               FocusScope.of(context).unfocus();
               if (chatStore.assetsStore.showEmoteMenu) {
                 chatStore.assetsStore.showEmoteMenu = false;

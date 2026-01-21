@@ -8,6 +8,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:krosty/apis/dio_client.dart';
@@ -100,7 +101,7 @@ void main() async {
 
   // Initialize the audio handler
   final audioHandler = await AudioService.init(
-    builder: () => FrostyAudioHandler(),
+    builder: () => KrostyAudioHandler(),
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'dev.kn0.krosty.channel.audio',
       androidNotificationChannelName: 'Kick Stream Playback',
@@ -126,7 +127,7 @@ void main() async {
         Provider<KickApi>.value(value: kickApiService),
         Provider<SevenTVApi>.value(value: sevenTVApiService),
         Provider<GlobalAssetsStore>.value(value: globalAssetsStore),
-        Provider<FrostyAudioHandler>.value(value: audioHandler),
+        Provider<KrostyAudioHandler>.value(value: audioHandler),
       ],
       child: MyApp(firstRun: firstRun),
     ),
@@ -153,6 +154,9 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
 
+    // Set high refresh rate for supported Android devices
+    _setHighRefreshRate();
+
     AdvancedInAppReview()
         .setMinDaysBeforeRemind(7)
         .setMinDaysAfterInstall(1)
@@ -163,16 +167,25 @@ class _MyAppState extends State<MyApp> {
     _initDeepLinks();
   }
 
+  Future<void> _setHighRefreshRate() async {
+    try {
+      await FlutterDisplayMode.setHighRefreshRate();
+    } catch (e) {
+      // Silently fail if device doesn't support high refresh rate
+      debugPrint('Failed to set high refresh rate: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Observer(
       builder: (context) {
         final settingsStore = context.read<SettingsStore>();
-        final themes = FrostyThemes(
+        final themes = KrostyThemes(
           colorSchemeSeed: Color(settingsStore.accentColor),
         );
 
-        return Provider<FrostyThemes>(
+        return Provider<KrostyThemes>(
           create: (_) => themes,
           child: MaterialApp(
             title: 'Krosty',

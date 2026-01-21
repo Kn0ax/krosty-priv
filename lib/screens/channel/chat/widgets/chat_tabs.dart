@@ -7,7 +7,7 @@ import 'package:krosty/screens/channel/chat/chat.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:krosty/screens/channel/chat/widgets/add_chat_dialog.dart';
 import 'package:krosty/utils.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:krosty/widgets/profile_picture.dart';
 
 /// Widget that displays multiple chat tabs with a tab bar.
@@ -161,7 +161,7 @@ class ChatTabs extends StatelessWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Remove $displayName',
         message: "Are you sure you want to remove $displayName's chat tab?",
         actions: [

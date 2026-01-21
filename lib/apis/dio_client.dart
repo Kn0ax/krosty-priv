@@ -16,7 +16,7 @@ class DioClient {
       ), // Allow for larger API responses
       sendTimeout: const Duration(seconds: 10), // Reasonable for uploads
       headers: {
-        'User-Agent': 'Frosty (Flutter Twitch Client)',
+        'User-Agent': 'Krosty (Flutter Kick Client)',
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Connection': 'keep-alive', // Enable connection reuse

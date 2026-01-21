@@ -7,8 +7,8 @@ import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/widgets/alert_message.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:provider/provider.dart';
 
 class RecentEmotesPanel extends StatelessWidget {
@@ -19,7 +19,7 @@ class RecentEmotesPanel extends StatelessWidget {
   Future<void> _showClearDialog(BuildContext context) {
     return showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Clear recent emotes',
         message: 'Are you sure you want to clear your recent emotes?',
         actions: [
@@ -92,7 +92,7 @@ class RecentEmotesPanel extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(8),
                         child: Center(
-                          child: FrostyCachedNetworkImage(
+                          child: KrostyCachedNetworkImage(
                             imageUrl: matchingEmotes.isNotEmpty
                                 ? matchingEmotes.first.url
                                 : emote.url,

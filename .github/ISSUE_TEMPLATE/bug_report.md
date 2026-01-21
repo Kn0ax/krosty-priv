@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **Smartphone (please complete the following information):**
  - Device: [e.g. iPhone 13, Pixel 6]
  - OS: [e.g. iOS 15, Android 12]
- - App Version: [check in Settings -> Other -> About Frosty. e.g. v1.4.1 (22)]
+ - App Version: [check in Settings -> Other -> About Krosty. e.g. v1.4.1 (22)]
 
 **Additional context**
 Add any other context about the problem here.

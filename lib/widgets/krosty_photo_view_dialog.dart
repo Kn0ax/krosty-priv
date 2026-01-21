@@ -6,21 +6,21 @@ import 'package:krosty/widgets/blurred_container.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 
-class FrostyPhotoViewDialog extends StatefulWidget {
+class KrostyPhotoViewDialog extends StatefulWidget {
   final String imageUrl;
   final String? cacheKey;
 
-  const FrostyPhotoViewDialog({
+  const KrostyPhotoViewDialog({
     super.key,
     required this.imageUrl,
     this.cacheKey,
   });
 
   @override
-  State<FrostyPhotoViewDialog> createState() => _FrostyPhotoViewDialogState();
+  State<KrostyPhotoViewDialog> createState() => _KrostyPhotoViewDialogState();
 }
 
-class _FrostyPhotoViewDialogState extends State<FrostyPhotoViewDialog>
+class _KrostyPhotoViewDialogState extends State<KrostyPhotoViewDialog>
     with TickerProviderStateMixin {
   PhotoViewScaleState photoViewScaleState = PhotoViewScaleState.initial;
   bool _isFullResolution = false;
@@ -180,7 +180,7 @@ class _FrostyPhotoViewDialogState extends State<FrostyPhotoViewDialog>
           child: IconButton(
             icon: Icon(
               Icons.close,
-              color: context.watch<FrostyThemes>().dark.colorScheme.onSurface,
+              color: context.watch<KrostyThemes>().dark.colorScheme.onSurface,
             ),
             onPressed: Navigator.of(context).pop,
           ),
@@ -206,7 +206,7 @@ class _FrostyPhotoViewDialogState extends State<FrostyPhotoViewDialog>
                       _isFullResolution ? 'View thumbnail' : 'View original',
                       style: TextStyle(
                         color: context
-                            .watch<FrostyThemes>()
+                            .watch<KrostyThemes>()
                             .dark
                             .colorScheme
                             .onSurface,

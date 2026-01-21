@@ -10,8 +10,8 @@ import 'package:krosty/screens/channel/chat/widgets/pinned_message_panel.dart';
 import 'package:krosty/screens/channel/chat/widgets/poll_panel.dart';
 import 'package:krosty/screens/channel/chat/widgets/prediction_panel.dart';
 import 'package:krosty/utils/context_extensions.dart';
-import 'package:krosty/widgets/frosty_page_view.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_page_view.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 
 class Chat extends StatelessWidget {
   final ChatStore chatStore;
@@ -72,7 +72,7 @@ class Chat extends StatelessWidget {
                                 ? 0.0
                                 : MediaQuery.of(context).padding.bottom;
 
-                            return FrostyScrollbar(
+                            return KrostyScrollbar(
                               controller: chatStore.scrollController,
                               padding: EdgeInsets.only(
                                 top: MediaQuery.of(context).padding.top,
@@ -301,7 +301,7 @@ class Chat extends StatelessWidget {
                           children: [
                             const Divider(),
                             Expanded(
-                              child: FrostyPageView(
+                              child: KrostyPageView(
                                 headers: [
                                   'Recent',
                                   if (chatStore.settings.showKickEmotes) 'Kick',

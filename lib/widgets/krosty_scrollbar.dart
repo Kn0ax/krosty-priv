@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Custom scrollbar with consistent Frosty styling across the app.
+/// Custom scrollbar with consistent Krosty styling across the app.
 ///
 /// This widget wraps [RawScrollbar] with optimized defaults for appearance
 /// and behavior. Use [padding] to offset the scrollbar from UI elements
 /// like app bars and bottom navigation.
-class FrostyScrollbar extends StatelessWidget {
+class KrostyScrollbar extends StatelessWidget {
   /// The scroll controller for the scrollbar.
   final ScrollController? controller;
 
@@ -18,7 +18,7 @@ class FrostyScrollbar extends StatelessWidget {
   /// Use this to prevent the scrollbar from going under app bars or nav bars.
   final EdgeInsets? padding;
 
-  const FrostyScrollbar({
+  const KrostyScrollbar({
     super.key,
     this.controller,
     required this.child,

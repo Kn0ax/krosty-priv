@@ -7,7 +7,7 @@ import 'package:krosty/screens/home/top/categories/categories_store.dart';
 import 'package:krosty/screens/home/top/categories/category_card.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/widgets/alert_message.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:provider/provider.dart';
 
@@ -114,7 +114,7 @@ class _CategoriesState extends State<Categories>
             );
           }
 
-          return FrostyScrollbar(
+          return KrostyScrollbar(
             controller: widget.scrollController,
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + kToolbarHeight,

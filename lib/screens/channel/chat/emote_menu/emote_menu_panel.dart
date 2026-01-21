@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:krosty/models/emotes.dart';
 import 'package:krosty/screens/channel/chat/emote_menu/emote_menu_section.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:krosty/widgets/frosty_page_view.dart';
+import 'package:krosty/widgets/krosty_page_view.dart';
 
 /// Emote menu panel that shows emotes in categorized subtabs.
 /// Detects whether it's displaying Kick or 7TV emotes based on the passed
@@ -80,7 +80,7 @@ class EmoteMenuPanel extends StatelessWidget {
         return children.first;
       }
 
-      return FrostyPageView(headers: headers, children: children);
+      return KrostyPageView(headers: headers, children: children);
     } else {
       // Build 7TV subtabs: Channel / Global
       final sevenTVChannelEmotes = assetsStore.sevenTVChannelEmotesList;
@@ -111,7 +111,7 @@ class EmoteMenuPanel extends StatelessWidget {
         return children.first;
       }
 
-      return FrostyPageView(headers: headers, children: children);
+      return KrostyPageView(headers: headers, children: children);
     }
   }
 }

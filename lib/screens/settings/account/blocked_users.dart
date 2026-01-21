@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/screens/settings/account/blocked_users_store.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:provider/provider.dart';
 
 class BlockedUsers extends StatefulWidget {
@@ -33,7 +33,7 @@ class _BlockedUsersState extends State<BlockedUsers> {
     _usernameController.clear();
     showDialog(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Block User',
         message: 'Enter the username of the user you want to block.',
         content: TextField(

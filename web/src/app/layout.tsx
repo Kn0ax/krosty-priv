@@ -9,9 +9,9 @@ import './globals.css';
 const fontSans = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Frosty for Twitch',
-  description: 'Frosty lets you watch Twitch with 7TV, BTTV, and FFZ emotes',
-  metadataBase: new URL('https://frostyapp.io'),
+  title: 'Krosty for Kick',
+  description: 'Krosty lets you watch Kick with 7TV emotes',
+  metadataBase: new URL('https://krosty.kn0.dev'),
 };
 
 export default function RootLayout({

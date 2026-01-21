@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:krosty/models/kick_channel.dart';
 import 'package:krosty/screens/home/top/categories/category_streams.dart';
-import 'package:krosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:krosty/widgets/skeleton_loader.dart';
 
 /// A tappable card widget that displays a category's box art and name under.
@@ -18,7 +18,7 @@ class CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Calculate the dimensions of the box art based on the current dimensions of the screen.
-    // (unused width/height were removed as the FrostyCachedNetworkImage handles sizing)
+    // (unused width/height were removed as the KrostyCachedNetworkImage handles sizing)
 
     return InkWell(
       onTap: isTappable
@@ -45,7 +45,7 @@ class CategoryCard extends StatelessWidget {
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 child: AspectRatio(
                   aspectRatio: 3 / 4,
-                  child: FrostyCachedNetworkImage(
+                  child: KrostyCachedNetworkImage(
                     imageUrl: category.banner?.url ?? '',
                     placeholder: (context, url) => const SkeletonLoader(
                       borderRadius: BorderRadius.all(Radius.circular(8)),

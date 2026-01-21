@@ -4,7 +4,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/models/kick_message.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
 import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 import 'package:krosty/widgets/section_header.dart';
 
 class ReplyThread extends StatelessWidget {
@@ -62,7 +62,7 @@ class ReplyThread extends StatelessWidget {
                       ),
                     ),
                   Flexible(
-                    child: FrostyScrollbar(
+                    child: KrostyScrollbar(
                       child: ListView(
                         primary: false,
                         children: chatStore.messages

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
 import 'package:krosty/widgets/blurred_container.dart';
-import 'package:krosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -65,7 +65,7 @@ class _ReleaseNotesState extends State<ReleaseNotes> {
         children: [
           // Main scrollable content
           Positioned.fill(
-            child: FrostyScrollbar(
+            child: KrostyScrollbar(
               controller: _scrollController,
               padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top + kToolbarHeight,

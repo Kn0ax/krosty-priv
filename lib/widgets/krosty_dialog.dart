@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 /// A custom dialog that makes the title bold, displays actions in a full-width row layout with 50/50 split for 2 buttons, and adds a subtle border.
-class FrostyDialog extends StatelessWidget {
+class KrostyDialog extends StatelessWidget {
   final String title;
   final String? message;
   final Widget? content;
   final List<Widget>? actions;
 
-  const FrostyDialog({
+  const KrostyDialog({
     super.key,
     this.actions,
     required this.title,

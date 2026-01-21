@@ -416,13 +416,16 @@ class KickLivestreamsResponse {
 
   /// Factory for parsing the new /api/v1/livestreams endpoint response.
   /// Structure: { data: { livestreams: [...], pagination: { next_cursor, prev_cursor } } }
-  factory KickLivestreamsResponse.fromLivestreamsJson(Map<String, dynamic> json) {
+  factory KickLivestreamsResponse.fromLivestreamsJson(
+    Map<String, dynamic> json,
+  ) {
     final dataWrapper = json['data'] as Map<String, dynamic>?;
     if (dataWrapper == null) {
       return const KickLivestreamsResponse();
     }
 
-    final livestreams = (dataWrapper['livestreams'] as List<dynamic>?)
+    final livestreams =
+        (dataWrapper['livestreams'] as List<dynamic>?)
             ?.map((e) => KickLivestreamItem.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];

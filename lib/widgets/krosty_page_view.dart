@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 
-class FrostyPageView extends StatefulWidget {
+class KrostyPageView extends StatefulWidget {
   final List<String> headers;
   final List<Widget> children;
 
-  const FrostyPageView({
+  const KrostyPageView({
     super.key,
     required this.headers,
     required this.children,
   }) : assert(headers.length == children.length);
 
   @override
-  State<FrostyPageView> createState() => _FrostyPageViewState();
+  State<KrostyPageView> createState() => _KrostyPageViewState();
 }
 
-class _FrostyPageViewState extends State<FrostyPageView> {
+class _KrostyPageViewState extends State<KrostyPageView> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(

@@ -29,7 +29,7 @@ abstract class VideoStoreBase with Store {
 
   final SettingsStore settingsStore;
 
-  final FrostyAudioHandler audioHandler;
+  final KrostyAudioHandler audioHandler;
 
   /// The [SimplePip] instance used for initiating PiP on Android.
   final pip = SimplePip();

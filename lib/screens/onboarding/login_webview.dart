@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
-import 'package:krosty/widgets/frosty_app_bar.dart';
-import 'package:krosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_app_bar.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -38,7 +38,7 @@ class _LoginWebViewState extends State<LoginWebView> {
     );
 
     return Scaffold(
-      appBar: FrostyAppBar(
+      appBar: KrostyAppBar(
         title: const Text('Connect with Kick'),
         actions: [
           IconButton(
@@ -46,10 +46,10 @@ class _LoginWebViewState extends State<LoginWebView> {
             onPressed: () => showDialog(
               context: context,
               builder: (context) {
-                return FrostyDialog(
+                return KrostyDialog(
                   title: 'Login Help',
                   message:
-                      'If you encounter any issues during login, try clearing your browser cache or using a different browser. Once logged in, you can return to the app.',
+                      'We need you to login to Kick to retrive your app token. Unfortunately, Kick does not provide an API for this, so we need to use a WebView to login. If you encounter any issues during login, try without a VPN or clear app data. Once logged in, you can return to the app.',
                   actions: [
                     TextButton(
                       onPressed: Navigator.of(context).pop,

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:krosty/widgets/blurred_container.dart';
 
-class FrostyNotification extends StatelessWidget {
+class KrostyNotification extends StatelessWidget {
   final String message;
   final VoidCallback? onDismissed;
   final bool showGradient;
 
-  const FrostyNotification({
+  const KrostyNotification({
     super.key,
     required this.message,
     this.onDismissed,

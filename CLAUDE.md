@@ -76,7 +76,7 @@ These are advanced capabilities Claude can use for deeper analysis (not slash co
 
 **Common Commands:**
 - `flutter pub get` - Install dependencies
-- `flutter run --dart-define=clientId=YOUR_CLIENT_ID --dart-define=secret=YOUR_CLIENT_SECRET` - Run with Twitch API credentials
+- `flutter run --dart-define=clientId=YOUR_CLIENT_ID --dart-define=secret=YOUR_CLIENT_SECRET` - Run with Kick API credentials // not required yet.
 - `flutter analyze` - Run static analysis and lint checks
 - `flutter test` - Run all tests
 - `flutter build apk` / `flutter build ios` - Build release binaries
@@ -95,14 +95,14 @@ These are advanced capabilities Claude can use for deeper analysis (not slash co
 - `lib/screens/` - UI screens organized by feature (home, channel, settings, onboarding)
   - Each screen has its own MobX stores in a `stores/` subdirectory
 - `lib/models/` - Data models with JSON serialization (uses .g.dart files)
-- `lib/apis/` - API services for Twitch, BTTV, FFZ, and 7TV
+- `lib/apis/` - API services for Kick and 7TV
 - `lib/widgets/` - Reusable UI components
 - `lib/utils/` - Utility modules including context extensions
 
 **Main Application Flow**:
 
 1. App starts in `main.dart` with Firebase initialization and dependency injection via Provider
-2. Authentication handled by `AuthStore` using Twitch OAuth
+2. Authentication handled by `AuthStore` using Kick Auth
 3. Settings persisted via `SettingsStore` with SharedPreferences and MobX `autorun()`
 4. API services share a common Dio HTTP client for efficient connection reuse
 
@@ -112,7 +112,7 @@ These are advanced capabilities Claude can use for deeper analysis (not slash co
 - `SettingsStore` - User preferences with automatic persistence via MobX `autorun()`
 - `GlobalAssetsStore` - Shared cache for global emotes and badges across all chat tabs
 
-**HTTP & Auth**: Centralized Dio client (`DioClient.createClient()`) with connection pooling and optimized timeouts. `TwitchAuthInterceptor` auto-injects auth headers for Twitch API URLs. `UnauthorizedInterceptor` catches 401 errors for token refresh. Two-tier token system: default app token + optional user token in Flutter Secure Storage.
+**HTTP & Auth**: Centralized Dio client (`DioClient.createClient()`) with connection pooling and optimized timeouts. `KickAuthInterceptor` auto-injects auth headers for Kick API URLs. `UnauthorizedInterceptor` catches 401 errors for token refresh. Two-tier token system: default app token + optional user token in Flutter Secure Storage.
 
 ## MobX Store Implementation
 
@@ -137,16 +137,16 @@ After any changes to MobX stores or `@JsonSerializable()` models, run the build_
 
 ## Chat System Architecture
 
-- **Real-time IRC**: WebSocket connection to Twitch IRC with custom `IRCMessage` parsing
-- **Third-party Emotes**: Asynchronous loading of BTTV, FFZ, and 7TV assets via dedicated APIs
+- **Real-time IRC**: WebSocket connection to Kick IRC with custom `IRCMessage` parsing
+- **Third-party Emotes**: Asynchronous loading of 7TV assets via dedicated APIs
 - **Message Management**: 5000 message limit with 20% batch removal optimization
 - **Assets Store**: Separate `ChatAssetsStore` manages channel-specific emotes/badges; `GlobalAssetsStore` caches global assets
 
 ## Deep Linking
 
-App supports Twitch channel deep links (e.g., `twitch.tv/channelname`). Deep link handling in `main.dart`:
+App supports Kick channel deep links (e.g., `Kick.tv/channelname`). Deep link handling in `main.dart`:
 - Uses `app_links` package for URI stream handling
-- Resolves channel names via Twitch API before navigation
+- Resolves channel names via Kick API before navigation
 - Graceful fallback with in-app browser option on failure
 
 ## Code Style
