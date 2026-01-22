@@ -1,5 +1,5 @@
-name: frosty
-description: A Twitch client for iOS and Android.
+name: krosty
+description: A Kick client for iOS and Android.
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -17,7 +17,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 5.0.5+68
+version: 1.0.0+1
 
 environment:
   sdk: ^3.9.0
@@ -40,7 +40,7 @@ dependencies:
     flutter_secure_storage: ^9.2.2
     intl: ^0.20.1
     cached_network_image: ^3.1.0
-    webview_flutter: ^4.2.0
+    webview_flutter: ^4.13.1
     provider: ^6.0.1
     mobx: ^2.0.7+4
     flutter_mobx: ^2.0.0
@@ -69,8 +69,17 @@ dependencies:
     path_provider: ^2.1.5
     dio: ^5.9.0
     app_links: ^7.0.0
+    crypto: ^3.0.3
     extended_text_field: ^16.0.2
     native_device_orientation: ^2.1.0
+    flutter_displaymode: ^0.7.0
+
+    # AWS IVS video player (optimized for Kick streams)
+    # Using local copy with updated SDK 1.44.0 for 16KB page alignment fix
+    aws_ivs_player:
+        path: ../aws_ivs_player
+    audio_service: ^0.18.18
+    audio_session: ^0.2.2
 
 dev_dependencies:
     flutter_test:
@@ -83,8 +92,8 @@ dev_dependencies:
     # rules and activating additional ones.
     flutter_lints: ^6.0.0
     build_runner: ^2.1.1
-    json_serializable: ^6.0.0
-    mobx_codegen: ^2.0.6
+    json_serializable: ^6.11.3
+    mobx_codegen: ^2.7.6
     flutter_native_splash: ^2.0.5
     flutter_launcher_icons: ^0.14.1
 
@@ -127,6 +136,7 @@ flutter:
 
     assets:
         - assets/icons/logo.svg
+        - assets/icons/badges/
         - assets/fonts/
         - assets/release-notes.md
 
@@ -246,3 +256,5 @@ flutter_launcher_icons:
     android: true
     ios: true
     remove_alpha_ios: true
+    adaptive_icon_foreground: "assets/icons/icon_android.png"
+    adaptive_icon_background: "#53fc18"

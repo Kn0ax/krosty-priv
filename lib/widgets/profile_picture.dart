@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePicture extends StatefulWidget {
   final String userLogin;
+  final String? profileUrl;
   final double radius;
 
-  const ProfilePicture({super.key, required this.userLogin, this.radius = 20});
+  const ProfilePicture({
+    super.key,
+    required this.userLogin,
+    this.profileUrl,
+    this.radius = 20,
+  });
 
   @override
   State<ProfilePicture> createState() => _ProfilePictureState();
@@ -23,7 +29,15 @@ class _ProfilePictureState extends State<ProfilePicture> {
     super.initState();
   }
 
+  static const _defaultProfilePic =
+      'https://files.kick.com/images/profile_image/default2.jpeg';
+
   Future<String> _getProfileImageUrl() async {
+    // Return provided URL if available (avoid API call)
+    if (widget.profileUrl?.isNotEmpty == true) {
+      return widget.profileUrl!;
+    }
+
     final userLogin = widget.userLogin;
 
     // Return cached URL if available
@@ -38,9 +52,13 @@ class _ProfilePictureState extends State<ProfilePicture> {
 
     // Make new request and cache it
     final future = context
-        .read<TwitchApi>()
-        .getUser(userLogin: userLogin)
-        .then((user) => user.profileImageUrl);
+        .read<KickApi>()
+        .getUser(username: userLogin)
+        .then(
+          (user) => user.profilePic?.isNotEmpty == true
+              ? user.profilePic!
+              : _defaultProfilePic,
+        );
     _pendingRequests[userLogin] = future;
 
     try {
@@ -50,7 +68,8 @@ class _ProfilePictureState extends State<ProfilePicture> {
       return url;
     } catch (e) {
       _pendingRequests.remove(userLogin);
-      rethrow;
+      // Return default on error
+      return _defaultProfilePic;
     }
   }
 
@@ -64,7 +83,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
         future: _getProfileImageUrl(),
         builder: (context, snapshot) {
           return snapshot.hasData
-              ? FrostyCachedNetworkImage(
+              ? KrostyCachedNetworkImage(
                   width: diameter,
                   height: diameter,
                   imageUrl: snapshot.data!,

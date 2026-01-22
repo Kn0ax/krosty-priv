@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frosty/utils.dart';
+import 'package:krosty/utils.dart';
 
 void main() {
   group('getReadableName', () {
@@ -8,11 +8,14 @@ void main() {
       expect(getReadableName('testuser', 'testuser'), 'testuser');
     });
 
-    test('returns display name when it contains English letters (even if case differs)', () {
-      // Display name contains English letters, so it's readable as-is
-      // The function doesn't add username because English letters make it readable
-      expect(getReadableName('TestUser', 'testuser'), 'TestUser');
-    });
+    test(
+      'returns display name when it contains English letters (even if case differs)',
+      () {
+        // Display name contains English letters, so it's readable as-is
+        // The function doesn't add username because English letters make it readable
+        expect(getReadableName('TestUser', 'testuser'), 'TestUser');
+      },
+    );
 
     test('returns display name only for numeric-only names', () {
       expect(getReadableName('12345', 'somename'), '12345');
@@ -115,11 +118,14 @@ void main() {
       expect(adjustedLuminance, lessThan(originalLuminance));
     });
 
-    testWidgets('preserves colors that already meet contrast ratio',
-        (tester) async {
+    testWidgets('preserves colors that already meet contrast ratio', (
+      tester,
+    ) async {
       late Color adjustedColor;
       const darkBackground = Color(0xFF121212);
-      const goodContrastColor = Color(0xFFFFFFFF); // White on dark = good contrast
+      const goodContrastColor = Color(
+        0xFFFFFFFF,
+      ); // White on dark = good contrast
 
       await tester.pumpWidget(
         buildTestWidget(
@@ -148,10 +154,7 @@ void main() {
           scaffoldBackground: darkBackground,
           child: Builder(
             builder: (context) {
-              adjusted45 = adjustChatNameColor(
-                context,
-                greyColor,
-              );
+              adjusted45 = adjustChatNameColor(context, greyColor);
               adjusted30 = adjustChatNameColor(
                 context,
                 greyColor,
@@ -205,9 +208,7 @@ void main() {
           theme: ThemeData(
             brightness: Brightness.dark,
             scaffoldBackgroundColor: Colors.transparent,
-            colorScheme: const ColorScheme.dark(
-              surface: Color(0xFF1E1E1E),
-            ),
+            colorScheme: const ColorScheme.dark(surface: Color(0xFF1E1E1E)),
           ),
           home: Scaffold(
             body: Builder(
@@ -291,4 +292,5 @@ void main() {
       }
     });
   });
+
 }

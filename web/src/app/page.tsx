@@ -5,13 +5,11 @@ import screenshotSettings from '@/assets/screenshot-settings.png';
 import { FeatureCard } from '@/components/FeatureCard';
 import {
   appStoreLink,
-  bttvLink,
   emailLink,
-  ffzLink,
   githubLink,
+  kickLink,
   playStoreLink,
   sevenTvLink,
-  twitchLink,
 } from '@/lib/constants';
 import Image from 'next/image';
 import Marquee from 'react-fast-marquee';
@@ -30,7 +28,7 @@ const coreFeatures = [
     screenshot: screenshotCategories,
   },
   {
-    caption: 'Watch and chat with 7TV, BTTV, and FFZ emotes',
+    caption: 'Watch and chat with 7TV emotes',
     screenshot: screenshotChannel,
   },
   {
@@ -41,24 +39,19 @@ const coreFeatures = [
 
 const faqs = [
   {
-    question: 'Why are some Twitch features not in Frosty?',
+    question: 'Why are some Kick features not in Krosty?',
     answer:
-      'The Twitch API only exposes a limited set of functionality to developers. Features like predictions, polls, pinned messages, VODs with chat, stream qualities, total view count for categories and more are not available.',
+      'The Kick API only exposes a limited set of functionality to developers. Some features may not be available through the API.',
   },
   {
     question: 'Why is the stream delayed on iOS?',
     answer:
-      'There is a delay of around 15 seconds due to how the native iOS player works. As a workaround, Frosty has a message delay option that lets you set the delay (in seconds) before each message is rendered.',
+      'There is a delay of around 15 seconds due to how the native iOS player works. As a workaround, Krosty has a message delay option that lets you set the delay (in seconds) before each message is rendered.',
   },
   {
-    question: 'Is ad block planned?',
+    question: 'Will Krosty support Apple/Android TV?',
     answer:
-      'Ad block is not planned because it would probably violate the Twitch terms of service.',
-  },
-  {
-    question: 'Will Frosty support Apple/Android TV?',
-    answer:
-      "Not yet, because Flutter (the framework that Frosty is built upon) doesn't officially support TVs.",
+      "Not yet, because Flutter (the framework that Krosty is built upon) doesn't officially support TVs.",
   },
   {
     question: 'Where can I report a bug or request a new feature?',
@@ -80,7 +73,7 @@ const faqs = [
           target='_blank'
           rel='noreferrer'
         >
-          contact@frostyapp.io
+          contact@kn0.dev
         </a>
         .
       </>
@@ -149,41 +142,23 @@ export default function Home() {
         </div>
 
         <h1 className='text-pretty p-8 pb-16 text-center text-xl font-semibold decoration-2 underline-offset-4 md:text-2xl'>
-          Frosty lets you watch{' '}
+          Krosty lets you watch{' '}
           <a
-            className='text-twitch-purple underline'
-            href={twitchLink}
+            className='text-kick-green underline'
+            href={kickLink}
             target='_blank'
             rel='noreferrer'
           >
-            Twitch
+            Kick
           </a>{' '}
           with{' '}
           <a
-            className='text-twitch-purple underline'
+            className='text-kick-green underline'
             href={sevenTvLink}
             target='_blank'
             rel='noreferrer'
           >
             7TV
-          </a>
-          ,{' '}
-          <a
-            className='text-twitch-purple underline'
-            href={bttvLink}
-            target='_blank'
-            rel='noreferrer'
-          >
-            BTTV
-          </a>
-          , and{' '}
-          <a
-            className='text-twitch-purple underline'
-            href={ffzLink}
-            target='_blank'
-            rel='noreferrer'
-          >
-            FFZ
           </a>{' '}
           emotes
         </h1>

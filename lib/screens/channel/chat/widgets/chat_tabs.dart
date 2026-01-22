@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/chat.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_tabs_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/add_chat_dialog.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
-import 'package:frosty/widgets/profile_picture.dart';
+import 'package:krosty/screens/channel/chat/chat.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/add_chat_dialog.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
+import 'package:krosty/widgets/profile_picture.dart';
 
 /// Widget that displays multiple chat tabs with a tab bar.
 /// Wraps the existing Chat widget and manages tab switching.
@@ -29,12 +29,12 @@ class ChatTabs extends StatelessWidget {
       return;
     }
 
-    final result = await AddChatSheet.show(context, chatTabsStore.twitchApi);
+    final result = await AddChatSheet.show(context, chatTabsStore.kickApi);
 
     if (result != null) {
       final added = chatTabsStore.addTab(
-        channelId: result.channelId,
-        channelLogin: result.channelLogin,
+        // chatroomId: null, // Let ChatStore fetch it
+        channelSlug: result.channelSlug,
         displayName: result.displayName,
       );
 
@@ -104,7 +104,7 @@ class ChatTabs extends StatelessWidget {
                       return const SizedBox.shrink();
                     }
                     return Chat(
-                      key: ValueKey(tabInfo.channelId),
+                      key: ValueKey(tabInfo.channelSlug),
                       chatStore: tabInfo.chatStore!,
                       listPadding: adjustedPadding,
                       onAddChat: () => _handleAddChat(context),
@@ -137,7 +137,7 @@ class ChatTabs extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final tabInfo = chatTabsStore.tabs[index];
                         return Padding(
-                          key: ValueKey(tabInfo.channelId),
+                          key: ValueKey(tabInfo.channelSlug),
                           padding: EdgeInsets.only(
                             right: index < tabs.length - 1 ? 4 : 0,
                           ),
@@ -161,7 +161,7 @@ class ChatTabs extends StatelessWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => FrostyDialog(
+      builder: (context) => KrostyDialog(
         title: 'Remove $displayName',
         message: "Are you sure you want to remove $displayName's chat tab?",
         actions: [
@@ -189,10 +189,10 @@ class ChatTabs extends StatelessWidget {
     final isActivated = tabInfo.isActivated;
     final displayName = getReadableName(
       tabInfo.displayName,
-      tabInfo.channelLogin,
+      tabInfo.channelSlug,
     );
 
-    final avatar = ProfilePicture(userLogin: tabInfo.channelLogin, radius: 12);
+    final avatar = ProfilePicture(userLogin: tabInfo.channelSlug, radius: 12);
 
     return InputChip(
       avatar: isActivated ? avatar : Opacity(opacity: 0.5, child: avatar),

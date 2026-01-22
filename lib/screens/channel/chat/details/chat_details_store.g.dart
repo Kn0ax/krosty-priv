@@ -24,13 +24,13 @@ mixin _$ChatDetailsStore on ChatDetailsStoreBase, Store {
   );
 
   @override
-  ROOMSTATE get roomState {
+  KickRoomState get roomState {
     _$roomStateAtom.reportRead();
     return super.roomState;
   }
 
   @override
-  set roomState(ROOMSTATE value) {
+  set roomState(KickRoomState value) {
     _$roomStateAtom.reportWrite(value, super.roomState, () {
       super.roomState = value;
     });
@@ -72,6 +72,23 @@ mixin _$ChatDetailsStore on ChatDetailsStoreBase, Store {
     _$_filterTextAtom.reportWrite(value, super._filterText, () {
       super._filterText = value;
     });
+  }
+
+  late final _$ChatDetailsStoreBaseActionController = ActionController(
+    name: 'ChatDetailsStoreBase',
+    context: context,
+  );
+
+  @override
+  void updateFromChatroomEvent(KickChatroomUpdatedEvent event) {
+    final _$actionInfo = _$ChatDetailsStoreBaseActionController.startAction(
+      name: 'ChatDetailsStoreBase.updateFromChatroomEvent',
+    );
+    try {
+      return super.updateFromChatroomEvent(event);
+    } finally {
+      _$ChatDetailsStoreBaseActionController.endAction(_$actionInfo);
+    }
   }
 
   @override

@@ -1,30 +1,20 @@
 import 'package:flutter/foundation.dart';
-import 'package:frosty/apis/bttv_api.dart';
-import 'package:frosty/apis/ffz_api.dart';
-import 'package:frosty/apis/seventv_api.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/badges.dart';
-import 'package:frosty/models/emotes.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/models/emotes.dart';
 import 'package:mobx/mobx.dart';
 
 part 'global_assets_store.g.dart';
 
-/// Singleton-like store for caching global emotes and badges.
+/// Singleton-like store for caching global emotes.
 /// Provided at app root level via Provider, shared across all chat tabs.
 class GlobalAssetsStore = GlobalAssetsStoreBase with _$GlobalAssetsStore;
 
 abstract class GlobalAssetsStoreBase with Store {
-  final TwitchApi twitchApi;
-  final BTTVApi bttvApi;
-  final FFZApi ffzApi;
+  final KickApi kickApi;
   final SevenTVApi sevenTVApi;
 
-  GlobalAssetsStoreBase({
-    required this.twitchApi,
-    required this.bttvApi,
-    required this.ffzApi,
-    required this.sevenTVApi,
-  });
+  GlobalAssetsStoreBase({required this.kickApi, required this.sevenTVApi});
 
   // ============= Loading State =============
 
@@ -41,35 +31,22 @@ abstract class GlobalAssetsStoreBase with Store {
 
   // ============= Global Emotes =============
 
-  /// Global Twitch emotes.
+  /// Global Kick emotes (from "Global" group).
   @readonly
-  var _twitchGlobalEmotes = <Emote>[];
+  var _kickGlobalEmotes = <Emote>[];
+
+  /// Kick Emoji emotes (from "Emoji" group).
+  @readonly
+  var _kickEmojiEmotes = <Emote>[];
+
+  /// User's subscribed channel emotes grouped by channel name.
+  /// Key is channel name/slug, value is list of emotes from that channel.
+  @readonly
+  var _userSubEmotesByChannel = <String, List<Emote>>{};
 
   /// Global 7TV emotes.
   @readonly
   var _sevenTVGlobalEmotes = <Emote>[];
-
-  /// Global BTTV emotes.
-  @readonly
-  var _bttvGlobalEmotes = <Emote>[];
-
-  /// Global FFZ emotes.
-  @readonly
-  var _ffzGlobalEmotes = <Emote>[];
-
-  // ============= Global Badges =============
-
-  /// Global Twitch badges (badge key -> ChatBadge).
-  @readonly
-  var _twitchGlobalBadges = <String, ChatBadge>{};
-
-  /// BTTV badges (providerId -> ChatBadge).
-  @readonly
-  var _bttvBadges = <String, ChatBadge>{};
-
-  /// FFZ badges (userId to list of ChatBadge).
-  @readonly
-  var _ffzBadges = <String, List<ChatBadge>>{};
 
   // ============= Computed Properties =============
 
@@ -77,19 +54,81 @@ abstract class GlobalAssetsStoreBase with Store {
   @computed
   Map<String, Emote> get globalEmoteMap {
     final result = <String, Emote>{};
-    for (final emote in _twitchGlobalEmotes) {
+    for (final emote in _kickGlobalEmotes) {
       result[emote.name] = emote;
+    }
+    for (final emote in _kickEmojiEmotes) {
+      result[emote.name] = emote;
+    }
+    for (final channelEmotes in _userSubEmotesByChannel.values) {
+      for (final emote in channelEmotes) {
+        result[emote.name] = emote;
+      }
     }
     for (final emote in _sevenTVGlobalEmotes) {
       result[emote.name] = emote;
     }
-    for (final emote in _bttvGlobalEmotes) {
+    return result;
+  }
+
+  /// Alias for globalEmoteMap - used by ChatAssetsStore.
+  Map<String, Emote> get allEmotes => globalEmoteMap;
+
+  /// Kick emotes as a map (name -> Emote) - global + emoji + user subs.
+  Map<String, Emote> get kickEmotes {
+    final result = <String, Emote>{};
+    for (final emote in _kickGlobalEmotes) {
       result[emote.name] = emote;
     }
-    for (final emote in _ffzGlobalEmotes) {
+    for (final emote in _kickEmojiEmotes) {
       result[emote.name] = emote;
+    }
+    for (final channelEmotes in _userSubEmotesByChannel.values) {
+      for (final emote in channelEmotes) {
+        result[emote.name] = emote;
+      }
     }
     return result;
+  }
+
+  /// User's subscribed channel emotes grouped by channel name.
+  Map<String, List<Emote>> get userSubEmotesByChannel =>
+      _userSubEmotesByChannel;
+
+  /// User's subscribed channel emotes as a flat list (for backward compat).
+  List<Emote> get userSubEmotesList =>
+      _userSubEmotesByChannel.values.expand((e) => e).toList();
+
+  /// Kick global emotes (including emoji) as a list.
+  List<Emote> get kickGlobalEmotesList => [
+    ..._kickGlobalEmotes,
+    ..._kickEmojiEmotes,
+  ];
+
+  /// 7TV global emotes as a list.
+  List<Emote> get sevenTVGlobalEmotesList => _sevenTVGlobalEmotes;
+
+  // ============= Setters for External Population =============
+
+  /// Set global Kick emotes (called by ChatAssetsStore after parsing response).
+  @action
+  void setGlobalEmotes(List<Emote> emotes) {
+    _kickGlobalEmotes = emotes;
+  }
+
+  /// Set Kick emoji emotes (called by ChatAssetsStore after parsing response).
+  @action
+  void setEmojiEmotes(List<Emote> emotes) {
+    _kickEmojiEmotes = emotes;
+  }
+
+  /// Add emotes from a subscribed channel to the user sub emotes.
+  /// [channelName] is the display name of the channel (e.g., "xQc").
+  @action
+  void addUserSubEmotes(String channelName, List<Emote> emotes) {
+    if (emotes.isEmpty) return;
+    // Create new map to trigger MobX reactivity
+    _userSubEmotesByChannel = {..._userSubEmotesByChannel, channelName: emotes};
   }
 
   // ============= Methods =============
@@ -98,13 +137,8 @@ abstract class GlobalAssetsStoreBase with Store {
   /// Returns immediately if already loaded, or waits for in-progress load.
   @action
   Future<void> ensureLoaded({
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
+    bool showKickEmotes = true,
     bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showBTTVBadges = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
   }) async {
     // Already loaded - return immediately
     if (_isLoaded) return;
@@ -118,13 +152,8 @@ abstract class GlobalAssetsStoreBase with Store {
     // Start new load operation
     _isLoading = true;
     _loadingFuture = _fetchGlobalAssets(
-      showTwitchEmotes: showTwitchEmotes,
-      showTwitchBadges: showTwitchBadges,
+      showKickEmotes: showKickEmotes,
       show7TVEmotes: show7TVEmotes,
-      showBTTVEmotes: showBTTVEmotes,
-      showBTTVBadges: showBTTVBadges,
-      showFFZEmotes: showFFZEmotes,
-      showFFZBadges: showFFZBadges,
     );
 
     await _loadingFuture;
@@ -136,35 +165,20 @@ abstract class GlobalAssetsStoreBase with Store {
   /// Force refresh global assets (e.g., when settings change).
   @action
   Future<void> refresh({
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
+    bool showKickEmotes = true,
     bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showBTTVBadges = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
   }) async {
     _isLoaded = false;
     await ensureLoaded(
-      showTwitchEmotes: showTwitchEmotes,
-      showTwitchBadges: showTwitchBadges,
+      showKickEmotes: showKickEmotes,
       show7TVEmotes: show7TVEmotes,
-      showBTTVEmotes: showBTTVEmotes,
-      showBTTVBadges: showBTTVBadges,
-      showFFZEmotes: showFFZEmotes,
-      showFFZBadges: showFFZBadges,
     );
   }
 
   @action
   Future<void> _fetchGlobalAssets({
-    required bool showTwitchEmotes,
-    required bool showTwitchBadges,
+    required bool showKickEmotes,
     required bool show7TVEmotes,
-    required bool showBTTVEmotes,
-    required bool showBTTVBadges,
-    required bool showFFZEmotes,
-    required bool showFFZBadges,
   }) async {
     // Error handler for emotes
     List<Emote> onEmoteError(dynamic error) {
@@ -173,16 +187,7 @@ abstract class GlobalAssetsStoreBase with Store {
     }
 
     await Future.wait([
-      // Twitch global emotes
-      if (showTwitchEmotes)
-        twitchApi
-            .getEmotesGlobal()
-            .then((emotes) => _twitchGlobalEmotes = emotes)
-            .catchError((e) {
-              _twitchGlobalEmotes = onEmoteError(e);
-              return _twitchGlobalEmotes;
-            }),
-      // 7TV global emotes
+      // 7TV global emotes (the only thing we can fetch without a channel context)
       if (show7TVEmotes)
         sevenTVApi
             .getEmotesGlobal()
@@ -191,53 +196,8 @@ abstract class GlobalAssetsStoreBase with Store {
               _sevenTVGlobalEmotes = onEmoteError(e);
               return _sevenTVGlobalEmotes;
             }),
-      // BTTV global emotes
-      if (showBTTVEmotes)
-        bttvApi
-            .getEmotesGlobal()
-            .then((emotes) => _bttvGlobalEmotes = emotes)
-            .catchError((e) {
-              _bttvGlobalEmotes = onEmoteError(e);
-              return _bttvGlobalEmotes;
-            }),
-      // FFZ global emotes
-      if (showFFZEmotes)
-        ffzApi
-            .getEmotesGlobal()
-            .then((emotes) => _ffzGlobalEmotes = emotes)
-            .catchError((e) {
-              _ffzGlobalEmotes = onEmoteError(e);
-              return _ffzGlobalEmotes;
-            }),
-
-      // Twitch global badges
-      if (showTwitchBadges)
-        twitchApi
-            .getBadgesGlobal()
-            .then((badges) => _twitchGlobalBadges = badges)
-            .catchError((e) {
-              debugPrint('GlobalAssetsStore badge error: $e');
-              _twitchGlobalBadges = <String, ChatBadge>{};
-              return _twitchGlobalBadges;
-            }),
-      // BTTV badges (global - provider ID to badge mapping)
-      if (showBTTVBadges)
-        bttvApi.getBadges().then((badges) => _bttvBadges = badges).catchError((
-          e,
-        ) {
-          debugPrint('GlobalAssetsStore badge error: $e');
-          _bttvBadges = <String, ChatBadge>{};
-          return _bttvBadges;
-        }),
-      // FFZ badges (global - user ID to badges mapping)
-      if (showFFZBadges)
-        ffzApi.getBadges().then((badges) => _ffzBadges = badges).catchError((
-          e,
-        ) {
-          debugPrint('GlobalAssetsStore badge error: $e');
-          _ffzBadges = <String, List<ChatBadge>>{};
-          return _ffzBadges;
-        }),
+      // Note: Kick global/emoji emotes are now populated by ChatAssetsStore
+      // when it fetches emotes for a channel (first channel fetch populates globals)
     ]);
   }
 }

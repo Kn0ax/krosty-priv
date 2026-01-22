@@ -6,19 +6,17 @@ part of 'category.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-CategoryTwitch _$CategoryTwitchFromJson(Map<String, dynamic> json) =>
-    CategoryTwitch(
-      json['box_art_url'] as String,
-      json['id'] as String,
-      json['name'] as String,
-    );
+Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
+  json['box_art_url'] as String,
+  json['id'] as String,
+  json['name'] as String,
+);
 
-CategoriesTwitch _$CategoriesTwitchFromJson(Map<String, dynamic> json) =>
-    CategoriesTwitch(
-      (json['data'] as List<dynamic>)
-          .map((e) => CategoryTwitch.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      (json['pagination'] as Map<String, dynamic>?)?.map(
-        (k, e) => MapEntry(k, e as String),
-      ),
-    );
+Categories _$CategoriesFromJson(Map<String, dynamic> json) => Categories(
+  (json['data'] as List<dynamic>)
+      .map((e) => Category.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  (json['pagination'] as Map<String, dynamic>?)?.map(
+    (k, e) => MapEntry(k, e as String),
+  ),
+);

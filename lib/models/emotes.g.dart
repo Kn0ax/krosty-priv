@@ -6,55 +6,6 @@ part of 'emotes.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-EmoteTwitch _$EmoteTwitchFromJson(Map<String, dynamic> json) => EmoteTwitch(
-  json['id'] as String,
-  json['name'] as String,
-  json['emote_type'] as String?,
-  json['owner_id'] as String?,
-);
-
-EmoteBTTV _$EmoteBTTVFromJson(Map<String, dynamic> json) =>
-    EmoteBTTV(json['id'] as String, json['code'] as String);
-
-EmoteBTTVChannel _$EmoteBTTVChannelFromJson(Map<String, dynamic> json) =>
-    EmoteBTTVChannel(
-      (json['channelEmotes'] as List<dynamic>)
-          .map((e) => EmoteBTTV.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      (json['sharedEmotes'] as List<dynamic>)
-          .map((e) => EmoteBTTV.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-
-RoomFFZ _$RoomFFZFromJson(Map<String, dynamic> json) => RoomFFZ(
-  (json['set'] as num).toInt(),
-  json['vip_badge'] == null
-      ? null
-      : ImagesFFZ.fromJson(json['vip_badge'] as Map<String, dynamic>),
-  json['mod_urls'] == null
-      ? null
-      : ImagesFFZ.fromJson(json['mod_urls'] as Map<String, dynamic>),
-);
-
-ImagesFFZ _$ImagesFFZFromJson(Map<String, dynamic> json) =>
-    ImagesFFZ(json['1'] as String, json['2'] as String?, json['4'] as String?);
-
-OwnerFFZ _$OwnerFFZFromJson(Map<String, dynamic> json) => OwnerFFZ(
-  displayName: json['display_name'] as String,
-  name: json['name'] as String,
-);
-
-EmoteFFZ _$EmoteFFZFromJson(Map<String, dynamic> json) => EmoteFFZ(
-  json['name'] as String,
-  (json['height'] as num).toInt(),
-  (json['width'] as num).toInt(),
-  OwnerFFZ.fromJson(json['owner'] as Map<String, dynamic>),
-  ImagesFFZ.fromJson(json['urls'] as Map<String, dynamic>),
-  json['animated'] == null
-      ? null
-      : ImagesFFZ.fromJson(json['animated'] as Map<String, dynamic>),
-);
-
 Emote7TV _$Emote7TVFromJson(Map<String, dynamic> json) => Emote7TV(
   json['id'] as String,
   json['name'] as String,
@@ -92,11 +43,13 @@ Emote7TVFile _$Emote7TVFileFromJson(Map<String, dynamic> json) => Emote7TVFile(
 
 Emote _$EmoteFromJson(Map<String, dynamic> json) => Emote(
   name: json['name'] as String,
+  id: json['id'] as String?,
   realName: json['realName'] as String?,
   width: (json['width'] as num?)?.toInt(),
   height: (json['height'] as num?)?.toInt(),
   zeroWidth: json['zeroWidth'] as bool,
   url: json['url'] as String,
+  lowQualityUrl: json['lowQualityUrl'] as String?,
   type: $enumDecode(_$EmoteTypeEnumMap, json['type']),
   ownerDisplayName: json['ownerDisplayName'] as String?,
   ownerUsername: json['ownerUsername'] as String?,
@@ -105,6 +58,7 @@ Emote _$EmoteFromJson(Map<String, dynamic> json) => Emote(
 
 Map<String, dynamic> _$EmoteToJson(Emote instance) => <String, dynamic>{
   'name': instance.name,
+  'id': instance.id,
   'realName': instance.realName,
   'width': instance.width,
   'height': instance.height,
@@ -114,20 +68,12 @@ Map<String, dynamic> _$EmoteToJson(Emote instance) => <String, dynamic>{
   'ownerDisplayName': instance.ownerDisplayName,
   'ownerUsername': instance.ownerUsername,
   'ownerId': instance.ownerId,
+  'lowQualityUrl': instance.lowQualityUrl,
 };
 
 const _$EmoteTypeEnumMap = {
-  EmoteType.twitchBits: 'twitchBits',
-  EmoteType.twitchFollower: 'twitchFollower',
-  EmoteType.twitchSub: 'twitchSub',
-  EmoteType.twitchGlobal: 'twitchGlobal',
-  EmoteType.twitchUnlocked: 'twitchUnlocked',
-  EmoteType.twitchChannel: 'twitchChannel',
-  EmoteType.ffzGlobal: 'ffzGlobal',
-  EmoteType.ffzChannel: 'ffzChannel',
-  EmoteType.bttvGlobal: 'bttvGlobal',
-  EmoteType.bttvChannel: 'bttvChannel',
-  EmoteType.bttvShared: 'bttvShared',
+  EmoteType.kickGlobal: 'kickGlobal',
+  EmoteType.kickChannel: 'kickChannel',
   EmoteType.sevenTVGlobal: 'sevenTVGlobal',
   EmoteType.sevenTVChannel: 'sevenTVChannel',
 };

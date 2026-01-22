@@ -58,24 +58,69 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
     });
   }
 
-  late final _$_twitchGlobalEmotesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._twitchGlobalEmotes',
+  late final _$_kickGlobalEmotesAtom = Atom(
+    name: 'GlobalAssetsStoreBase._kickGlobalEmotes',
     context: context,
   );
 
-  List<Emote> get twitchGlobalEmotes {
-    _$_twitchGlobalEmotesAtom.reportRead();
-    return super._twitchGlobalEmotes;
+  List<Emote> get kickGlobalEmotes {
+    _$_kickGlobalEmotesAtom.reportRead();
+    return super._kickGlobalEmotes;
   }
 
   @override
-  List<Emote> get _twitchGlobalEmotes => twitchGlobalEmotes;
+  List<Emote> get _kickGlobalEmotes => kickGlobalEmotes;
 
   @override
-  set _twitchGlobalEmotes(List<Emote> value) {
-    _$_twitchGlobalEmotesAtom.reportWrite(value, super._twitchGlobalEmotes, () {
-      super._twitchGlobalEmotes = value;
+  set _kickGlobalEmotes(List<Emote> value) {
+    _$_kickGlobalEmotesAtom.reportWrite(value, super._kickGlobalEmotes, () {
+      super._kickGlobalEmotes = value;
     });
+  }
+
+  late final _$_kickEmojiEmotesAtom = Atom(
+    name: 'GlobalAssetsStoreBase._kickEmojiEmotes',
+    context: context,
+  );
+
+  List<Emote> get kickEmojiEmotes {
+    _$_kickEmojiEmotesAtom.reportRead();
+    return super._kickEmojiEmotes;
+  }
+
+  @override
+  List<Emote> get _kickEmojiEmotes => kickEmojiEmotes;
+
+  @override
+  set _kickEmojiEmotes(List<Emote> value) {
+    _$_kickEmojiEmotesAtom.reportWrite(value, super._kickEmojiEmotes, () {
+      super._kickEmojiEmotes = value;
+    });
+  }
+
+  late final _$_userSubEmotesByChannelAtom = Atom(
+    name: 'GlobalAssetsStoreBase._userSubEmotesByChannel',
+    context: context,
+  );
+
+  Map<String, List<Emote>> get userSubEmotesByChannel {
+    _$_userSubEmotesByChannelAtom.reportRead();
+    return super._userSubEmotesByChannel;
+  }
+
+  @override
+  Map<String, List<Emote>> get _userSubEmotesByChannel =>
+      userSubEmotesByChannel;
+
+  @override
+  set _userSubEmotesByChannel(Map<String, List<Emote>> value) {
+    _$_userSubEmotesByChannelAtom.reportWrite(
+      value,
+      super._userSubEmotesByChannel,
+      () {
+        super._userSubEmotesByChannel = value;
+      },
+    );
   }
 
   late final _$_sevenTVGlobalEmotesAtom = Atom(
@@ -102,106 +147,6 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
     );
   }
 
-  late final _$_bttvGlobalEmotesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._bttvGlobalEmotes',
-    context: context,
-  );
-
-  List<Emote> get bttvGlobalEmotes {
-    _$_bttvGlobalEmotesAtom.reportRead();
-    return super._bttvGlobalEmotes;
-  }
-
-  @override
-  List<Emote> get _bttvGlobalEmotes => bttvGlobalEmotes;
-
-  @override
-  set _bttvGlobalEmotes(List<Emote> value) {
-    _$_bttvGlobalEmotesAtom.reportWrite(value, super._bttvGlobalEmotes, () {
-      super._bttvGlobalEmotes = value;
-    });
-  }
-
-  late final _$_ffzGlobalEmotesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._ffzGlobalEmotes',
-    context: context,
-  );
-
-  List<Emote> get ffzGlobalEmotes {
-    _$_ffzGlobalEmotesAtom.reportRead();
-    return super._ffzGlobalEmotes;
-  }
-
-  @override
-  List<Emote> get _ffzGlobalEmotes => ffzGlobalEmotes;
-
-  @override
-  set _ffzGlobalEmotes(List<Emote> value) {
-    _$_ffzGlobalEmotesAtom.reportWrite(value, super._ffzGlobalEmotes, () {
-      super._ffzGlobalEmotes = value;
-    });
-  }
-
-  late final _$_twitchGlobalBadgesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._twitchGlobalBadges',
-    context: context,
-  );
-
-  Map<String, ChatBadge> get twitchGlobalBadges {
-    _$_twitchGlobalBadgesAtom.reportRead();
-    return super._twitchGlobalBadges;
-  }
-
-  @override
-  Map<String, ChatBadge> get _twitchGlobalBadges => twitchGlobalBadges;
-
-  @override
-  set _twitchGlobalBadges(Map<String, ChatBadge> value) {
-    _$_twitchGlobalBadgesAtom.reportWrite(value, super._twitchGlobalBadges, () {
-      super._twitchGlobalBadges = value;
-    });
-  }
-
-  late final _$_bttvBadgesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._bttvBadges',
-    context: context,
-  );
-
-  Map<String, ChatBadge> get bttvBadges {
-    _$_bttvBadgesAtom.reportRead();
-    return super._bttvBadges;
-  }
-
-  @override
-  Map<String, ChatBadge> get _bttvBadges => bttvBadges;
-
-  @override
-  set _bttvBadges(Map<String, ChatBadge> value) {
-    _$_bttvBadgesAtom.reportWrite(value, super._bttvBadges, () {
-      super._bttvBadges = value;
-    });
-  }
-
-  late final _$_ffzBadgesAtom = Atom(
-    name: 'GlobalAssetsStoreBase._ffzBadges',
-    context: context,
-  );
-
-  Map<String, List<ChatBadge>> get ffzBadges {
-    _$_ffzBadgesAtom.reportRead();
-    return super._ffzBadges;
-  }
-
-  @override
-  Map<String, List<ChatBadge>> get _ffzBadges => ffzBadges;
-
-  @override
-  set _ffzBadges(Map<String, List<ChatBadge>> value) {
-    _$_ffzBadgesAtom.reportWrite(value, super._ffzBadges, () {
-      super._ffzBadges = value;
-    });
-  }
-
   late final _$ensureLoadedAsyncAction = AsyncAction(
     'GlobalAssetsStoreBase.ensureLoaded',
     context: context,
@@ -209,23 +154,13 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
 
   @override
   Future<void> ensureLoaded({
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
+    bool showKickEmotes = true,
     bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showBTTVBadges = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
   }) {
     return _$ensureLoadedAsyncAction.run(
       () => super.ensureLoaded(
-        showTwitchEmotes: showTwitchEmotes,
-        showTwitchBadges: showTwitchBadges,
+        showKickEmotes: showKickEmotes,
         show7TVEmotes: show7TVEmotes,
-        showBTTVEmotes: showBTTVEmotes,
-        showBTTVBadges: showBTTVBadges,
-        showFFZEmotes: showFFZEmotes,
-        showFFZBadges: showFFZBadges,
       ),
     );
   }
@@ -237,23 +172,13 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
 
   @override
   Future<void> refresh({
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
+    bool showKickEmotes = true,
     bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showBTTVBadges = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
   }) {
     return _$refreshAsyncAction.run(
       () => super.refresh(
-        showTwitchEmotes: showTwitchEmotes,
-        showTwitchBadges: showTwitchBadges,
+        showKickEmotes: showKickEmotes,
         show7TVEmotes: show7TVEmotes,
-        showBTTVEmotes: showBTTVEmotes,
-        showBTTVBadges: showBTTVBadges,
-        showFFZEmotes: showFFZEmotes,
-        showFFZBadges: showFFZBadges,
       ),
     );
   }
@@ -265,25 +190,56 @@ mixin _$GlobalAssetsStore on GlobalAssetsStoreBase, Store {
 
   @override
   Future<void> _fetchGlobalAssets({
-    required bool showTwitchEmotes,
-    required bool showTwitchBadges,
+    required bool showKickEmotes,
     required bool show7TVEmotes,
-    required bool showBTTVEmotes,
-    required bool showBTTVBadges,
-    required bool showFFZEmotes,
-    required bool showFFZBadges,
   }) {
     return _$_fetchGlobalAssetsAsyncAction.run(
       () => super._fetchGlobalAssets(
-        showTwitchEmotes: showTwitchEmotes,
-        showTwitchBadges: showTwitchBadges,
+        showKickEmotes: showKickEmotes,
         show7TVEmotes: show7TVEmotes,
-        showBTTVEmotes: showBTTVEmotes,
-        showBTTVBadges: showBTTVBadges,
-        showFFZEmotes: showFFZEmotes,
-        showFFZBadges: showFFZBadges,
       ),
     );
+  }
+
+  late final _$GlobalAssetsStoreBaseActionController = ActionController(
+    name: 'GlobalAssetsStoreBase',
+    context: context,
+  );
+
+  @override
+  void setGlobalEmotes(List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.setGlobalEmotes',
+    );
+    try {
+      return super.setGlobalEmotes(emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setEmojiEmotes(List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.setEmojiEmotes',
+    );
+    try {
+      return super.setEmojiEmotes(emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void addUserSubEmotes(String channelName, List<Emote> emotes) {
+    final _$actionInfo = _$GlobalAssetsStoreBaseActionController.startAction(
+      name: 'GlobalAssetsStoreBase.addUserSubEmotes',
+    );
+    try {
+      return super.addUserSubEmotes(channelName, emotes);
+    } finally {
+      _$GlobalAssetsStoreBaseActionController.endAction(_$actionInfo);
+    }
   }
 
   @override

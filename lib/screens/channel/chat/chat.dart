@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/emote_menu/emote_menu_panel.dart';
-import 'package:frosty/screens/channel/chat/emote_menu/recent_emotes_panel.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_bottom_bar.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_message.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/frosty_page_view.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
+import 'package:krosty/screens/channel/chat/emote_menu/emote_menu_panel.dart';
+import 'package:krosty/screens/channel/chat/emote_menu/recent_emotes_panel.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_bottom_bar.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
+import 'package:krosty/screens/channel/chat/widgets/dismissible_panel.dart';
+import 'package:krosty/screens/channel/chat/widgets/pinned_message_panel.dart';
+import 'package:krosty/screens/channel/chat/widgets/poll_panel.dart';
+import 'package:krosty/screens/channel/chat/widgets/prediction_panel.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/krosty_page_view.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
 
 class Chat extends StatelessWidget {
   final ChatStore chatStore;
@@ -68,7 +72,7 @@ class Chat extends StatelessWidget {
                                 ? 0.0
                                 : MediaQuery.of(context).padding.bottom;
 
-                            return FrostyScrollbar(
+                            return KrostyScrollbar(
                               controller: chatStore.scrollController,
                               padding: EdgeInsets.only(
                                 top: MediaQuery.of(context).padding.top,
@@ -77,6 +81,7 @@ class Chat extends StatelessWidget {
                               ),
                               child: Observer(
                                 builder: (context) {
+                                  final messages = chatStore.renderMessages;
                                   return ListView.builder(
                                     reverse: true,
                                     padding: (listPadding ?? EdgeInsets.zero)
@@ -88,18 +93,24 @@ class Chat extends StatelessWidget {
                                           ),
                                         ),
                                     addAutomaticKeepAlives: false,
+                                    addRepaintBoundaries: false,
                                     controller: chatStore.scrollController,
-                                    itemCount: chatStore.renderMessages.length,
-                                    itemBuilder: (context, index) =>
-                                        ChatMessage(
-                                          ircMessage:
-                                              chatStore.renderMessages[chatStore
-                                                      .renderMessages
-                                                      .length -
-                                                  1 -
-                                                  index],
-                                          chatStore: chatStore,
-                                        ),
+                                    itemCount: messages.length,
+                                    // Estimate item extent for better scroll performance
+                                    itemExtent: null,
+                                    cacheExtent: 1500,
+                                    itemBuilder: (context, index) {
+                                      // Reverse index for correct display
+                                      final message =
+                                          messages[messages.length - 1 - index];
+
+                                      // Ensure we are passing a KickChatMessage
+                                      return ChatMessage(
+                                        key: ValueKey(message.id),
+                                        message: message,
+                                        chatStore: chatStore,
+                                      );
+                                    },
                                   );
                                 },
                               ),
@@ -122,6 +133,100 @@ class Chat extends StatelessWidget {
                         onVerticalDragStart: (_) {},
                       ),
                     ),
+
+                  // Event panels (pinned message, poll, prediction)
+                  Positioned(
+                    top: MediaQuery.of(context).padding.top,
+                    left: 0,
+                    right: 0,
+                    child: Observer(
+                      builder: (_) {
+                        final colorScheme = Theme.of(context).colorScheme;
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Pinned message panel
+                            if (chatStore.pinnedMessage != null)
+                              DismissiblePanel(
+                                isMinimized: chatStore.isPinnedMessageMinimized,
+                                minimizedIcon: const Icon(
+                                  Icons.push_pin,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                minimizedColor: colorScheme.primary,
+                                onDismiss: () =>
+                                    chatStore.isPinnedMessageMinimized = true,
+                                onRestore: () =>
+                                    chatStore.isPinnedMessageMinimized = false,
+                                child: PinnedMessagePanel(
+                                  pinnedMessage: chatStore.pinnedMessage!,
+                                ),
+                              ),
+
+                            // Poll panel
+                            if (chatStore.activePoll != null)
+                              DismissiblePanel(
+                                isMinimized: chatStore.isPollMinimized,
+                                minimizedIcon: const Icon(
+                                  Icons.poll_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                minimizedColor: colorScheme.secondary,
+                                onDismiss: () =>
+                                    chatStore.isPollMinimized = true,
+                                onRestore: () =>
+                                    chatStore.isPollMinimized = false,
+                                child: PollPanel(
+                                  poll: chatStore.activePoll!,
+                                  hasVoted:
+                                      chatStore.hasVotedOnPoll ||
+                                      chatStore.activePoll!.poll.hasVoted,
+                                  selectedOptionIndex:
+                                      chatStore.pollVotedOptionIndex,
+                                  onVote: chatStore.auth.isLoggedIn
+                                      ? chatStore.voteOnPoll
+                                      : null,
+                                ),
+                              ),
+
+                            // Prediction panel
+                            if (chatStore.activePrediction != null)
+                              DismissiblePanel(
+                                isMinimized: chatStore.isPredictionMinimized,
+                                minimizedIcon: const Icon(
+                                  Icons.trending_up_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                minimizedColor: colorScheme.tertiary,
+                                onDismiss: () =>
+                                    chatStore.isPredictionMinimized = true,
+                                onRestore: () =>
+                                    chatStore.isPredictionMinimized = false,
+                                child: PredictionPanel(
+                                  prediction: chatStore.activePrediction!,
+                                  userVotedOutcomeId:
+                                      chatStore.predictionVotedOutcomeId,
+                                  userVoteAmount:
+                                      chatStore.predictionVoteAmount,
+                                  onBet:
+                                      chatStore.auth.isLoggedIn &&
+                                          chatStore
+                                              .activePrediction!
+                                              .isActive &&
+                                          !chatStore.hasVotedOnPrediction
+                                      ? chatStore.betOnPrediction
+                                      : null,
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+
                   Positioned(
                     left: 0,
                     right: 0,
@@ -196,37 +301,34 @@ class Chat extends StatelessWidget {
                           children: [
                             const Divider(),
                             Expanded(
-                              child: FrostyPageView(
+                              child: KrostyPageView(
                                 headers: [
                                   'Recent',
-                                  if (chatStore.settings.showTwitchEmotes)
-                                    'Twitch',
+                                  if (chatStore.settings.showKickEmotes) 'Kick',
                                   if (chatStore.settings.show7TVEmotes) '7TV',
-                                  if (chatStore.settings.showBTTVEmotes) 'BTTV',
-                                  if (chatStore.settings.showFFZEmotes) 'FFZ',
                                 ],
                                 children: [
                                   RecentEmotesPanel(chatStore: chatStore),
-                                  if (chatStore.settings.showTwitchEmotes)
+                                  if (chatStore.settings.showKickEmotes)
                                     EmoteMenuPanel(
                                       chatStore: chatStore,
-                                      twitchEmotes: chatStore
-                                          .assetsStore
-                                          .userEmoteSectionToEmotes,
+                                      emotes: chatStore.assetsStore.emotesList
+                                          .where(
+                                            (e) =>
+                                                chatStore.assetsStore.isKick(e),
+                                          )
+                                          .toList(),
                                     ),
-                                  ...[
-                                    if (chatStore.settings.show7TVEmotes)
-                                      chatStore.assetsStore.sevenTVEmotes,
-                                    if (chatStore.settings.showBTTVEmotes)
-                                      chatStore.assetsStore.bttvEmotes,
-                                    if (chatStore.settings.showFFZEmotes)
-                                      chatStore.assetsStore.ffzEmotes,
-                                  ].map(
-                                    (emotes) => EmoteMenuPanel(
+                                  if (chatStore.settings.show7TVEmotes)
+                                    EmoteMenuPanel(
                                       chatStore: chatStore,
-                                      emotes: emotes,
+                                      emotes: chatStore.assetsStore.emotesList
+                                          .where(
+                                            (e) =>
+                                                chatStore.assetsStore.is7TV(e),
+                                          )
+                                          .toList(),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),

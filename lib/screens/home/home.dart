@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/home/home_store.dart';
-import 'package:frosty/screens/home/search/search.dart';
-import 'package:frosty/screens/home/stream_list/stream_list_store.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/home/top/top.dart';
-import 'package:frosty/screens/settings/settings.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/screens/settings/widgets/release_notes.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/profile_picture.dart';
+import 'package:krosty/screens/home/home_store.dart';
+import 'package:krosty/screens/home/search/search.dart';
+import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/screens/home/top/top.dart';
+import 'package:krosty/screens/settings/settings.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/screens/settings/widgets/release_notes.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/profile_picture.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -115,7 +115,8 @@ class _HomeState extends State<Home> {
                     tooltip: 'Settings',
                     icon: isLoggedIn
                         ? ProfilePicture(
-                            userLogin: _authStore.user.details!.login,
+                            userLogin: _authStore.user.details!.username,
+                            profileUrl: _authStore.user.details!.profilePic,
                             radius: 16,
                           )
                         : const Icon(Icons.settings_rounded),

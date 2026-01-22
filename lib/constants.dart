@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 
-/// Twitch API client ID.
-const clientId = String.fromEnvironment('CLIENT_ID');
+/// Kick API client ID (from Kick Developer Portal).
+//const kickClientId = String.fromEnvironment('KICK_CLIENT_ID');
 
-/// Twitch API client secret.
-const secret = String.fromEnvironment('SECRET');
+/// Kick API client secret.
+// const kickClientSecret = String.fromEnvironment('KICK_CLIENT_SECRET');
 
-/// BTTV emotes with zero width to allow for overlaying other emotes.
+/// OAuth redirect URI for the app.
+// const kickRedirectUri = 'krosty://auth/callback';
+
+/// Kick Pusher WebSocket configuration.
+const kickPusherAppKey = '32cbd69e4b950bf97679';
+const kickPusherCluster = 'us2';
+const kickPusherWsUrl =
+    'wss://ws-$kickPusherCluster.pusher.com/app/$kickPusherAppKey'
+    '?protocol=7&client=js&version=8.4.0-rc2&flash=false';
+
+/// 7TV emotes with zero width to allow for overlaying other emotes.
 const zeroWidthEmotes = [
   'SoSnowy',
   'IceCold',
@@ -48,40 +58,36 @@ const defaultBadgeSize = 18.0;
 /// The default emote width and height when none are provided.
 const defaultEmoteSize = 28.0;
 
-/// Available named chat colors for Twitch users.
-const chatColorNames = [
-  'blue',
-  'blue_violet',
-  'cadet_blue',
-  'chocolate',
-  'coral',
-  'dodger_blue',
-  'firebrick',
-  'golden_rod',
-  'green',
-  'hot_pink',
-  'orange_red',
-  'red',
-  'sea_green',
-  'spring_green',
-  'yellow_green',
+/// Default chat colors for users without a custom color.
+/// Kick uses hex colors directly from the API, but we provide fallbacks.
+const defaultChatColors = [
+  Color(0xFF53FC18), // Kick green
+  Color(0xFFFF69B4), // Hot pink
+  Color(0xFF1E90FF), // Dodger blue
+  Color(0xFFFF4500), // Orange red
+  Color(0xFF9ACD32), // Yellow green
+  Color(0xFFFF6347), // Tomato
+  Color(0xFF00CED1), // Dark turquoise
+  Color(0xFFDA70D6), // Orchid
 ];
 
-/// Color values for the named chat colors.
-const Map<String, Color> chatColorValues = {
-  'blue': Color(0xFF0000FF),
-  'blue_violet': Color(0xFF8A2BE2),
-  'cadet_blue': Color(0xFF5F9EA0),
-  'chocolate': Color(0xFFD2691E),
-  'coral': Color(0xFFFF7F50),
-  'dodger_blue': Color(0xFF1E90FF),
-  'firebrick': Color(0xFFB22222),
-  'golden_rod': Color(0xFFDAA520),
-  'green': Color(0xFF008000),
-  'hot_pink': Color(0xFFFF69B4),
-  'orange_red': Color(0xFFFF4500),
-  'red': Color(0xFFFF0000),
-  'sea_green': Color(0xFF2E8B57),
-  'spring_green': Color(0xFF00FF7F),
-  'yellow_green': Color(0xFF9ACD32),
-};
+/// Kick brand color (green).
+const kickBrandColor = Color(0xFF53FC18);
+
+/// Parse a hex color string to Color.
+Color parseHexColor(String? hexColor) {
+  if (hexColor == null || hexColor.isEmpty) {
+    // Return a random default color based on hash
+    return defaultChatColors[hexColor.hashCode % defaultChatColors.length];
+  }
+
+  // Remove # if present
+  String hex = hexColor.replaceFirst('#', '');
+
+  // Add alpha if not present
+  if (hex.length == 6) {
+    hex = 'FF$hex';
+  }
+
+  return Color(int.parse(hex, radix: 16));
+}

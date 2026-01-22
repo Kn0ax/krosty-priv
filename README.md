@@ -1,66 +1,50 @@
-![Showcase of the Frosty app with screenshots in a masonry grid](https://github.com/tommyxchow/frosty/assets/54859075/09178dcc-2fd2-4618-8076-502719159424)
+![Showcase of the Krosty app with screenshots in a masonry grid](https://github.com/kn0ax/krosty/assets/54859075/09178dcc-2fd2-4618-8076-502719159424)
 
+This project is forked from [Frosty by Tommy Chow](https://github.com/tommyxchow/frosty). Without his work, this project would not really exist.
 <p>
-  <a href="https://github.com/tommyxchow/frosty/actions/workflows/ci.yml">
+  <a href="https://github.com/kn0ax/krosty/actions/workflows/ci.yml">
     <img
       alt="Badge showing the CI status."
-      src="https://github.com/tommyxchow/frosty/actions/workflows/ci.yml/badge.svg"
+      src="https://github.com/kn0ax/krosty/actions/workflows/ci.yml/badge.svg"
     />
   </a>
-  <a href="https://github.com/tommyxchow/frosty/issues">
+  <a href="https://github.com/kn0ax/krosty/issues">
     <img
       alt="Badge showing the number of open issues."
-      src="https://img.shields.io/github/issues/tommyxchow/frosty"
+      src="https://img.shields.io/github/issues/kn0ax/krosty"
     />
   </a>
-  <a href="https://github.com/tommyxchow/frosty/commits">
+  <a href="https://github.com/kn0ax/krosty/commits">
     <img
       alt="Badge showing the date of the last commit."
-      src="https://img.shields.io/github/last-commit/tommyxchow/frosty"
+      src="https://img.shields.io/github/last-commit/kn0ax/krosty"
     />
   </a>
-  <a href="https://github.com/tommyxchow/frosty/blob/main/LICENSE">
+  <a href="https://github.com/kn0ax/krosty/blob/main/LICENSE">
     <img
       alt="Badge showing the current license of the repo."
-      src="https://img.shields.io/github/license/tommyxchow/frosty"
+      src="https://img.shields.io/github/license/kn0ax/krosty"
     />
   </a>
-  <a href="https://github.com/tommyxchow/frosty/releases/latest">
+  <a href="https://github.com/kn0ax/krosty/releases/latest">
     <img
       alt="Badge showing the version of the latest release."
-      src="https://img.shields.io/github/v/release/tommyxchow/frosty"
+      src="https://img.shields.io/github/v/release/kn0ax/krosty"
     />
   </a>
 </p>
 
 ## Download
 
-<p>
-  <a href="https://apps.apple.com/us/app/frosty-for-twitch/id1603987585">
-    <img
-      title="Get it on iOS (Apple App Store)"
-      alt="Apple App Store badge."
-      src="https://user-images.githubusercontent.com/54859075/160051843-1d8b2186-97e9-4edd-a957-bb4797b71b4a.svg"
-      width="200px"
-    />
-  </a>
-  <a href="https://play.google.com/store/apps/details?id=com.tommychow.frosty">
-    <img
-      title="Get it on Android (Google Play Store)"
-      alt="Google Play Store badge."
-      src="https://user-images.githubusercontent.com/54859075/160051854-21a57556-6b5a-41e9-8127-334daf1fac47.svg"
-      width="225px"
-    />
-  </a>
-</p>
+TODO 
 
 ## Why
 
-The official Twitch mobile app doesn't support emotes from [7TV](https://chrome.google.com/webstore/detail/7tv/ammjkodgmmoknidbanneddgankgfejfh), [BetterTTV (BTTV)](https://chrome.google.com/webstore/detail/betterttv/ajopnjidmegmdimjlfnijceegpefgped), and [FrankerFaceZ (FFZ)](https://chrome.google.com/webstore/detail/frankerfacez/fadndhdgpmmaapbmfcknlfgcflmmmieb) — third-party extensions for Twitch used by millions. As a result, only emote text names are rendered rather than their actual image or GIF, making the chat unreadable in many channels.
+The official Kick mobile app on Android sucks. It crashes constantly and and not stable at all. It also doesn't support emotes from [7TV](https://chrome.google.com/webstore/detail/7tv/ammjkodgmmoknidbanneddgankgfejfh), third-party extensions used by millions. As a result, only emote text names are rendered rather than their actual image or GIF, making the chat unreadable in many channels.
 
 ## Features
 
-- Support for 7TV, BetterTTV, and FrankerFaceZ emotes and badges
+- Support for 7TV emotes and badges
 - Browse followed streams, top streams, and top categories
 - Autocomplete for emotes and user mentions
 - Light, dark, and black (OLED) themes
@@ -75,15 +59,15 @@ The official Twitch mobile app doesn't support emotes from [7TV](https://chrome.
 - Sleep timer
 - And more...
 
-For a more detailed overview, visit [frostyapp.io](https://www.frostyapp.io/).
+For a more detailed overview, visit [krosty.kn0.dev](https://krosty.kn0.dev).
 
 ## Development setup
 
 1. [Install Flutter](https://docs.flutter.dev/get-started/install).
 
-2. Clone this repo (e.g., `git clone https://github.com/tommyxchow/frosty.git`).
+2. Clone this repo.
 
-3. Go to the [Twitch dev console](https://dev.twitch.tv/login) and register a new application to retrieve a **Client ID** and **Client Secret**.
+3. Go to the Kick developer portal and register a new application to retrieve a **Client ID** and **Client Secret**.
 
 4. Use [`--dart-define`](https://dartcode.org/docs/using-dart-define-in-flutter/) to set the `clientId` and `secret` environment variables with your **Client ID** and **Client Secret**.
 
@@ -92,17 +76,20 @@ For a more detailed overview, visit [frostyapp.io](https://www.frostyapp.io/).
 6. Choose an emulator or device and run the app!
 
 > [!IMPORTANT]
-> Frosty uses [MobX](https://mobx.netlify.app/) for state management. Please refer to the documentation about code generation, otherwise your changes within MobX stores may not be applied.
-
+> Krosty uses [MobX](https://mobx.netlify.app/) for state management. Please refer to the documentation about code generation, otherwise your changes within MobX stores may not be applied.
 ## Donate
 
-If you appreciate my work and would like to donate/tip, you can through:
+If you appreciate this project and would like to donate/tip, you can to original author or me:
 
-- [GitHub Sponsors](https://github.com/sponsors/tommyxchow)
-- [Buy Me a Coffee](https://www.buymeacoffee.com/tommychow)
+- [GitHub Sponsors of Tommy](https://github.com/sponsors/tommyxchow)
+- [Buy Me a Coffee of Tommy](https://www.buymeacoffee.com/tommychow)
 
-Otherwise, downloading Frosty, leaving a review, or starring this repository is more than enough to show support. Thank you!
+- [GitHub Sponsors of kn0ax](https://github.com/sponsors/kn0ax)
 
+
+Otherwise, downloading Frosty/Krosty, leaving a review, or starring this repository is more than enough to show support. Thank you!
 ## License
 
-Frosty is licensed under [AGPL-3.0-or-later](LICENSE).
+Krosty is licensed under [AGPL-3.0-or-later](LICENSE).
+
+This project is forked from [Frosty by Tommy Chow](https://github.com/tommyxchow/frosty).

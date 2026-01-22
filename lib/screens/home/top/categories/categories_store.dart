@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/category.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:mobx/mobx.dart';
 
 part 'categories_store.g.dart';
@@ -15,11 +15,11 @@ abstract class CategoriesStoreBase with Store {
   /// The authentication store.
   final AuthStore authStore;
 
-  /// Twitch API service class for making requests.
-  final TwitchApi twitchApi;
+  /// Kick API service class for making requests.
+  final KickApi kickApi;
 
-  /// The pagination cursor for the categories.
-  String? _categoriesCursor;
+  /// The pagination page for the categories.
+  int _page = 1;
 
   /// The last time the categories were refreshed/updated.
   var lastTimeRefreshed = DateTime.now();
@@ -30,7 +30,7 @@ abstract class CategoriesStoreBase with Store {
 
   /// The current visible categories, sorted by total viewers.
   @readonly
-  var _categories = ObservableList<CategoryTwitch>();
+  var _categories = ObservableList<KickCategory>();
 
   /// The error message to show if any. Will be non-null if there is an error.
   @readonly
@@ -38,32 +38,38 @@ abstract class CategoriesStoreBase with Store {
 
   /// Returns whether or not there are more streams and loading status for pagination.
   @computed
-  bool get hasMore => _isLoading == false && _categoriesCursor != null;
+  bool get hasMore => _isLoading == false; // Assuming infinite scroll or until empty list
 
-  CategoriesStoreBase({required this.authStore, required this.twitchApi}) {
+  CategoriesStoreBase({required this.authStore, required this.kickApi}) {
     getCategories();
   }
 
-  // Fetches the top categories based on the current cursor.
+  // Fetches the top categories based on the current page.
   @action
   Future<void> getCategories() async {
+    if (_isLoading) return;
     _isLoading = true;
 
     try {
-      final result = await twitchApi.getTopCategories(
-        cursor: _categoriesCursor,
+      final result = await kickApi.getTopCategories(
+        page: _page,
       );
 
-      if (_categoriesCursor == null) {
-        _categories = result.data.asObservable();
+      final newCategories = result.data;
+
+      if (_page == 1) {
+        _categories = ObservableList.of(newCategories);
       } else {
-        _categories.addAll(result.data);
+        _categories.addAll(newCategories);
       }
-      _categoriesCursor = result.pagination?['cursor'];
+      
+      if (newCategories.isNotEmpty) {
+        _page++;
+      }
 
       _error = null;
     } on SocketException {
-      _error = 'Unable to connect to Twitch';
+      _error = 'Unable to connect to Kick';
       debugPrint('Categories SocketException: No internet connection');
     } on ApiException catch (e) {
       _error = e.message;
@@ -79,8 +85,7 @@ abstract class CategoriesStoreBase with Store {
   /// Resets the cursor and then fetches the categories.
   @action
   Future<void> refreshCategories() {
-    _categoriesCursor = null;
-
+    _page = 1;
     return getCategories();
   }
 

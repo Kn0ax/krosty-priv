@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/home/home_store.dart';
-import 'package:frosty/screens/home/stream_list/stream_list_store.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/home/top/categories/categories.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:krosty/screens/home/home_store.dart';
+import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/screens/home/top/categories/categories.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 
 class TopSection extends StatefulWidget {
   final HomeStore homeStore;

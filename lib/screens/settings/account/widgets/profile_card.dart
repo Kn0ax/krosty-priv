@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/onboarding/login_webview.dart';
-import 'package:frosty/screens/settings/account/account_options.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/profile_picture.dart';
+import 'package:krosty/screens/onboarding/login_webview.dart';
+import 'package:krosty/screens/settings/account/account_options.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/profile_picture.dart';
 
 class ProfileCard extends StatelessWidget {
   final AuthStore authStore;
@@ -41,7 +41,8 @@ class ProfileCard extends StatelessWidget {
         if (authStore.isLoggedIn && authStore.user.details != null) {
           return ListTile(
             leading: ProfilePicture(
-              userLogin: authStore.user.details!.login,
+              userLogin: authStore.user.details!.username,
+              profileUrl: authStore.user.details!.profilePic,
               radius: 12,
             ),
             title: Text(authStore.user.details!.displayName),
@@ -70,7 +71,7 @@ class ProfileCard extends StatelessWidget {
 
             if (clipboardText == null) return;
 
-            authStore.login(token: clipboardText);
+            // authStore.login(token: clipboardText);
           },
         );
       },

@@ -1,9 +1,9 @@
-The better mobile Twitch chat experience.
+The better mobile Kick chat experience.
 
-Frosty brings quality-of-life features and, most importantly, third-party emotes from 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) — popular extensions for Twitch used by millions.
+Krosty brings quality-of-life features and, most importantly, third-party emotes from 7TV — a popular extension used by millions.
 
 Features:
-• Support for 7TV, BetterTTV (BTTV), and FrankerFaceZ (FFZ) emotes and badges
+• Support for 7TV emotes and badges
 • Browse followed streams, top streams, and top categories
 • Autocomplete for emotes and user mentions
 • Light, dark, and black (OLED) themes
@@ -18,5 +18,4 @@ Features:
 • Sleep timer
 • And much more...
 
-Learn more: https://frostyapp.io
-View source on GitHub: https://github.com/tommyxchow/frosty
+Learn more: https://krosty.kn0.dev

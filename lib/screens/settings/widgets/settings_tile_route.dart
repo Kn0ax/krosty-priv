@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 
 class SettingsTileRoute extends StatelessWidget {
   final Widget leading;

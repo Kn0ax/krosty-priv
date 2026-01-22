@@ -9,6 +9,26 @@ part of 'video_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$VideoStore on VideoStoreBase, Store {
+  late final _$_playbackUrlAtom = Atom(
+    name: 'VideoStoreBase._playbackUrl',
+    context: context,
+  );
+
+  String? get playbackUrl {
+    _$_playbackUrlAtom.reportRead();
+    return super._playbackUrl;
+  }
+
+  @override
+  String? get _playbackUrl => playbackUrl;
+
+  @override
+  set _playbackUrl(String? value) {
+    _$_playbackUrlAtom.reportWrite(value, super._playbackUrl, () {
+      super._playbackUrl = value;
+    });
+  }
+
   late final _$_pausedAtom = Atom(
     name: 'VideoStoreBase._paused',
     context: context,
@@ -54,16 +74,16 @@ mixin _$VideoStore on VideoStoreBase, Store {
     context: context,
   );
 
-  StreamTwitch? get streamInfo {
+  KickLivestreamItem? get streamInfo {
     _$_streamInfoAtom.reportRead();
     return super._streamInfo;
   }
 
   @override
-  StreamTwitch? get _streamInfo => streamInfo;
+  KickLivestreamItem? get _streamInfo => streamInfo;
 
   @override
-  set _streamInfo(StreamTwitch? value) {
+  set _streamInfo(KickLivestreamItem? value) {
     _$_streamInfoAtom.reportWrite(value, super._streamInfo, () {
       super._streamInfo = value;
     });
@@ -74,16 +94,16 @@ mixin _$VideoStore on VideoStoreBase, Store {
     context: context,
   );
 
-  Channel? get offlineChannelInfo {
+  KickChannel? get offlineChannelInfo {
     _$_offlineChannelInfoAtom.reportRead();
     return super._offlineChannelInfo;
   }
 
   @override
-  Channel? get _offlineChannelInfo => offlineChannelInfo;
+  KickChannel? get _offlineChannelInfo => offlineChannelInfo;
 
   @override
-  set _offlineChannelInfo(Channel? value) {
+  set _offlineChannelInfo(KickChannel? value) {
     _$_offlineChannelInfoAtom.reportWrite(value, super._offlineChannelInfo, () {
       super._offlineChannelInfo = value;
     });
@@ -133,23 +153,23 @@ mixin _$VideoStore on VideoStoreBase, Store {
     });
   }
 
-  late final _$_latencyAtom = Atom(
-    name: 'VideoStoreBase._latency',
+  late final _$_isAutoQualityAtom = Atom(
+    name: 'VideoStoreBase._isAutoQuality',
     context: context,
   );
 
-  String? get latency {
-    _$_latencyAtom.reportRead();
-    return super._latency;
+  bool get isAutoQuality {
+    _$_isAutoQualityAtom.reportRead();
+    return super._isAutoQuality;
   }
 
   @override
-  String? get _latency => latency;
+  bool get _isAutoQuality => isAutoQuality;
 
   @override
-  set _latency(String? value) {
-    _$_latencyAtom.reportWrite(value, super._latency, () {
-      super._latency = value;
+  set _isAutoQuality(bool value) {
+    _$_isAutoQualityAtom.reportWrite(value, super._isAutoQuality, () {
+      super._isAutoQuality = value;
     });
   }
 
@@ -170,6 +190,46 @@ mixin _$VideoStore on VideoStoreBase, Store {
   set _isInPipMode(bool value) {
     _$_isInPipModeAtom.reportWrite(value, super._isInPipMode, () {
       super._isInPipMode = value;
+    });
+  }
+
+  late final _$_isBufferingAtom = Atom(
+    name: 'VideoStoreBase._isBuffering',
+    context: context,
+  );
+
+  bool get isBuffering {
+    _$_isBufferingAtom.reportRead();
+    return super._isBuffering;
+  }
+
+  @override
+  bool get _isBuffering => isBuffering;
+
+  @override
+  set _isBuffering(bool value) {
+    _$_isBufferingAtom.reportWrite(value, super._isBuffering, () {
+      super._isBuffering = value;
+    });
+  }
+
+  late final _$_latencyAtom = Atom(
+    name: 'VideoStoreBase._latency',
+    context: context,
+  );
+
+  String? get latency {
+    _$_latencyAtom.reportRead();
+    return super._latency;
+  }
+
+  @override
+  String? get _latency => latency;
+
+  @override
+  set _latency(String? value) {
+    _$_latencyAtom.reportWrite(value, super._latency, () {
+      super._latency = value;
     });
   }
 
@@ -197,26 +257,16 @@ mixin _$VideoStore on VideoStoreBase, Store {
     );
   }
 
-  late final _$_setStreamQualityIndexAsyncAction = AsyncAction(
-    'VideoStoreBase._setStreamQualityIndex',
+  late final _$_updateViewerCountOnlyAsyncAction = AsyncAction(
+    'VideoStoreBase._updateViewerCountOnly',
     context: context,
   );
 
   @override
-  Future<void> _setStreamQualityIndex(int newStreamQualityIndex) {
-    return _$_setStreamQualityIndexAsyncAction.run(
-      () => super._setStreamQualityIndex(newStreamQualityIndex),
+  Future<void> _updateViewerCountOnly() {
+    return _$_updateViewerCountOnlyAsyncAction.run(
+      () => super._updateViewerCountOnly(),
     );
-  }
-
-  late final _$initVideoAsyncAction = AsyncAction(
-    'VideoStoreBase.initVideo',
-    context: context,
-  );
-
-  @override
-  Future<void> initVideo() {
-    return _$initVideoAsyncAction.run(() => super.initVideo());
   }
 
   late final _$updateStreamInfoAsyncAction = AsyncAction(
@@ -289,6 +339,18 @@ mixin _$VideoStore on VideoStoreBase, Store {
     );
     try {
       return super.togglePictureInPicture();
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void onPipModeChanged(bool isInPipMode) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.onPipModeChanged',
+    );
+    try {
+      return super.onPipModeChanged(isInPipMode);
     } finally {
       _$VideoStoreBaseActionController.endAction(_$actionInfo);
     }

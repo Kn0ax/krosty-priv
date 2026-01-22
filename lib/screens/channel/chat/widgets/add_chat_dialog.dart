@@ -1,46 +1,45 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/channel.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/animated_scroll_border.dart';
-import 'package:frosty/widgets/live_indicator.dart';
-import 'package:frosty/widgets/profile_picture.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
-import 'package:frosty/widgets/uptime.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/animated_scroll_border.dart';
+import 'package:krosty/widgets/live_indicator.dart';
+import 'package:krosty/widgets/profile_picture.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 
 /// Data class returned when a channel is selected in the AddChatSheet.
 class AddChatResult {
-  final String channelId;
-  final String channelLogin;
+  final int channelId;
+  final String channelSlug;
   final String displayName;
 
   const AddChatResult({
     required this.channelId,
-    required this.channelLogin,
+    required this.channelSlug,
     required this.displayName,
   });
 }
 
-/// Bottom sheet for adding a new chat tab by searching for a Twitch channel.
+/// Bottom sheet for adding a new chat tab by searching for a Kick channel.
 class AddChatSheet extends StatefulWidget {
-  final TwitchApi twitchApi;
+  final KickApi kickApi;
 
-  const AddChatSheet({super.key, required this.twitchApi});
+  const AddChatSheet({super.key, required this.kickApi});
 
   /// Shows the bottom sheet and returns the selected channel info, or null if cancelled.
   static Future<AddChatResult?> show(
     BuildContext context,
-    TwitchApi twitchApi,
+    KickApi kickApi,
   ) {
     return showModalBottomSheetWithProperFocus<AddChatResult>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => AddChatSheet(twitchApi: twitchApi),
+      builder: (context) => AddChatSheet(kickApi: kickApi),
     );
   }
 
@@ -56,7 +55,7 @@ class _AddChatSheetState extends State<AddChatSheet> {
   Timer? _debounce;
   bool _isLoading = false;
   String? _errorMessage;
-  List<ChannelQuery> _results = [];
+  List<KickChannelSearch> _results = [];
 
   @override
   void initState() {
@@ -95,7 +94,7 @@ class _AddChatSheetState extends State<AddChatSheet> {
     // Debounce the search by 300ms
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       try {
-        final channels = await widget.twitchApi.searchChannels(query: query);
+        final channels = await widget.kickApi.searchChannels(query: query);
         if (mounted) {
           setState(() {
             _results = channels;
@@ -115,12 +114,12 @@ class _AddChatSheetState extends State<AddChatSheet> {
     });
   }
 
-  void _selectChannel(ChannelQuery channel) {
+  void _selectChannel(KickChannelSearch channel) {
     Navigator.of(context).pop(
       AddChatResult(
         channelId: channel.id,
-        channelLogin: channel.broadcasterLogin,
-        displayName: channel.displayName,
+        channelSlug: channel.slug,
+        displayName: channel.username,
       ),
     );
   }
@@ -146,20 +145,20 @@ class _AddChatSheetState extends State<AddChatSheet> {
                   hintText: 'Search for a channel',
                   suffixIcon:
                       _focusNode.hasFocus || _textController.text.isNotEmpty
-                      ? IconButton(
-                          tooltip: _textController.text.isEmpty
-                              ? 'Cancel'
-                              : 'Clear',
-                          onPressed: () {
-                            if (_textController.text.isEmpty) {
-                              _focusNode.unfocus();
-                            }
-                            _textController.clear();
-                            _onSearchChanged('');
-                          },
-                          icon: const Icon(Icons.close_rounded),
-                        )
-                      : null,
+                          ? IconButton(
+                              tooltip: _textController.text.isEmpty
+                                  ? 'Cancel'
+                                  : 'Clear',
+                              onPressed: () {
+                                if (_textController.text.isEmpty) {
+                                  _focusNode.unfocus();
+                                }
+                                _textController.clear();
+                                _onSearchChanged('');
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            )
+                          : null,
                 ),
                 onChanged: _onSearchChanged,
                 textInputAction: TextInputAction.search,
@@ -226,13 +225,14 @@ class _AddChatSheetState extends State<AddChatSheet> {
       itemBuilder: (context, index) {
         final channel = _results[index];
         final displayName = getReadableName(
-          channel.displayName,
-          channel.broadcasterLogin,
+          channel.username,
+          channel.slug,
         );
 
         return ListTile(
           leading: ProfilePicture(
-            userLogin: channel.broadcasterLogin,
+            userLogin: channel.slug,
+            profileUrl: channel.profilePic,
             radius: 16,
           ),
           title: Text(displayName),
@@ -241,7 +241,7 @@ class _AddChatSheetState extends State<AddChatSheet> {
                   spacing: 6,
                   children: [
                     const LiveIndicator(),
-                    Uptime(startTime: channel.startedAt),
+                    // Uptime not available in search results
                   ],
                 )
               : null,

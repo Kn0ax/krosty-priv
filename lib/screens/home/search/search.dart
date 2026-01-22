@@ -1,16 +1,16 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/home/search/search_results_categories.dart';
-import 'package:frosty/screens/home/search/search_results_channels.dart';
-import 'package:frosty/screens/home/search/search_store.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
-import 'package:frosty/widgets/section_header.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/screens/home/search/search_results_categories.dart';
+import 'package:krosty/screens/home/search/search_results_channels.dart';
+import 'package:krosty/screens/home/search/search_store.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
+import 'package:krosty/widgets/section_header.dart';
 import 'package:provider/provider.dart';
 
 /// The search section that contians search history and search results for channels and categories.
@@ -30,7 +30,7 @@ const double _kSearchBarHeight = 80.0;
 class _SearchState extends State<Search> {
   late final _searchStore = SearchStore(
     authStore: context.read<AuthStore>(),
-    twitchApi: context.read<TwitchApi>(),
+    kickApi: context.read<KickApi>(),
   );
 
   @override
@@ -70,7 +70,7 @@ class _SearchState extends State<Search> {
                   );
                 }
 
-                return FrostyScrollbar(
+                return KrostyScrollbar(
                   controller: widget.scrollController,
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).padding.top + _kSearchBarHeight,
@@ -129,7 +129,7 @@ class _SearchState extends State<Search> {
                   ),
                 );
               }
-              return FrostyScrollbar(
+              return KrostyScrollbar(
                 controller: widget.scrollController,
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).padding.top + _kSearchBarHeight,

@@ -1,15 +1,14 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/models/irc.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_message.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
-import 'package:frosty/widgets/section_header.dart';
+import 'package:krosty/models/kick_message.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_message.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
+import 'package:krosty/widgets/section_header.dart';
 
 class ReplyThread extends StatelessWidget {
-  final IRCMessage selectedMessage;
+  final KickChatMessage selectedMessage;
   final ChatStore chatStore;
 
   const ReplyThread({
@@ -20,18 +19,16 @@ class ReplyThread extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final replyParent = chatStore.messages.firstWhereOrNull(
-      (message) =>
-          message.tags['id'] == selectedMessage.tags['reply-parent-msg-id'],
-    );
+    // Find the parent message being replied to
+    final parentMessageId = selectedMessage.replyTo?.id;
+    final replyParent = parentMessageId != null
+        ? chatStore.messages.firstWhereOrNull(
+            (message) => message.id == parentMessageId,
+          )
+        : null;
 
-    final replyDisplayName = selectedMessage.tags['reply-parent-display-name'];
-    final replyUserLogin = selectedMessage.tags['reply-parent-user-login'];
-    final replyBody = selectedMessage.tags['reply-parent-msg-body'];
-
-    final replyName = replyUserLogin != null
-        ? getReadableName(replyDisplayName!, replyUserLogin)
-        : replyDisplayName;
+    final replyDisplayName = selectedMessage.metadata?.originalSender?.username;
+    final replyBody = selectedMessage.replyTo?.content;
 
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.5,
@@ -55,31 +52,30 @@ class ReplyThread extends StatelessWidget {
                     padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
                   ),
                   if (replyParent != null)
-                    ChatMessage(ircMessage: replyParent, chatStore: chatStore)
-                  else
+                    ChatMessage(message: replyParent, chatStore: chatStore)
+                  else if (replyDisplayName != null && replyBody != null)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                       child: Text(
-                        '$replyName: $replyBody',
+                        '$replyDisplayName: $replyBody',
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
                   Flexible(
-                    child: FrostyScrollbar(
+                    child: KrostyScrollbar(
                       child: ListView(
                         primary: false,
                         children: chatStore.messages
                             .where(
                               (message) =>
-                                  message.tags['reply-parent-msg-id'] ==
-                                  selectedMessage.tags['reply-parent-msg-id'],
+                                  message.replyTo?.id == parentMessageId,
                             )
                             .map(
                               (message) => ChatMessage(
                                 isModal: true,
                                 showReplyHeader: false,
                                 isInReplyThread: true,
-                                ircMessage: message,
+                                message: message,
                                 chatStore: chatStore,
                               ),
                             )

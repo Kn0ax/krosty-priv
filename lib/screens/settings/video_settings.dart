@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/screens/settings/widgets/settings_list_switch.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/settings_page_layout.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/settings_page_layout.dart';
 
 class VideoSettings extends StatelessWidget {
   final SettingsStore settingsStore;
@@ -31,21 +31,11 @@ class VideoSettings extends StatelessWidget {
               onChanged: (newValue) =>
                   settingsStore.defaultToHighestQuality = newValue,
             ),
-          if (Platform.isAndroid)
-            SettingsListSwitch(
-              title: 'Use fast video rendering',
-              subtitle: const Text(
-                'Uses a faster WebView rendering method. Disable if you experience crashes while watching streams.',
-              ),
-              value: settingsStore.useTextureRendering,
-              onChanged: (newValue) =>
-                  settingsStore.useTextureRendering = newValue,
-            ),
           const SectionHeader('Overlay'),
           SettingsListSwitch(
             title: 'Use custom video overlay',
             subtitle: const Text(
-              'Replaces Twitch\'s default web overlay with a mobile-friendly version.',
+              'Replaces the default player controls with a mobile-friendly overlay.',
             ),
             value: settingsStore.showOverlay,
             onChanged: (newValue) => settingsStore.showOverlay = newValue,
@@ -53,18 +43,10 @@ class VideoSettings extends StatelessWidget {
           SettingsListSwitch(
             title: 'Long-press player to toggle overlay',
             subtitle: const Text(
-              'Allows switching between Twitch\'s overlay and the custom overlay.',
+              'Allows switching between the default and custom overlay.',
             ),
             value: settingsStore.toggleableOverlay,
             onChanged: (newValue) => settingsStore.toggleableOverlay = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show latency',
-            subtitle: const Text(
-              'Displays the stream latency in the video overlay.',
-            ),
-            value: settingsStore.showLatency,
-            onChanged: (newValue) => settingsStore.showLatency = newValue,
           ),
         ],
       ),

@@ -3,22 +3,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/details/chat_users_list.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/video/stream_info_bar.dart';
-import 'package:frosty/screens/channel/video/video_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/live_indicator.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/uptime.dart';
 import 'package:intl/intl.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/video/stream_info_bar.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/live_indicator.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/uptime.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Creates a widget containing controls which enable interactions with an underlying [Video] widget.
 class VideoOverlay extends StatelessWidget {
@@ -52,7 +50,7 @@ class VideoOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaceColor = context
-        .watch<FrostyThemes>()
+        .watch<KrostyThemes>()
         .dark
         .colorScheme
         .onSurface;
@@ -105,18 +103,18 @@ class VideoOverlay extends StatelessWidget {
                     children: videoStore.availableStreamQualities
                         .map(
                           (quality) => ListTile(
+                            leading: quality == 'Auto'
+                                ? const Icon(Icons.auto_awesome_rounded)
+                                : const Icon(Icons.high_quality_rounded),
                             trailing: videoStore.streamQuality == quality
                                 ? const Icon(Icons.check_rounded)
                                 : null,
                             title: Text(quality),
+                            subtitle: quality == 'Auto'
+                                ? const Text('Adjusts based on connection')
+                                : null,
                             onTap: () {
                               videoStore.setStreamQuality(quality);
-                              SharedPreferences.getInstance().then(
-                                (prefs) => prefs.setString(
-                                  'last_stream_quality',
-                                  quality,
-                                ),
-                              );
                               Navigator.pop(context);
                             },
                           ),
@@ -177,16 +175,16 @@ class VideoOverlay extends StatelessWidget {
           if (context.isPortrait) {
             // Detect physical device tilt to rotate to optimal orientation
             final physicalOrientation =
-                await NativeDeviceOrientationCommunicator()
-                    .orientation(useSensor: true);
+                await NativeDeviceOrientationCommunicator().orientation(
+                  useSensor: true,
+                );
 
             // Map native orientation to Flutter's DeviceOrientation
             // iOS: native landscapeLeft = notch left, needs swap to Flutter's landscapeRight
             // Android: direct mapping works correctly
             final needsSwap = Platform.isIOS;
 
-            if (physicalOrientation ==
-                NativeDeviceOrientation.landscapeLeft) {
+            if (physicalOrientation == NativeDeviceOrientation.landscapeLeft) {
               SystemChrome.setPreferredOrientations([
                 needsSwap
                     ? DeviceOrientation.landscapeRight
@@ -330,8 +328,8 @@ class VideoOverlay extends StatelessWidget {
                                     showOfflineIndicator: false,
                                     textColor: surfaceColor,
                                     isOffline: true,
-                                    isInSharedChatMode:
-                                        chatStore.isInSharedChatMode,
+                                    overrideStreamTitle: chatStore.streamTitle,
+                                    overrideCategory: chatStore.streamCategory,
                                   ),
                                 ),
                             ],
@@ -394,15 +392,13 @@ class VideoOverlay extends StatelessWidget {
                           children: [
                             backButton,
                             Flexible(
-                              child: Observer(
-                                builder: (context) => StreamInfoBar(
-                                  streamInfo: streamInfo,
-                                  showUptime: false,
-                                  showViewerCount: false,
-                                  textColor: surfaceColor,
-                                  isInSharedChatMode:
-                                      chatStore.isInSharedChatMode,
-                                ),
+                              child: StreamInfoBar(
+                                streamInfo: streamInfo,
+                                showUptime: false,
+                                showViewerCount: false,
+                                textColor: surfaceColor,
+                                overrideStreamTitle: chatStore.streamTitle,
+                                overrideCategory: chatStore.streamCategory,
                               ),
                             ),
                           ],
@@ -461,7 +457,8 @@ class VideoOverlay extends StatelessWidget {
                                   children: [
                                     const LiveIndicator(),
                                     Uptime(
-                                      startTime: streamInfo.startedAt,
+                                      startTime:
+                                          streamInfo.uptimeStartTime ?? '',
                                       style: TextStyle(
                                         color: surfaceColor,
                                         fontWeight: FontWeight.w500,
@@ -475,20 +472,21 @@ class VideoOverlay extends StatelessWidget {
                                 message: 'Viewer count',
                                 preferBelow: false,
                                 child: GestureDetector(
-                                  onTap: () =>
-                                      showModalBottomSheetWithProperFocus(
-                                        isScrollControlled: true,
-                                        context: context,
-                                        builder: (context) => GestureDetector(
-                                          onTap: FocusScope.of(context).unfocus,
-                                          child: ChattersList(
-                                            chatDetailsStore:
-                                                chatStore.chatDetailsStore,
-                                            chatStore: chatStore,
-                                            userLogin: streamInfo.userLogin,
-                                          ),
-                                        ),
-                                      ),
+                                  onTap: () => showModalBottomSheetWithProperFocus(
+                                    isScrollControlled: true,
+                                    context: context,
+                                    //                                     builder: (context) => GestureDetector(
+                                    //                                       onTap: FocusScope.of(context).unfocus,
+                                    //                                       child: ChattersList(
+                                    //                                         chatDetailsStore:
+                                    //                                             chatStore.chatDetailsStore,
+                                    //                                         chatStore: chatStore,
+                                    //                                         userLogin: streamInfo.userLogin,
+                                    //                                       ),
+                                    //                                     ),
+                                    builder: (context) =>
+                                        const SizedBox(), // Placeholder/Removed
+                                  ),
                                   child: Row(
                                     spacing: 4,
                                     children: [
@@ -500,7 +498,8 @@ class VideoOverlay extends StatelessWidget {
                                       ),
                                       Text(
                                         NumberFormat().format(
-                                          videoStore.streamInfo?.viewerCount,
+                                          videoStore.streamInfo?.viewerCount ??
+                                              0,
                                         ),
                                         style: TextStyle(
                                           color: surfaceColor,

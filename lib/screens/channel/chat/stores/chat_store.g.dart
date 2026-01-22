@@ -9,13 +9,35 @@ part of 'chat_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$ChatStore on ChatStoreBase, Store {
-  Computed<List<IRCMessage>>? _$renderMessagesComputed;
+  Computed<List<KickChatMessage>>? _$renderMessagesComputed;
 
   @override
-  List<IRCMessage> get renderMessages =>
-      (_$renderMessagesComputed ??= Computed<List<IRCMessage>>(
+  List<KickChatMessage> get renderMessages =>
+      (_$renderMessagesComputed ??= Computed<List<KickChatMessage>>(
         () => super.renderMessages,
         name: 'ChatStoreBase.renderMessages',
+      )).value;
+  Computed<bool>? _$isChatBlockedComputed;
+
+  @override
+  bool get isChatBlocked => (_$isChatBlockedComputed ??= Computed<bool>(
+    () => super.isChatBlocked,
+    name: 'ChatStoreBase.isChatBlocked',
+  )).value;
+  Computed<bool>? _$isSlowModeActiveComputed;
+
+  @override
+  bool get isSlowModeActive => (_$isSlowModeActiveComputed ??= Computed<bool>(
+    () => super.isSlowModeActive,
+    name: 'ChatStoreBase.isSlowModeActive',
+  )).value;
+  Computed<String?>? _$chatBlockedReasonComputed;
+
+  @override
+  String? get chatBlockedReason =>
+      (_$chatBlockedReasonComputed ??= Computed<String?>(
+        () => super.chatBlockedReason,
+        name: 'ChatStoreBase.chatBlockedReason',
       )).value;
   Computed<List<Emote>>? _$matchingEmotesComputed;
 
@@ -40,6 +62,42 @@ mixin _$ChatStore on ChatStoreBase, Store {
     () => super.bottomBarHeight,
     name: 'ChatStoreBase.bottomBarHeight',
   )).value;
+
+  late final _$streamTitleAtom = Atom(
+    name: 'ChatStoreBase.streamTitle',
+    context: context,
+  );
+
+  @override
+  String? get streamTitle {
+    _$streamTitleAtom.reportRead();
+    return super.streamTitle;
+  }
+
+  @override
+  set streamTitle(String? value) {
+    _$streamTitleAtom.reportWrite(value, super.streamTitle, () {
+      super.streamTitle = value;
+    });
+  }
+
+  late final _$streamCategoryAtom = Atom(
+    name: 'ChatStoreBase.streamCategory',
+    context: context,
+  );
+
+  @override
+  String? get streamCategory {
+    _$streamCategoryAtom.reportRead();
+    return super.streamCategory;
+  }
+
+  @override
+  set streamCategory(String? value) {
+    _$streamCategoryAtom.reportWrite(value, super.streamCategory, () {
+      super.streamCategory = value;
+    });
+  }
 
   late final _$timeRemainingAtom = Atom(
     name: 'ChatStoreBase.timeRemaining',
@@ -84,16 +142,16 @@ mixin _$ChatStore on ChatStoreBase, Store {
     context: context,
   );
 
-  ObservableList<IRCMessage> get messages {
+  ObservableList<KickChatMessage> get messages {
     _$_messagesAtom.reportRead();
     return super._messages;
   }
 
   @override
-  ObservableList<IRCMessage> get _messages => messages;
+  ObservableList<KickChatMessage> get _messages => messages;
 
   @override
-  set _messages(ObservableList<IRCMessage> value) {
+  set _messages(ObservableList<KickChatMessage> value) {
     _$_messagesAtom.reportWrite(value, super._messages, () {
       super._messages = value;
     });
@@ -207,26 +265,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
   }
 
-  late final _$_isInSharedChatModeAtom = Atom(
-    name: 'ChatStoreBase._isInSharedChatMode',
-    context: context,
-  );
-
-  bool get isInSharedChatMode {
-    _$_isInSharedChatModeAtom.reportRead();
-    return super._isInSharedChatMode;
-  }
-
-  @override
-  bool get _isInSharedChatMode => isInSharedChatMode;
-
-  @override
-  set _isInSharedChatMode(bool value) {
-    _$_isInSharedChatModeAtom.reportWrite(value, super._isInSharedChatMode, () {
-      super._isInSharedChatMode = value;
-    });
-  }
-
   late final _$_isWaitingForAckAtom = Atom(
     name: 'ChatStoreBase._isWaitingForAck',
     context: context,
@@ -287,26 +325,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     });
   }
 
-  late final _$_userStateAtom = Atom(
-    name: 'ChatStoreBase._userState',
-    context: context,
-  );
-
-  USERSTATE get userState {
-    _$_userStateAtom.reportRead();
-    return super._userState;
-  }
-
-  @override
-  USERSTATE get _userState => userState;
-
-  @override
-  set _userState(USERSTATE value) {
-    _$_userStateAtom.reportWrite(value, super._userState, () {
-      super._userState = value;
-    });
-  }
-
   late final _$expandChatAtom = Atom(
     name: 'ChatStoreBase.expandChat',
     context: context,
@@ -331,16 +349,358 @@ mixin _$ChatStore on ChatStoreBase, Store {
   );
 
   @override
-  IRCMessage? get replyingToMessage {
+  KickChatMessage? get replyingToMessage {
     _$replyingToMessageAtom.reportRead();
     return super.replyingToMessage;
   }
 
   @override
-  set replyingToMessage(IRCMessage? value) {
+  set replyingToMessage(KickChatMessage? value) {
     _$replyingToMessageAtom.reportWrite(value, super.replyingToMessage, () {
       super.replyingToMessage = value;
     });
+  }
+
+  late final _$pinnedMessageAtom = Atom(
+    name: 'ChatStoreBase.pinnedMessage',
+    context: context,
+  );
+
+  @override
+  KickPinnedMessageEvent? get pinnedMessage {
+    _$pinnedMessageAtom.reportRead();
+    return super.pinnedMessage;
+  }
+
+  @override
+  set pinnedMessage(KickPinnedMessageEvent? value) {
+    _$pinnedMessageAtom.reportWrite(value, super.pinnedMessage, () {
+      super.pinnedMessage = value;
+    });
+  }
+
+  late final _$activePollAtom = Atom(
+    name: 'ChatStoreBase.activePoll',
+    context: context,
+  );
+
+  @override
+  KickPollUpdateEvent? get activePoll {
+    _$activePollAtom.reportRead();
+    return super.activePoll;
+  }
+
+  @override
+  set activePoll(KickPollUpdateEvent? value) {
+    _$activePollAtom.reportWrite(value, super.activePoll, () {
+      super.activePoll = value;
+    });
+  }
+
+  late final _$activePredictionAtom = Atom(
+    name: 'ChatStoreBase.activePrediction',
+    context: context,
+  );
+
+  @override
+  KickPredictionEvent? get activePrediction {
+    _$activePredictionAtom.reportRead();
+    return super.activePrediction;
+  }
+
+  @override
+  set activePrediction(KickPredictionEvent? value) {
+    _$activePredictionAtom.reportWrite(value, super.activePrediction, () {
+      super.activePrediction = value;
+    });
+  }
+
+  late final _$hasVotedOnPollAtom = Atom(
+    name: 'ChatStoreBase.hasVotedOnPoll',
+    context: context,
+  );
+
+  @override
+  bool get hasVotedOnPoll {
+    _$hasVotedOnPollAtom.reportRead();
+    return super.hasVotedOnPoll;
+  }
+
+  @override
+  set hasVotedOnPoll(bool value) {
+    _$hasVotedOnPollAtom.reportWrite(value, super.hasVotedOnPoll, () {
+      super.hasVotedOnPoll = value;
+    });
+  }
+
+  late final _$pollVotedOptionIndexAtom = Atom(
+    name: 'ChatStoreBase.pollVotedOptionIndex',
+    context: context,
+  );
+
+  @override
+  int? get pollVotedOptionIndex {
+    _$pollVotedOptionIndexAtom.reportRead();
+    return super.pollVotedOptionIndex;
+  }
+
+  @override
+  set pollVotedOptionIndex(int? value) {
+    _$pollVotedOptionIndexAtom.reportWrite(
+      value,
+      super.pollVotedOptionIndex,
+      () {
+        super.pollVotedOptionIndex = value;
+      },
+    );
+  }
+
+  late final _$hasVotedOnPredictionAtom = Atom(
+    name: 'ChatStoreBase.hasVotedOnPrediction',
+    context: context,
+  );
+
+  @override
+  bool get hasVotedOnPrediction {
+    _$hasVotedOnPredictionAtom.reportRead();
+    return super.hasVotedOnPrediction;
+  }
+
+  @override
+  set hasVotedOnPrediction(bool value) {
+    _$hasVotedOnPredictionAtom.reportWrite(
+      value,
+      super.hasVotedOnPrediction,
+      () {
+        super.hasVotedOnPrediction = value;
+      },
+    );
+  }
+
+  late final _$predictionVotedOutcomeIdAtom = Atom(
+    name: 'ChatStoreBase.predictionVotedOutcomeId',
+    context: context,
+  );
+
+  @override
+  String? get predictionVotedOutcomeId {
+    _$predictionVotedOutcomeIdAtom.reportRead();
+    return super.predictionVotedOutcomeId;
+  }
+
+  @override
+  set predictionVotedOutcomeId(String? value) {
+    _$predictionVotedOutcomeIdAtom.reportWrite(
+      value,
+      super.predictionVotedOutcomeId,
+      () {
+        super.predictionVotedOutcomeId = value;
+      },
+    );
+  }
+
+  late final _$predictionVoteAmountAtom = Atom(
+    name: 'ChatStoreBase.predictionVoteAmount',
+    context: context,
+  );
+
+  @override
+  int? get predictionVoteAmount {
+    _$predictionVoteAmountAtom.reportRead();
+    return super.predictionVoteAmount;
+  }
+
+  @override
+  set predictionVoteAmount(int? value) {
+    _$predictionVoteAmountAtom.reportWrite(
+      value,
+      super.predictionVoteAmount,
+      () {
+        super.predictionVoteAmount = value;
+      },
+    );
+  }
+
+  late final _$isPinnedMessageMinimizedAtom = Atom(
+    name: 'ChatStoreBase.isPinnedMessageMinimized',
+    context: context,
+  );
+
+  @override
+  bool get isPinnedMessageMinimized {
+    _$isPinnedMessageMinimizedAtom.reportRead();
+    return super.isPinnedMessageMinimized;
+  }
+
+  @override
+  set isPinnedMessageMinimized(bool value) {
+    _$isPinnedMessageMinimizedAtom.reportWrite(
+      value,
+      super.isPinnedMessageMinimized,
+      () {
+        super.isPinnedMessageMinimized = value;
+      },
+    );
+  }
+
+  late final _$isPollMinimizedAtom = Atom(
+    name: 'ChatStoreBase.isPollMinimized',
+    context: context,
+  );
+
+  @override
+  bool get isPollMinimized {
+    _$isPollMinimizedAtom.reportRead();
+    return super.isPollMinimized;
+  }
+
+  @override
+  set isPollMinimized(bool value) {
+    _$isPollMinimizedAtom.reportWrite(value, super.isPollMinimized, () {
+      super.isPollMinimized = value;
+    });
+  }
+
+  late final _$isPredictionMinimizedAtom = Atom(
+    name: 'ChatStoreBase.isPredictionMinimized',
+    context: context,
+  );
+
+  @override
+  bool get isPredictionMinimized {
+    _$isPredictionMinimizedAtom.reportRead();
+    return super.isPredictionMinimized;
+  }
+
+  @override
+  set isPredictionMinimized(bool value) {
+    _$isPredictionMinimizedAtom.reportWrite(
+      value,
+      super.isPredictionMinimized,
+      () {
+        super.isPredictionMinimized = value;
+      },
+    );
+  }
+
+  late final _$chatroomStateAtom = Atom(
+    name: 'ChatStoreBase.chatroomState',
+    context: context,
+  );
+
+  @override
+  KickChatroomState get chatroomState {
+    _$chatroomStateAtom.reportRead();
+    return super.chatroomState;
+  }
+
+  @override
+  set chatroomState(KickChatroomState value) {
+    _$chatroomStateAtom.reportWrite(value, super.chatroomState, () {
+      super.chatroomState = value;
+    });
+  }
+
+  late final _$isFollowingChannelAtom = Atom(
+    name: 'ChatStoreBase.isFollowingChannel',
+    context: context,
+  );
+
+  @override
+  bool get isFollowingChannel {
+    _$isFollowingChannelAtom.reportRead();
+    return super.isFollowingChannel;
+  }
+
+  @override
+  set isFollowingChannel(bool value) {
+    _$isFollowingChannelAtom.reportWrite(value, super.isFollowingChannel, () {
+      super.isFollowingChannel = value;
+    });
+  }
+
+  late final _$isSubscribedToChannelAtom = Atom(
+    name: 'ChatStoreBase.isSubscribedToChannel',
+    context: context,
+  );
+
+  @override
+  bool get isSubscribedToChannel {
+    _$isSubscribedToChannelAtom.reportRead();
+    return super.isSubscribedToChannel;
+  }
+
+  @override
+  set isSubscribedToChannel(bool value) {
+    _$isSubscribedToChannelAtom.reportWrite(
+      value,
+      super.isSubscribedToChannel,
+      () {
+        super.isSubscribedToChannel = value;
+      },
+    );
+  }
+
+  late final _$lastMessageSentAtAtom = Atom(
+    name: 'ChatStoreBase.lastMessageSentAt',
+    context: context,
+  );
+
+  @override
+  DateTime? get lastMessageSentAt {
+    _$lastMessageSentAtAtom.reportRead();
+    return super.lastMessageSentAt;
+  }
+
+  @override
+  set lastMessageSentAt(DateTime? value) {
+    _$lastMessageSentAtAtom.reportWrite(value, super.lastMessageSentAt, () {
+      super.lastMessageSentAt = value;
+    });
+  }
+
+  late final _$slowModeSecondsRemainingAtom = Atom(
+    name: 'ChatStoreBase.slowModeSecondsRemaining',
+    context: context,
+  );
+
+  @override
+  int get slowModeSecondsRemaining {
+    _$slowModeSecondsRemainingAtom.reportRead();
+    return super.slowModeSecondsRemaining;
+  }
+
+  @override
+  set slowModeSecondsRemaining(int value) {
+    _$slowModeSecondsRemainingAtom.reportWrite(
+      value,
+      super.slowModeSecondsRemaining,
+      () {
+        super.slowModeSecondsRemaining = value;
+      },
+    );
+  }
+
+  late final _$voteOnPollAsyncAction = AsyncAction(
+    'ChatStoreBase.voteOnPoll',
+    context: context,
+  );
+
+  @override
+  Future<void> voteOnPoll(int optionIndex) {
+    return _$voteOnPollAsyncAction.run(() => super.voteOnPoll(optionIndex));
+  }
+
+  late final _$betOnPredictionAsyncAction = AsyncAction(
+    'ChatStoreBase.betOnPrediction',
+    context: context,
+  );
+
+  @override
+  Future<void> betOnPrediction(String outcomeId, int amount) {
+    return _$betOnPredictionAsyncAction.run(
+      () => super.betOnPrediction(outcomeId, amount),
+    );
   }
 
   late final _$getAssetsAsyncAction = AsyncAction(
@@ -365,14 +725,14 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
   }
 
-  late final _$getRecentMessageAsyncAction = AsyncAction(
-    'ChatStoreBase.getRecentMessage',
+  late final _$sendMessageAsyncAction = AsyncAction(
+    'ChatStoreBase.sendMessage',
     context: context,
   );
 
   @override
-  Future<void> getRecentMessage() {
-    return _$getRecentMessageAsyncAction.run(() => super.getRecentMessage());
+  Future<void> sendMessage(String message) {
+    return _$sendMessageAsyncAction.run(() => super.sendMessage(message));
   }
 
   late final _$ChatStoreBaseActionController = ActionController(
@@ -393,12 +753,264 @@ mixin _$ChatStore on ChatStoreBase, Store {
   }
 
   @override
-  void _handleIRCData(String data) {
+  void _handlePusherEvent(String rawData) {
     final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase._handleIRCData',
+      name: 'ChatStoreBase._handlePusherEvent',
     );
     try {
-      return super._handleIRCData(data);
+      return super._handlePusherEvent(rawData);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _onConnected() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._onConnected',
+    );
+    try {
+      return super._onConnected();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatMessage(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatMessage',
+    );
+    try {
+      return super._handleChatMessage(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleMessageDeleted(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleMessageDeleted',
+    );
+    try {
+      return super._handleMessageDeleted(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleUserBanned(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleUserBanned',
+    );
+    try {
+      return super._handleUserBanned(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleUserUnbanned(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleUserUnbanned',
+    );
+    try {
+      return super._handleUserUnbanned(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatroomUpdated(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatroomUpdated',
+    );
+    try {
+      return super._handleChatroomUpdated(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleChatroomClear() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleChatroomClear',
+    );
+    try {
+      return super._handleChatroomClear();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handlePinnedMessageCreated(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handlePinnedMessageCreated',
+    );
+    try {
+      return super._handlePinnedMessageCreated(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handlePinnedMessageDeleted() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handlePinnedMessageDeleted',
+    );
+    try {
+      return super._handlePinnedMessageDeleted();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handlePollUpdate(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handlePollUpdate',
+    );
+    try {
+      return super._handlePollUpdate(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handlePollDeleted() {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handlePollDeleted',
+    );
+    try {
+      return super._handlePollDeleted();
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handlePredictionUpdate(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handlePredictionUpdate',
+    );
+    try {
+      return super._handlePredictionUpdate(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleTitleChanged(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleTitleChanged',
+    );
+    try {
+      return super._handleTitleChanged(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleCategoryChanged(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleCategoryChanged',
+    );
+    try {
+      return super._handleCategoryChanged(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleLivestreamUpdated(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleLivestreamUpdated',
+    );
+    try {
+      return super._handleLivestreamUpdated(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleSubscriptionEvent(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleSubscriptionEvent',
+    );
+    try {
+      return super._handleSubscriptionEvent(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleGiftedSubscriptionEvent(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleGiftedSubscriptionEvent',
+    );
+    try {
+      return super._handleGiftedSubscriptionEvent(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleFollowEvent(KickPusherEvent event, {required bool isFollowing}) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleFollowEvent',
+    );
+    try {
+      return super._handleFollowEvent(event, isFollowing: isFollowing);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleRaidEvent(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleRaidEvent',
+    );
+    try {
+      return super._handleRaidEvent(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleKicksGiftedEvent(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleKicksGiftedEvent',
+    );
+    try {
+      return super._handleKicksGiftedEvent(event);
+    } finally {
+      _$ChatStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void _handleRewardRedeemedEvent(KickPusherEvent event) {
+    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
+      name: 'ChatStoreBase._handleRewardRedeemedEvent',
+    );
+    try {
+      return super._handleRewardRedeemedEvent(event);
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }
@@ -411,18 +1023,6 @@ mixin _$ChatStore on ChatStoreBase, Store {
     );
     try {
       return super.resumeScroll();
-    } finally {
-      _$ChatStoreBaseActionController.endAction(_$actionInfo);
-    }
-  }
-
-  @override
-  void listenToSevenTVEmoteSet({required String emoteSetId}) {
-    final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase.listenToSevenTVEmoteSet',
-    );
-    try {
-      return super.listenToSevenTVEmoteSet(emoteSetId: emoteSetId);
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }
@@ -465,12 +1065,12 @@ mixin _$ChatStore on ChatStoreBase, Store {
   }
 
   @override
-  void sendMessage(String message) {
+  void _startSlowModeCountdown() {
     final _$actionInfo = _$ChatStoreBaseActionController.startAction(
-      name: 'ChatStoreBase.sendMessage',
+      name: 'ChatStoreBase._startSlowModeCountdown',
     );
     try {
-      return super.sendMessage(message);
+      return super._startSlowModeCountdown();
     } finally {
       _$ChatStoreBaseActionController.endAction(_$actionInfo);
     }
@@ -569,10 +1169,31 @@ mixin _$ChatStore on ChatStoreBase, Store {
   @override
   String toString() {
     return '''
+streamTitle: ${streamTitle},
+streamCategory: ${streamCategory},
 timeRemaining: ${timeRemaining},
 expandChat: ${expandChat},
 replyingToMessage: ${replyingToMessage},
+pinnedMessage: ${pinnedMessage},
+activePoll: ${activePoll},
+activePrediction: ${activePrediction},
+hasVotedOnPoll: ${hasVotedOnPoll},
+pollVotedOptionIndex: ${pollVotedOptionIndex},
+hasVotedOnPrediction: ${hasVotedOnPrediction},
+predictionVotedOutcomeId: ${predictionVotedOutcomeId},
+predictionVoteAmount: ${predictionVoteAmount},
+isPinnedMessageMinimized: ${isPinnedMessageMinimized},
+isPollMinimized: ${isPollMinimized},
+isPredictionMinimized: ${isPredictionMinimized},
+chatroomState: ${chatroomState},
+isFollowingChannel: ${isFollowingChannel},
+isSubscribedToChannel: ${isSubscribedToChannel},
+lastMessageSentAt: ${lastMessageSentAt},
+slowModeSecondsRemaining: ${slowModeSecondsRemaining},
 renderMessages: ${renderMessages},
+isChatBlocked: ${isChatBlocked},
+isSlowModeActive: ${isSlowModeActive},
+chatBlockedReason: ${chatBlockedReason},
 matchingEmotes: ${matchingEmotes},
 matchingChatters: ${matchingChatters},
 bottomBarHeight: ${bottomBarHeight}

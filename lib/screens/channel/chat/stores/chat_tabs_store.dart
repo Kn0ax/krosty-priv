@@ -1,14 +1,12 @@
-import 'package:frosty/apis/bttv_api.dart';
-import 'package:frosty/apis/ffz_api.dart';
-import 'package:frosty/apis/seventv_api.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/channel/chat/details/chat_details_store.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_assets_store.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/stores/global_assets_store.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_assets_store.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/stores/global_assets_store.dart';
 import 'package:mobx/mobx.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -18,13 +16,13 @@ part 'chat_tabs_store.g.dart';
 /// Does NOT include ChatStore since WebSocket connections cannot be persisted.
 @JsonSerializable()
 class PersistedChatTab {
-  final String channelId;
-  final String channelLogin;
+  final int? chatroomId;
+  final String channelSlug;
   final String displayName;
 
   const PersistedChatTab({
-    required this.channelId,
-    required this.channelLogin,
+    this.chatroomId,
+    required this.channelSlug,
     required this.displayName,
   });
 
@@ -35,16 +33,16 @@ class PersistedChatTab {
   /// Create from a ChatTabInfo (for syncing current tabs to settings).
   factory PersistedChatTab.fromChatTabInfo(ChatTabInfo info) =>
       PersistedChatTab(
-        channelId: info.channelId,
-        channelLogin: info.channelLogin,
+        chatroomId: info.chatroomId,
+        channelSlug: info.channelSlug,
         displayName: info.displayName,
       );
 }
 
 /// Data class holding information about a chat tab.
 class ChatTabInfo {
-  final String channelId;
-  final String channelLogin;
+  int? chatroomId;
+  final String channelSlug;
   final String displayName;
 
   /// The ChatStore for this tab. Null until the tab is activated (lazy loading).
@@ -57,8 +55,8 @@ class ChatTabInfo {
   bool get isActivated => chatStore != null;
 
   ChatTabInfo({
-    required this.channelId,
-    required this.channelLogin,
+    this.chatroomId,
+    required this.channelSlug,
     required this.displayName,
     this.chatStore,
     required this.isPrimary,
@@ -73,9 +71,7 @@ abstract class ChatTabsStoreBase with Store {
   static const maxTabs = 10;
 
   /// API services needed for creating ChatStore instances.
-  final TwitchApi twitchApi;
-  final BTTVApi bttvApi;
-  final FFZApi ffzApi;
+  final KickApi kickApi;
   final SevenTVApi sevenTVApi;
 
   /// Global stores passed to each ChatStore.
@@ -112,15 +108,13 @@ abstract class ChatTabsStoreBase with Store {
   List<ChatTabInfo> get tabs => _tabs;
 
   ChatTabsStoreBase({
-    required this.twitchApi,
-    required this.bttvApi,
-    required this.ffzApi,
+    required this.kickApi,
     required this.sevenTVApi,
     required this.authStore,
     required this.settingsStore,
     required this.globalAssetsStore,
-    required String primaryChannelId,
-    required String primaryChannelLogin,
+    int? primaryChatroomId,
+    required String primaryChannelSlug,
     required String primaryDisplayName,
   }) {
     // Enable wakelock once for all chat tabs
@@ -128,40 +122,39 @@ abstract class ChatTabsStoreBase with Store {
 
     // Initialize with the primary channel tab
     _addPrimaryTab(
-      channelId: primaryChannelId,
-      channelLogin: primaryChannelLogin,
+      chatroomId: primaryChatroomId,
+      channelSlug: primaryChannelSlug,
       displayName: primaryDisplayName,
     );
 
     // Restore persisted secondary tabs if feature is enabled
     if (settingsStore.persistChatTabs) {
-      _restoreSecondaryTabs(primaryChannelId: primaryChannelId);
+      _restoreSecondaryTabs(primaryChatroomId: primaryChatroomId);
     }
   }
 
   /// Creates a ChatStore for a given channel.
   ChatStore _createChatStore({
-    required String channelId,
-    required String channelLogin,
+    int? chatroomId,
+    required String channelSlug,
     required String displayName,
   }) {
     return ChatStore(
-      twitchApi: twitchApi,
-      channelName: channelLogin,
-      channelId: channelId,
+      kickApi: kickApi,
+      channelSlug: channelSlug,
+      chatroomId: chatroomId,
       displayName: displayName,
       auth: authStore,
       settings: settingsStore,
       chatDetailsStore: ChatDetailsStore(
-        twitchApi: twitchApi,
-        channelName: channelLogin,
+        kickApi: kickApi,
+        channelSlug: channelSlug,
       ),
       assetsStore: ChatAssetsStore(
-        twitchApi: twitchApi,
-        ffzApi: ffzApi,
-        bttvApi: bttvApi,
+        kickApi: kickApi,
         sevenTVApi: sevenTVApi,
         globalAssetsStore: globalAssetsStore,
+        channelSlug: channelSlug,
       ),
     );
   }
@@ -175,28 +168,28 @@ abstract class ChatTabsStoreBase with Store {
     if (tab.chatStore != null) return; // Already activated
 
     tab.chatStore = _createChatStore(
-      channelId: tab.channelId,
-      channelLogin: tab.channelLogin,
+      chatroomId: tab.chatroomId,
+      channelSlug: tab.channelSlug,
       displayName: tab.displayName,
     );
   }
 
   /// Adds the primary tab (called during initialization).
   void _addPrimaryTab({
-    required String channelId,
-    required String channelLogin,
+    int? chatroomId,
+    required String channelSlug,
     required String displayName,
   }) {
     final chatStore = _createChatStore(
-      channelId: channelId,
-      channelLogin: channelLogin,
+      chatroomId: chatroomId,
+      channelSlug: channelSlug,
       displayName: displayName,
     );
 
     _tabs.add(
       ChatTabInfo(
-        channelId: channelId,
-        channelLogin: channelLogin,
+        chatroomId: chatroomId,
+        channelSlug: channelSlug,
         displayName: displayName,
         chatStore: chatStore,
         isPrimary: true,
@@ -205,10 +198,11 @@ abstract class ChatTabsStoreBase with Store {
   }
 
   /// Restores secondary tabs from settings (lazy - no ChatStore created).
-  void _restoreSecondaryTabs({required String primaryChannelId}) {
+  void _restoreSecondaryTabs({int? primaryChatroomId}) {
     for (final persisted in settingsStore.secondaryTabs) {
       // Skip if this is the same as the primary tab (already added)
-      if (persisted.channelId == primaryChannelId) {
+      if (primaryChatroomId != null &&
+          persisted.chatroomId == primaryChatroomId) {
         continue;
       }
 
@@ -220,8 +214,8 @@ abstract class ChatTabsStoreBase with Store {
       // Add tab without ChatStore (lazy loading)
       _tabs.add(
         ChatTabInfo(
-          channelId: persisted.channelId,
-          channelLogin: persisted.channelLogin,
+          chatroomId: persisted.chatroomId,
+          channelSlug: persisted.channelSlug,
           displayName: persisted.displayName,
           isPrimary: false,
         ),
@@ -247,8 +241,8 @@ abstract class ChatTabsStoreBase with Store {
   /// Returns true if the tab was added, false if at limit or duplicate.
   @action
   bool addTab({
-    required String channelId,
-    required String channelLogin,
+    int? chatroomId,
+    required String channelSlug,
     required String displayName,
   }) {
     // Check if at max capacity
@@ -257,7 +251,9 @@ abstract class ChatTabsStoreBase with Store {
     }
 
     // Check for duplicate channel
-    final existingIndex = _tabs.indexWhere((tab) => tab.channelId == channelId);
+    final existingIndex = _tabs.indexWhere(
+      (tab) => tab.channelSlug == channelSlug,
+    );
     if (existingIndex != -1) {
       // Switch to existing tab instead of adding duplicate
       setActiveTab(existingIndex);
@@ -267,8 +263,8 @@ abstract class ChatTabsStoreBase with Store {
     // Add the new tab (lazy - no ChatStore yet)
     _tabs.add(
       ChatTabInfo(
-        channelId: channelId,
-        channelLogin: channelLogin,
+        chatroomId: chatroomId,
+        channelSlug: channelSlug,
         displayName: displayName,
         isPrimary: false,
       ),
@@ -382,7 +378,7 @@ abstract class ChatTabsStoreBase with Store {
     }
     _tabs.clear();
 
-    // Disable wakelock once after all tabs disposed
+    // Disable wakelock once for all tabs disposed
     WakelockPlus.disable();
   }
 }
