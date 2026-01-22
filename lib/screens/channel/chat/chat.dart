@@ -9,6 +9,7 @@ import 'package:krosty/screens/channel/chat/widgets/dismissible_panel.dart';
 import 'package:krosty/screens/channel/chat/widgets/pinned_message_panel.dart';
 import 'package:krosty/screens/channel/chat/widgets/poll_panel.dart';
 import 'package:krosty/screens/channel/chat/widgets/prediction_panel.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/widgets/krosty_page_view.dart';
 import 'package:krosty/widgets/krosty_scrollbar.dart';
@@ -21,11 +22,15 @@ class Chat extends StatelessWidget {
   /// Passes this to ChatBottomBar for the ChatDetails menu.
   final VoidCallback onAddChat;
 
+  /// Optional video store for VOD playback.
+  final VideoStore? videoStore;
+
   const Chat({
     super.key,
     required this.chatStore,
     this.listPadding,
     required this.onAddChat,
+    this.videoStore,
   });
 
   @override
@@ -234,6 +239,7 @@ class Chat extends StatelessWidget {
                     child: ChatBottomBar(
                       chatStore: chatStore,
                       onAddChat: onAddChat,
+                      videoStore: videoStore,
                     ),
                   ),
                   Builder(

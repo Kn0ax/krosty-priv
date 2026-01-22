@@ -81,6 +81,11 @@ dependencies:
     audio_service: ^0.18.18
     audio_session: ^0.2.2
 
+    # media_kit for VOD playback (better seeking/position tracking than IVS for on-demand content)
+    media_kit: ^1.1.11
+    media_kit_video: ^1.2.5
+    media_kit_libs_video: ^1.0.5
+
 dev_dependencies:
     flutter_test:
         sdk: flutter
@@ -136,6 +141,7 @@ flutter:
 
     assets:
         - assets/icons/logo.svg
+        - assets/icons/logo.png
         - assets/icons/badges/
         - assets/fonts/
         - assets/release-notes.md

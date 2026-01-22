@@ -6,6 +6,7 @@ import 'package:krosty/constants.dart';
 import 'package:krosty/models/kick_message_renderer.dart';
 import 'package:krosty/screens/channel/chat/details/chat_details.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:krosty/utils/context_extensions.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/blurred_container.dart';
@@ -19,10 +20,14 @@ class ChatBottomBar extends StatelessWidget {
   /// Passes this to ChatDetails to show "Add chat" option.
   final VoidCallback onAddChat;
 
+  /// Optional video store for VOD playback.
+  final VideoStore? videoStore;
+
   const ChatBottomBar({
     super.key,
     required this.chatStore,
     required this.onAddChat,
+    this.videoStore,
   });
 
   @override
@@ -80,7 +85,8 @@ class ChatBottomBar extends StatelessWidget {
                       context.isPortrait)
               ? Observer(
                   builder: (context) {
-                    final canSend = chatStore.auth.isLoggedIn &&
+                    final canSend =
+                        chatStore.auth.isLoggedIn &&
                         !chatStore.isWaitingForAck &&
                         chatStore.isConnected &&
                         !chatStore.isChatBlocked &&
@@ -106,42 +112,40 @@ class ChatBottomBar extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : chatStore.isSlowModeActive
-                              ? Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    const Icon(Icons.send_rounded),
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${chatStore.slowModeSecondsRemaining}',
-                                          style: TextStyle(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.bold,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onPrimary,
-                                          ),
-                                        ),
+                          ? Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Icon(Icons.send_rounded),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '${chatStore.slowModeSecondsRemaining}',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
                                       ),
                                     ),
-                                  ],
-                                )
-                              : const Icon(Icons.send_rounded),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const Icon(Icons.send_rounded),
                       onPressed: canSend
                           ? () => chatStore.sendMessage(
-                                chatStore.textController.text,
-                              )
+                              chatStore.textController.text,
+                            )
                           : null,
                     );
                   },
@@ -157,6 +161,7 @@ class ChatBottomBar extends StatelessWidget {
                       chatStore: chatStore,
                       userLogin: chatStore.channelSlug,
                       onAddChat: onAddChat,
+                      videoStore: videoStore,
                     ),
                   ),
                 ),
@@ -346,7 +351,8 @@ class ChatBottomBar extends StatelessWidget {
                           final isSlowModeActive = chatStore.isSlowModeActive;
                           final slowModeSeconds =
                               chatStore.slowModeSecondsRemaining;
-                          final isEnabled = isLoggedIn &&
+                          final isEnabled =
+                              isLoggedIn &&
                               !isWaitingForAck &&
                               isConnected &&
                               !isChatBlocked;
@@ -382,12 +388,12 @@ class ChatBottomBar extends StatelessWidget {
                                     );
                                   }
                                 : isChatBlocked && chatBlockedReason != null
-                                    ? () {
-                                        chatStore.updateNotification(
-                                          chatBlockedReason,
-                                        );
-                                      }
-                                    : null,
+                                ? () {
+                                    chatStore.updateNotification(
+                                      chatBlockedReason,
+                                    );
+                                  }
+                                : null,
                             child: ExtendedTextField(
                               textInputAction: TextInputAction.send,
                               focusNode: chatStore.textFieldFocusNode,
@@ -406,14 +412,15 @@ class ChatBottomBar extends StatelessWidget {
                               decoration: InputDecoration(
                                 prefixIcon:
                                     chatStore.settings.emoteMenuButtonOnLeft
-                                        ? emoteMenuButton
-                                        : null,
+                                    ? emoteMenuButton
+                                    : null,
                                 suffixIcon: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 8,
                                   children: [
                                     if (!chatStore
-                                            .settings.emoteMenuButtonOnLeft &&
+                                            .settings
+                                            .emoteMenuButtonOnLeft &&
                                         emoteMenuButton != null)
                                       emoteMenuButton,
                                   ],

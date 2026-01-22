@@ -3,16 +3,15 @@ import 'dart:convert';
 
 import 'package:advanced_in_app_review/advanced_in_app_review.dart';
 import 'package:app_links/app_links.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:krosty/apis/dio_client.dart';
-import 'package:krosty/services/audio_handler.dart';
 import 'package:krosty/apis/kick_api.dart';
 import 'package:krosty/apis/kick_auth_interceptor.dart';
 import 'package:krosty/apis/seventv_api.dart';
@@ -23,10 +22,12 @@ import 'package:krosty/screens/home/home.dart';
 import 'package:krosty/screens/onboarding/onboarding_intro.dart';
 import 'package:krosty/screens/settings/stores/auth_store.dart';
 import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/services/audio_handler.dart';
 import 'package:krosty/stores/global_assets_store.dart';
 import 'package:krosty/theme.dart';
 import 'package:krosty/utils.dart';
 import 'package:krosty/widgets/alert_message.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:mobx/mobx.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +35,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize media_kit for VOD playback
+  MediaKit.ensureInitialized();
 
   // Configure Flutter's image cache for better memory management on Android
   // Limit to 100 images and 100MB to prevent memory pressure

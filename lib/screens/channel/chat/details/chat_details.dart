@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:krosty/main.dart';
 import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
 import 'package:krosty/screens/channel/chat/details/chat_modes.dart';
+import 'package:krosty/screens/channel/chat/details/vod_list_bottom_sheet.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:krosty/screens/settings/settings.dart';
 import 'package:krosty/utils/modal_bottom_sheet.dart';
 import 'package:krosty/widgets/animated_scroll_border.dart';
@@ -22,12 +24,16 @@ class ChatDetails extends StatefulWidget {
   /// Shows an "Add chat" option in the menu.
   final VoidCallback onAddChat;
 
+  /// Optional video store for VOD playback.
+  final VideoStore? videoStore;
+
   const ChatDetails({
     super.key,
     required this.chatDetailsStore,
     required this.chatStore,
     required this.userLogin,
     required this.onAddChat,
+    this.videoStore,
   });
 
   @override
@@ -267,6 +273,21 @@ class _ChatDetailsState extends State<ChatDetails> {
             title: const Text('Add chat'),
             trailing: const Icon(Icons.chevron_right),
             onTap: widget.onAddChat,
+          ),
+          ListTile(
+            leading: const Icon(Icons.video_library_rounded),
+            title: const Text('VODs'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showModalBottomSheetWithProperFocus(
+              isScrollControlled: true,
+              context: context,
+              builder: (_) => VodListBottomSheet(
+                kickApi: widget.chatStore.kickApi,
+                channelSlug: widget.userLogin,
+                videoStore: widget.videoStore,
+                isSubscriber: widget.chatStore.isSubscribedToChannel,
+              ),
+            ),
           ),
           Observer(
             builder: (context) {

@@ -4,6 +4,7 @@ import 'package:aws_ivs_player/aws_ivs_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/screens/channel/video/video_store.dart';
+import 'package:krosty/screens/channel/video/vod_player.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
 
 /// Creates a native video player widget that shows a channel's video stream.
@@ -40,6 +41,18 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
     return Observer(
       builder: (_) {
         final playbackUrl = widget.videoStore.playbackUrl;
+        final isPlayingVod = widget.videoStore.isPlayingVod;
+        final streamInfo = widget.videoStore.streamInfo;
+
+        // Show VOD player when playing VOD (uses media_kit)
+        if (isPlayingVod) {
+          return VodPlayer(videoStore: widget.videoStore);
+        }
+
+        // Show black background when offline (overlay handles the UI)
+        if (playbackUrl == null && streamInfo == null) {
+          return const ColoredBox(color: Colors.black);
+        }
 
         // Show loading state while waiting for playback URL
         if (playbackUrl == null) {
@@ -51,6 +64,7 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
           );
         }
 
+        // Show IVS player for live streams
         return IvsVideoPlayer(
           url: playbackUrl,
           controller: widget.videoStore.ivsController,
@@ -64,7 +78,7 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
                 Icon(Icons.error_outline, color: Colors.white, size: 48),
                 SizedBox(height: 8),
                 Text(
-                  'Stream unavailable',
+                  'Streamer is offline',
                   style: TextStyle(color: Colors.white70),
                 ),
               ],

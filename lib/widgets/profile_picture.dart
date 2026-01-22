@@ -24,9 +24,23 @@ class _ProfilePictureState extends State<ProfilePicture> {
   static final Map<String, String> _urlCache = {};
   static final Map<String, Future<String>> _pendingRequests = {};
 
+  // Store the future in state to prevent re-fetching on rebuild
+  late Future<String> _profileUrlFuture;
+
   @override
   void initState() {
     super.initState();
+    _profileUrlFuture = _getProfileImageUrl();
+  }
+
+  @override
+  void didUpdateWidget(ProfilePicture oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only re-fetch if the userLogin or profileUrl changed
+    if (oldWidget.userLogin != widget.userLogin ||
+        oldWidget.profileUrl != widget.profileUrl) {
+      _profileUrlFuture = _getProfileImageUrl();
+    }
   }
 
   static const _defaultProfilePic =
@@ -39,6 +53,11 @@ class _ProfilePictureState extends State<ProfilePicture> {
     }
 
     final userLogin = widget.userLogin;
+
+    // Don't make API calls with empty userLogin
+    if (userLogin.isEmpty) {
+      return _defaultProfilePic;
+    }
 
     // Return cached URL if available
     if (_urlCache.containsKey(userLogin)) {
@@ -80,7 +99,7 @@ class _ProfilePictureState extends State<ProfilePicture> {
 
     return ClipOval(
       child: FutureBuilder<String>(
-        future: _getProfileImageUrl(),
+        future: _profileUrlFuture,
         builder: (context, snapshot) {
           return snapshot.hasData
               ? KrostyCachedNetworkImage(

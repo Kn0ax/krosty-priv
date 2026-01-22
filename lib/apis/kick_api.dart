@@ -6,6 +6,7 @@ import 'package:krosty/models/kick_channel_user_info.dart';
 import 'package:krosty/models/kick_chatroom_state.dart';
 import 'package:krosty/models/kick_silenced_user.dart';
 import 'package:krosty/models/kick_user.dart';
+import 'package:krosty/models/kick_video.dart';
 
 /// The Kick API service for making API calls.
 ///
@@ -73,6 +74,26 @@ class KickApi extends BaseApiClient {
     final slug = channelSlug.toLowerCase();
     final data = await get<JsonMap>('$_internalV2Url/channels/$slug/chatroom');
     return KickChatroomState.fromJson(data);
+  }
+
+  /// Returns a list of VODs/videos for a channel.
+  ///
+  /// Uses /api/v2/channels/{slug}/videos endpoint.
+  /// Returns public and private videos; filter by [KickVideo.isPublic] if needed.
+  Future<List<KickVideo>> getChannelVideos({
+    required String channelSlug,
+  }) async {
+    try {
+      final data = await get<List<dynamic>>(
+        '$_internalV2Url/channels/${channelSlug.toLowerCase()}/videos',
+      );
+      return data
+          .map((e) => KickVideo.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on ApiException catch (e) {
+      debugPrint('Failed to get channel videos: $e');
+      return [];
+    }
   }
 
   // ============================================================

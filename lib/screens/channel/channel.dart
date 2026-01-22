@@ -278,6 +278,8 @@ class _VideoChatState extends State<VideoChat>
     );
 
     final overlay = GestureDetector(
+      // Use translucent so taps on empty areas pass through to VOD button below
+      behavior: HitTestBehavior.translucent,
       onLongPress: _videoStore.handleToggleOverlay,
       onDoubleTap: context.isLandscape
           ? () => settingsStore.fullScreen = !settingsStore.fullScreen
@@ -301,7 +303,10 @@ class _VideoChatState extends State<VideoChat>
             settingsStore: settingsStore,
           );
 
-          if (_videoStore.paused || _videoStore.streamInfo == null) {
+          // Show static overlay when paused or offline (but not when playing VOD)
+          final isActivePlayback =
+              _videoStore.streamInfo != null || _videoStore.isPlayingVod;
+          if (_videoStore.paused || !isActivePlayback) {
             return videoOverlay;
           }
 
@@ -325,7 +330,12 @@ class _VideoChatState extends State<VideoChat>
       builder: (context) {
         if (!_videoStore.settingsStore.showOverlay) return player;
 
-        return Stack(children: [player, overlay]);
+        return Stack(
+          children: [
+            player,
+            overlay,
+          ],
+        );
       },
     );
 
@@ -338,6 +348,7 @@ class _VideoChatState extends State<VideoChat>
             ChatTabs(
               key: _chatKey,
               chatTabsStore: _chatTabsStore,
+              videoStore: _videoStore,
               // In chat-only mode, account for the blurred AppBar height
               listPadding: chatOnly
                   ? EdgeInsets.only(top: context.safePaddingTop)

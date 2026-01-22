@@ -233,6 +233,190 @@ mixin _$VideoStore on VideoStoreBase, Store {
     });
   }
 
+  late final _$_lastVodAtom = Atom(
+    name: 'VideoStoreBase._lastVod',
+    context: context,
+  );
+
+  KickVideo? get lastVod {
+    _$_lastVodAtom.reportRead();
+    return super._lastVod;
+  }
+
+  @override
+  KickVideo? get _lastVod => lastVod;
+
+  @override
+  set _lastVod(KickVideo? value) {
+    _$_lastVodAtom.reportWrite(value, super._lastVod, () {
+      super._lastVod = value;
+    });
+  }
+
+  late final _$_isPlayingVodAtom = Atom(
+    name: 'VideoStoreBase._isPlayingVod',
+    context: context,
+  );
+
+  bool get isPlayingVod {
+    _$_isPlayingVodAtom.reportRead();
+    return super._isPlayingVod;
+  }
+
+  @override
+  bool get _isPlayingVod => isPlayingVod;
+
+  @override
+  set _isPlayingVod(bool value) {
+    _$_isPlayingVodAtom.reportWrite(value, super._isPlayingVod, () {
+      super._isPlayingVod = value;
+    });
+  }
+
+  late final _$_availableVodQualitiesAtom = Atom(
+    name: 'VideoStoreBase._availableVodQualities',
+    context: context,
+  );
+
+  List<String> get availableVodQualities {
+    _$_availableVodQualitiesAtom.reportRead();
+    return super._availableVodQualities;
+  }
+
+  @override
+  List<String> get _availableVodQualities => availableVodQualities;
+
+  @override
+  set _availableVodQualities(List<String> value) {
+    _$_availableVodQualitiesAtom.reportWrite(
+      value,
+      super._availableVodQualities,
+      () {
+        super._availableVodQualities = value;
+      },
+    );
+  }
+
+  late final _$_vodQualityIndexAtom = Atom(
+    name: 'VideoStoreBase._vodQualityIndex',
+    context: context,
+  );
+
+  int get vodQualityIndex {
+    _$_vodQualityIndexAtom.reportRead();
+    return super._vodQualityIndex;
+  }
+
+  @override
+  int get _vodQualityIndex => vodQualityIndex;
+
+  @override
+  set _vodQualityIndex(int value) {
+    _$_vodQualityIndexAtom.reportWrite(value, super._vodQualityIndex, () {
+      super._vodQualityIndex = value;
+    });
+  }
+
+  late final _$_currentVodQualityAtom = Atom(
+    name: 'VideoStoreBase._currentVodQuality',
+    context: context,
+  );
+
+  String get currentVodQuality {
+    _$_currentVodQualityAtom.reportRead();
+    return super._currentVodQuality;
+  }
+
+  @override
+  String get _currentVodQuality => currentVodQuality;
+
+  @override
+  set _currentVodQuality(String value) {
+    _$_currentVodQualityAtom.reportWrite(value, super._currentVodQuality, () {
+      super._currentVodQuality = value;
+    });
+  }
+
+  late final _$_positionMsAtom = Atom(
+    name: 'VideoStoreBase._positionMs',
+    context: context,
+  );
+
+  int get positionMs {
+    _$_positionMsAtom.reportRead();
+    return super._positionMs;
+  }
+
+  @override
+  int get _positionMs => positionMs;
+
+  @override
+  set _positionMs(int value) {
+    _$_positionMsAtom.reportWrite(value, super._positionMs, () {
+      super._positionMs = value;
+    });
+  }
+
+  late final _$_durationMsAtom = Atom(
+    name: 'VideoStoreBase._durationMs',
+    context: context,
+  );
+
+  int get durationMs {
+    _$_durationMsAtom.reportRead();
+    return super._durationMs;
+  }
+
+  @override
+  int get _durationMs => durationMs;
+
+  @override
+  set _durationMs(int value) {
+    _$_durationMsAtom.reportWrite(value, super._durationMs, () {
+      super._durationMs = value;
+    });
+  }
+
+  late final _$_playbackRateAtom = Atom(
+    name: 'VideoStoreBase._playbackRate',
+    context: context,
+  );
+
+  double get playbackRate {
+    _$_playbackRateAtom.reportRead();
+    return super._playbackRate;
+  }
+
+  @override
+  double get _playbackRate => playbackRate;
+
+  @override
+  set _playbackRate(double value) {
+    _$_playbackRateAtom.reportWrite(value, super._playbackRate, () {
+      super._playbackRate = value;
+    });
+  }
+
+  late final _$_isSeekingAtom = Atom(
+    name: 'VideoStoreBase._isSeeking',
+    context: context,
+  );
+
+  bool get isSeeking {
+    _$_isSeekingAtom.reportRead();
+    return super._isSeeking;
+  }
+
+  @override
+  bool get _isSeeking => isSeeking;
+
+  @override
+  set _isSeeking(bool value) {
+    _$_isSeekingAtom.reportWrite(value, super._isSeeking, () {
+      super._isSeeking = value;
+    });
+  }
+
   late final _$updateStreamQualitiesAsyncAction = AsyncAction(
     'VideoStoreBase.updateStreamQualities',
     context: context,
@@ -291,6 +475,36 @@ mixin _$VideoStore on VideoStoreBase, Store {
     return _$handleRefreshAsyncAction.run(() => super.handleRefresh());
   }
 
+  late final _$onSeekEndAsyncAction = AsyncAction(
+    'VideoStoreBase.onSeekEnd',
+    context: context,
+  );
+
+  @override
+  Future<void> onSeekEnd(int positionMs) {
+    return _$onSeekEndAsyncAction.run(() => super.onSeekEnd(positionMs));
+  }
+
+  late final _$setPlaybackRateAsyncAction = AsyncAction(
+    'VideoStoreBase.setPlaybackRate',
+    context: context,
+  );
+
+  @override
+  Future<void> setPlaybackRate(double rate) {
+    return _$setPlaybackRateAsyncAction.run(() => super.setPlaybackRate(rate));
+  }
+
+  late final _$cyclePlaybackRateAsyncAction = AsyncAction(
+    'VideoStoreBase.cyclePlaybackRate',
+    context: context,
+  );
+
+  @override
+  Future<void> cyclePlaybackRate() {
+    return _$cyclePlaybackRateAsyncAction.run(() => super.cyclePlaybackRate());
+  }
+
   late final _$VideoStoreBaseActionController = ActionController(
     name: 'VideoStoreBase',
     context: context,
@@ -327,6 +541,66 @@ mixin _$VideoStore on VideoStoreBase, Store {
     );
     try {
       return super.handleToggleOverlay();
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void playLastVod([String? preferredQuality]) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.playLastVod',
+    );
+    try {
+      return super.playLastVod(preferredQuality);
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void playVod(KickVideo video, [String? preferredQuality]) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.playVod',
+    );
+    try {
+      return super.playVod(video, preferredQuality);
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void setVodQuality(String quality) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.setVodQuality',
+    );
+    try {
+      return super.setVodQuality(quality);
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void onSeekStart() {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.onSeekStart',
+    );
+    try {
+      return super.onSeekStart();
+    } finally {
+      _$VideoStoreBaseActionController.endAction(_$actionInfo);
+    }
+  }
+
+  @override
+  void onSeekUpdate(int positionMs) {
+    final _$actionInfo = _$VideoStoreBaseActionController.startAction(
+      name: 'VideoStoreBase.onSeekUpdate',
+    );
+    try {
+      return super.onSeekUpdate(positionMs);
     } finally {
       _$VideoStoreBaseActionController.endAction(_$actionInfo);
     }

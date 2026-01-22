@@ -6,6 +6,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:krosty/screens/channel/chat/chat.dart';
 import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
 import 'package:krosty/screens/channel/chat/widgets/add_chat_dialog.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:krosty/utils.dart';
 import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:krosty/widgets/profile_picture.dart';
@@ -16,7 +17,15 @@ class ChatTabs extends StatelessWidget {
   final ChatTabsStore chatTabsStore;
   final EdgeInsetsGeometry? listPadding;
 
-  const ChatTabs({super.key, required this.chatTabsStore, this.listPadding});
+  /// Optional video store for VOD playback.
+  final VideoStore? videoStore;
+
+  const ChatTabs({
+    super.key,
+    required this.chatTabsStore,
+    this.listPadding,
+    this.videoStore,
+  });
 
   Future<void> _handleAddChat(BuildContext context) async {
     if (!chatTabsStore.canAddTab) {
@@ -108,6 +117,7 @@ class ChatTabs extends StatelessWidget {
                       chatStore: tabInfo.chatStore!,
                       listPadding: adjustedPadding,
                       onAddChat: () => _handleAddChat(context),
+                      videoStore: videoStore,
                     );
                   }).toList(),
                 ),

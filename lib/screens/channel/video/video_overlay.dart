@@ -55,6 +55,9 @@ class VideoOverlay extends StatelessWidget {
         .colorScheme
         .onSurface;
 
+    // Check if playing VOD (offline channel with playback)
+    final isPlayingVod = videoStore.isPlayingVod;
+
     final backButton = IconButton(
       tooltip: 'Back',
       icon: Icon(
@@ -287,7 +290,12 @@ class VideoOverlay extends StatelessWidget {
           ),
         );
 
-        if (streamInfo == null) {
+        // Show minimal overlay when offline and not playing VOD
+        if (streamInfo == null && !isPlayingVod) {
+          final lastVod = videoStore.lastVod;
+          final streamerName =
+              offlineChannelInfo?.displayName ?? offlineChannelInfo?.slug ?? '';
+
           return Stack(
             children: [
               // Top gradient behind top cluster
@@ -295,7 +303,7 @@ class VideoOverlay extends StatelessWidget {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 100, // Covers top area around controls (extended)
+                height: 100,
                 child: Container(decoration: topGradient),
               ),
               // Bottom gradient behind bottom cluster
@@ -303,58 +311,119 @@ class VideoOverlay extends StatelessWidget {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 80, // Covers bottom area around controls
+                height: 80,
                 child: Container(decoration: bottomGradient),
               ),
-              // Content
-              Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              // Center content - offline message and VOD button
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              backButton,
-                              if (offlineChannelInfo != null)
-                                Flexible(
-                                  child: StreamInfoBar(
-                                    offlineChannelInfo: offlineChannelInfo,
-                                    displayName: chatStore.displayName,
-                                    showUptime: false,
-                                    showViewerCount: false,
-                                    showOfflineIndicator: false,
-                                    textColor: surfaceColor,
-                                    isOffline: true,
-                                    overrideStreamTitle: chatStore.streamTitle,
-                                    overrideCategory: chatStore.streamCategory,
-                                  ),
-                                ),
-                            ],
-                          ),
+                      Icon(
+                        Icons.tv_off,
+                        color: surfaceColor.withValues(alpha: 0.7),
+                        size: 40,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Streamer is offline',
+                        style: TextStyle(
+                          color: surfaceColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          shadows: _textShadow,
                         ),
                       ),
-                      if (videoStore.settingsStore.fullScreen &&
-                          context.isLandscape)
-                        chatOverlayButton,
+                      const SizedBox(height: 2),
+                      Text(
+                        streamerName.isNotEmpty
+                            ? '$streamerName is currently offline'
+                            : 'This streamer is currently offline',
+                        style: TextStyle(
+                          color: surfaceColor.withValues(alpha: 0.6),
+                          fontSize: 13,
+                          shadows: _textShadow,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (lastVod != null) ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: videoStore.playLastVod,
+                          icon: const Icon(Icons.play_circle_outline),
+                          label: const Text('Watch Last VOD'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                        if (lastVod.title.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            lastVod.title,
+                            style: TextStyle(
+                              color: surfaceColor.withValues(alpha: 0.4),
+                              fontSize: 11,
+                              shadows: _textShadow,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
                     ],
                   ),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        refreshButton,
-                        // On iPad, hide the rotate button on the overlay
-                        // Flutter doesn't allow programmatic rotation on iPad unless multitasking is disabled.
-                        if (!isIPad()) rotateButton,
-                        if (context.isLandscape) fullScreenButton,
-                      ],
+                ),
+              ),
+              // Top bar - back button and stream info
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          backButton,
+                          if (offlineChannelInfo != null)
+                            Flexible(
+                              child: StreamInfoBar(
+                                offlineChannelInfo: offlineChannelInfo,
+                                displayName: chatStore.displayName,
+                                showUptime: false,
+                                showViewerCount: false,
+                                showOfflineIndicator: false,
+                                textColor: surfaceColor,
+                                isOffline: true,
+                                overrideStreamTitle: chatStore.streamTitle,
+                                overrideCategory: chatStore.streamCategory,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
+                  if (videoStore.settingsStore.fullScreen &&
+                      context.isLandscape)
+                    chatOverlayButton,
                 ],
+              ),
+              // Bottom bar - utility buttons
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    refreshButton,
+                    if (!isIPad()) rotateButton,
+                    if (context.isLandscape) fullScreenButton,
+                  ],
+                ),
               ),
             ],
           );
@@ -392,14 +461,29 @@ class VideoOverlay extends StatelessWidget {
                           children: [
                             backButton,
                             Flexible(
-                              child: StreamInfoBar(
-                                streamInfo: streamInfo,
-                                showUptime: false,
-                                showViewerCount: false,
-                                textColor: surfaceColor,
-                                overrideStreamTitle: chatStore.streamTitle,
-                                overrideCategory: chatStore.streamCategory,
-                              ),
+                              child: isPlayingVod
+                                  ? StreamInfoBar(
+                                      offlineChannelInfo: offlineChannelInfo,
+                                      displayName: chatStore.displayName,
+                                      showUptime: false,
+                                      showViewerCount: false,
+                                      showOfflineIndicator: false,
+                                      textColor: surfaceColor,
+                                      isOffline:
+                                          true, // Use offlineChannelInfo for profile pic
+                                      overrideStreamTitle:
+                                          videoStore.lastVod?.title,
+                                    )
+                                  : StreamInfoBar(
+                                      streamInfo: streamInfo,
+                                      showUptime: false,
+                                      showViewerCount: false,
+                                      textColor: surfaceColor,
+                                      overrideStreamTitle:
+                                          chatStore.streamTitle,
+                                      overrideCategory:
+                                          chatStore.streamCategory,
+                                    ),
                             ),
                           ],
                         ),
@@ -408,7 +492,9 @@ class VideoOverlay extends StatelessWidget {
                     if (videoStore.settingsStore.fullScreen &&
                         context.isLandscape)
                       chatOverlayButton,
-                    if (!Platform.isIOS || isIPad()) videoSettingsButton,
+                    // Hide settings when playing VOD (uses fixed quality)
+                    if (!isPlayingVod && (!Platform.isIOS || isIPad()))
+                      videoSettingsButton,
                   ],
                 ),
                 Center(
@@ -434,103 +520,79 @@ class VideoOverlay extends StatelessWidget {
                     ),
                   ),
                 ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          child: Row(
-                            spacing: 8,
-                            children: [
-                              Tooltip(
-                                message: 'Stream uptime',
-                                preferBelow: false,
-                                triggerMode: TooltipTriggerMode.tap,
-                                child: Row(
-                                  spacing: 6,
-                                  children: [
-                                    const LiveIndicator(),
-                                    Uptime(
-                                      startTime:
-                                          streamInfo.uptimeStartTime ?? '',
-                                      style: TextStyle(
-                                        color: surfaceColor,
-                                        fontWeight: FontWeight.w500,
-                                        shadows: _textShadow,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Tooltip(
-                                message: 'Viewer count',
-                                preferBelow: false,
-                                child: GestureDetector(
-                                  onTap: () => showModalBottomSheetWithProperFocus(
-                                    isScrollControlled: true,
-                                    context: context,
-                                    //                                     builder: (context) => GestureDetector(
-                                    //                                       onTap: FocusScope.of(context).unfocus,
-                                    //                                       child: ChattersList(
-                                    //                                         chatDetailsStore:
-                                    //                                             chatStore.chatDetailsStore,
-                                    //                                         chatStore: chatStore,
-                                    //                                         userLogin: streamInfo.userLogin,
-                                    //                                       ),
-                                    //                                     ),
-                                    builder: (context) =>
-                                        const SizedBox(), // Placeholder/Removed
-                                  ),
+                // VOD controls (seekbar, time, playback rate) or live stats
+                if (isPlayingVod)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: _VodControls(
+                      videoStore: videoStore,
+                      surfaceColor: surfaceColor,
+                      textShadow: _textShadow,
+                      iconShadow: _iconShadow,
+                    ),
+                  )
+                else
+                  Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              spacing: 8,
+                              children: [
+                                Tooltip(
+                                  message: 'Stream uptime',
+                                  preferBelow: false,
+                                  triggerMode: TooltipTriggerMode.tap,
                                   child: Row(
-                                    spacing: 4,
+                                    spacing: 6,
                                     children: [
-                                      Icon(
-                                        Icons.visibility,
-                                        size: 14,
-                                        shadows: _iconShadow,
-                                        color: surfaceColor,
-                                      ),
-                                      Text(
-                                        NumberFormat().format(
-                                          videoStore.streamInfo?.viewerCount ??
-                                              0,
-                                        ),
+                                      const LiveIndicator(),
+                                      Uptime(
+                                        startTime:
+                                            streamInfo?.uptimeStartTime ?? '',
                                         style: TextStyle(
                                           color: surfaceColor,
                                           fontWeight: FontWeight.w500,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
-                                          ],
                                           shadows: _textShadow,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                              if (settingsStore.showLatency)
                                 Tooltip(
-                                  message: 'Latency to broadcaster',
+                                  message: 'Viewer count',
                                   preferBelow: false,
-                                  triggerMode: TooltipTriggerMode.tap,
-                                  child: Row(
-                                    spacing: 4,
-                                    children: [
-                                      Icon(
-                                        Icons.speed_rounded,
-                                        size: 14,
-                                        color: surfaceColor,
-                                        shadows: _iconShadow,
-                                      ),
-                                      Observer(
-                                        builder: (context) => Text(
-                                          videoStore.latency ?? '—',
+                                  child: GestureDetector(
+                                    onTap: () =>
+                                        showModalBottomSheetWithProperFocus(
+                                          isScrollControlled: true,
+                                          context: context,
+                                          builder: (context) =>
+                                              const SizedBox(), // Placeholder/Removed
+                                        ),
+                                    child: Row(
+                                      spacing: 4,
+                                      children: [
+                                        Icon(
+                                          Icons.visibility,
+                                          size: 14,
+                                          shadows: _iconShadow,
+                                          color: surfaceColor,
+                                        ),
+                                        Text(
+                                          NumberFormat().format(
+                                            videoStore
+                                                    .streamInfo
+                                                    ?.viewerCount ??
+                                                0,
+                                          ),
                                           style: TextStyle(
                                             color: surfaceColor,
                                             fontWeight: FontWeight.w500,
@@ -540,46 +602,77 @@ class VideoOverlay extends StatelessWidget {
                                             shadows: _textShadow,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                            ],
+                                if (settingsStore.showLatency)
+                                  Tooltip(
+                                    message: 'Latency to broadcaster',
+                                    preferBelow: false,
+                                    triggerMode: TooltipTriggerMode.tap,
+                                    child: Row(
+                                      spacing: 4,
+                                      children: [
+                                        Icon(
+                                          Icons.speed_rounded,
+                                          size: 14,
+                                          color: surfaceColor,
+                                          shadows: _iconShadow,
+                                        ),
+                                        Observer(
+                                          builder: (context) => Text(
+                                            videoStore.latency ?? '—',
+                                            style: TextStyle(
+                                              color: surfaceColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontFeatures: const [
+                                                FontFeature.tabularFigures(),
+                                              ],
+                                              shadows: _textShadow,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      Builder(
-                        builder: (_) {
-                          // On iOS, show toggle behavior. On Android, always show enter PiP.
-                          final isIOS = Platform.isIOS;
-                          final showExitState = isIOS && videoStore.isInPipMode;
+                        Builder(
+                          builder: (_) {
+                            // On iOS, show toggle behavior. On Android, always show enter PiP.
+                            final isIOS = Platform.isIOS;
+                            final showExitState =
+                                isIOS && videoStore.isInPipMode;
 
-                          return Tooltip(
-                            message: showExitState
-                                ? 'Exit picture-in-picture'
-                                : 'Enter picture-in-picture',
-                            preferBelow: false,
-                            child: IconButton(
-                              icon: Icon(
-                                showExitState
-                                    ? Icons.picture_in_picture_alt_outlined
-                                    : Icons.picture_in_picture_alt_rounded,
-                                color: surfaceColor,
-                                shadows: _iconShadow,
+                            return Tooltip(
+                              message: showExitState
+                                  ? 'Exit picture-in-picture'
+                                  : 'Enter picture-in-picture',
+                              preferBelow: false,
+                              child: IconButton(
+                                icon: Icon(
+                                  showExitState
+                                      ? Icons.picture_in_picture_alt_outlined
+                                      : Icons.picture_in_picture_alt_rounded,
+                                  color: surfaceColor,
+                                  shadows: _iconShadow,
+                                ),
+                                onPressed: videoStore.togglePictureInPicture,
                               ),
-                              onPressed: videoStore.togglePictureInPicture,
-                            ),
-                          );
-                        },
-                      ),
-                      refreshButton,
-                      // On iPad, hide the rotate button on the overlay
-                      // Flutter doesn't allow programmatic rotation on iPad unless multitasking is disabled.
-                      if (!isIPad()) rotateButton,
-                      if (context.isLandscape) fullScreenButton,
-                    ],
+                            );
+                          },
+                        ),
+                        refreshButton,
+                        // On iPad, hide the rotate button on the overlay
+                        // Flutter doesn't allow programmatic rotation on iPad unless multitasking is disabled.
+                        if (!isIPad()) rotateButton,
+                        if (context.isLandscape) fullScreenButton,
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -587,4 +680,301 @@ class VideoOverlay extends StatelessWidget {
       },
     );
   }
+}
+
+/// VOD playback controls widget with seekbar, time display, playback rate,
+/// and utility buttons (refresh, rotate, fullscreen).
+class _VodControls extends StatelessWidget {
+  final VideoStore videoStore;
+  final Color surfaceColor;
+  final List<Shadow> textShadow;
+  final List<Shadow> iconShadow;
+
+  const _VodControls({
+    required this.videoStore,
+    required this.surfaceColor,
+    required this.textShadow,
+    required this.iconShadow,
+  });
+
+  String _formatDuration(int milliseconds) {
+    final duration = Duration(milliseconds: milliseconds);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Observer(
+      builder: (_) {
+        final positionMs = videoStore.positionMs;
+        final durationMs = videoStore.durationMs;
+        final playbackRate = videoStore.playbackRate;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Seekbar
+              SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 12,
+                  ),
+                  activeTrackColor: surfaceColor,
+                  inactiveTrackColor: surfaceColor.withValues(alpha: 0.3),
+                  thumbColor: surfaceColor,
+                  overlayColor: surfaceColor.withValues(alpha: 0.2),
+                ),
+                child: Slider(
+                  value: positionMs.toDouble().clamp(0, durationMs.toDouble()),
+                  max: durationMs > 0 ? durationMs.toDouble() : 1,
+                  onChangeStart: (_) => videoStore.onSeekStart(),
+                  onChanged: (value) => videoStore.onSeekUpdate(value.toInt()),
+                  onChangeEnd: (value) => videoStore.onSeekEnd(value.toInt()),
+                ),
+              ),
+              // Bottom row: time display, playback rate, skip buttons, and utility buttons
+              Row(
+                children: [
+                  // Time display
+                  Text(
+                    '${_formatDuration(positionMs)} / ${_formatDuration(durationMs)}',
+                    style: TextStyle(
+                      color: surfaceColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      shadows: textShadow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Playback rate button
+                  GestureDetector(
+                    onTap: videoStore.cyclePlaybackRate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: surfaceColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${playbackRate}x',
+                        style: TextStyle(
+                          color: surfaceColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          shadows: textShadow,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Quality button
+                  GestureDetector(
+                    onTap: () =>
+                        _showQualityPicker(context, videoStore, surfaceColor),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: surfaceColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        videoStore.currentVodQualityDisplay.toUpperCase(),
+                        style: TextStyle(
+                          color: surfaceColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          shadows: textShadow,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Skip backward button
+                  IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      Icons.replay_10_rounded,
+                      color: surfaceColor,
+                      shadows: iconShadow,
+                    ),
+                    onPressed: videoStore.skipBackward,
+                    tooltip: 'Skip back 10s',
+                  ),
+                  const SizedBox(width: 4),
+                  // Skip forward button
+                  IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      Icons.forward_10_rounded,
+                      color: surfaceColor,
+                      shadows: iconShadow,
+                    ),
+                    onPressed: videoStore.skipForward,
+                    tooltip: 'Skip forward 10s',
+                  ),
+                  const Spacer(),
+                  // Refresh button
+                  IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      Icons.refresh_rounded,
+                      color: surfaceColor,
+                      shadows: iconShadow,
+                    ),
+                    onPressed: videoStore.handleRefresh,
+                    tooltip: 'Refresh',
+                  ),
+                  // Rotate button (hidden on iPad)
+                  if (!isIPad())
+                    IconButton(
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.screen_rotation_rounded,
+                        color: surfaceColor,
+                        shadows: iconShadow,
+                      ),
+                      onPressed: () async {
+                        if (context.isPortrait) {
+                          final physicalOrientation =
+                              await NativeDeviceOrientationCommunicator()
+                                  .orientation(useSensor: true);
+                          final needsSwap = Platform.isIOS;
+
+                          if (physicalOrientation ==
+                              NativeDeviceOrientation.landscapeLeft) {
+                            SystemChrome.setPreferredOrientations([
+                              needsSwap
+                                  ? DeviceOrientation.landscapeRight
+                                  : DeviceOrientation.landscapeLeft,
+                            ]);
+                          } else if (physicalOrientation ==
+                              NativeDeviceOrientation.landscapeRight) {
+                            SystemChrome.setPreferredOrientations([
+                              needsSwap
+                                  ? DeviceOrientation.landscapeLeft
+                                  : DeviceOrientation.landscapeRight,
+                            ]);
+                          } else {
+                            SystemChrome.setPreferredOrientations([
+                              DeviceOrientation.landscapeLeft,
+                              DeviceOrientation.landscapeRight,
+                            ]);
+                          }
+                        } else {
+                          SystemChrome.setPreferredOrientations([
+                            DeviceOrientation.portraitUp,
+                          ]);
+                          SystemChrome.setPreferredOrientations([]);
+                        }
+                      },
+                      tooltip: context.isPortrait
+                          ? 'Enter landscape mode'
+                          : 'Exit landscape mode',
+                    ),
+                  // Fullscreen button (landscape only)
+                  if (context.isLandscape)
+                    IconButton(
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        videoStore.settingsStore.fullScreen
+                            ? Icons.fullscreen_exit_rounded
+                            : Icons.fullscreen_rounded,
+                        color: surfaceColor,
+                        shadows: iconShadow,
+                      ),
+                      onPressed: () => videoStore.settingsStore.fullScreen =
+                          !videoStore.settingsStore.fullScreen,
+                      tooltip: videoStore.settingsStore.fullScreen
+                          ? 'Exit fullscreen mode'
+                          : 'Enter fullscreen mode',
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Shows a quality picker bottom sheet for VOD playback.
+void _showQualityPicker(
+  BuildContext context,
+  VideoStore videoStore,
+  Color surfaceColor,
+) {
+  showModalBottomSheetWithProperFocus(
+    context: context,
+    builder: (context) => Observer(
+      builder: (_) {
+        final qualities = videoStore.availableVodQualities;
+        final currentQuality = videoStore.currentVodQualityDisplay;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              'VOD Quality',
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              isFirst: true,
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                primary: false,
+                itemCount: qualities.length,
+                itemBuilder: (context, index) {
+                  final quality = qualities[index];
+                  final isSelected = currentQuality == quality;
+
+                  return ListTile(
+                    leading: isSelected
+                        ? Icon(Icons.check_rounded, color: surfaceColor)
+                        : const Icon(Icons.high_quality_rounded),
+                    title: Text(quality.toUpperCase()),
+                    onTap: () {
+                      videoStore.setVodQuality(quality);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
