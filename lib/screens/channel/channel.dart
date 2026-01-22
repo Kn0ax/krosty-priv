@@ -3,19 +3,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_tabs_store.dart';
-import 'package:frosty/screens/channel/chat/widgets/chat_tabs.dart';
-import 'package:frosty/screens/channel/video/stream_info_bar.dart';
-import 'package:frosty/screens/channel/video/video.dart';
-import 'package:frosty/screens/channel/video/video_overlay.dart';
-import 'package:frosty/screens/channel/video/video_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/theme.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/draggable_divider.dart';
-import 'package:frosty/widgets/frosty_notification.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_tabs_store.dart';
+import 'package:krosty/screens/channel/chat/widgets/chat_tabs.dart';
+import 'package:krosty/screens/channel/video/stream_info_bar.dart';
+import 'package:krosty/screens/channel/video/video.dart';
+import 'package:krosty/screens/channel/video/video_overlay.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/services/audio_handler.dart';
+import 'package:krosty/stores/global_assets_store.dart';
+import 'package:krosty/theme.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/draggable_divider.dart';
+import 'package:krosty/widgets/krosty_notification.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_pip_mode/actions/pip_actions_layout.dart';
 import 'package:simple_pip_mode/pip_widget.dart';
@@ -60,24 +65,23 @@ class _VideoChatState extends State<VideoChat>
   late Animation<double> _springBackAnimation;
 
   late final ChatTabsStore _chatTabsStore = ChatTabsStore(
-    twitchApi: context.twitchApi,
-    bttvApi: context.bttvApi,
-    ffzApi: context.ffzApi,
-    sevenTVApi: context.sevenTVApi,
-    authStore: context.authStore,
-    settingsStore: context.settingsStore,
-    globalAssetsStore: context.globalAssetsStore,
-    primaryChannelId: widget.userId,
-    primaryChannelLogin: widget.userLogin,
+    kickApi: context.read<KickApi>(),
+    sevenTVApi: context.read<SevenTVApi>(),
+    authStore: context.read<AuthStore>(),
+    settingsStore: context.read<SettingsStore>(),
+    globalAssetsStore: context.read<GlobalAssetsStore>(),
+    primaryChannelSlug: widget.userLogin,
     primaryDisplayName: widget.userName,
+    // We don't have chatroomId here yet, ChatStore will fetch it
   );
 
   late final VideoStore _videoStore = VideoStore(
     userLogin: widget.userLogin,
     userId: widget.userId,
-    twitchApi: context.twitchApi,
-    authStore: context.authStore,
-    settingsStore: context.settingsStore,
+    kickApi: context.read<KickApi>(),
+    authStore: context.read<AuthStore>(),
+    settingsStore: context.read<SettingsStore>(),
+    audioHandler: context.read<KrostyAudioHandler>(),
   );
 
   @override
@@ -195,10 +199,8 @@ class _VideoChatState extends State<VideoChat>
     });
   }
 
-  /// Wraps a video widget with PiP swipe-down gesture handling.
-  ///
-  /// Provides visual feedback (translate + scale), haptic feedback,
-  /// and an instructional overlay during the drag gesture.
+  /// Builds a wrapper that enables swipe-down gesture to trigger PiP mode.
+  /// Provides visual feedback during the swipe with scale and overlay effects.
   Widget _buildPipGestureWrapper({required Widget child, double? aspectRatio}) {
     return AnimatedBuilder(
       animation: Listenable.merge([_animationController, _springBackAnimation]),
@@ -353,7 +355,7 @@ class _VideoChatState extends State<VideoChat>
                           padding: EdgeInsets.only(
                             top: chatOnly ? context.safePaddingTop : 0,
                           ),
-                          child: FrostyNotification(
+                          child: KrostyNotification(
                             message: _chatStore.notification!,
                             onDismissed: _chatStore.clearNotification,
                           ),
@@ -392,8 +394,9 @@ class _VideoChatState extends State<VideoChat>
               displayName: _chatStore.displayName,
               isCompact: true,
               isOffline: streamInfo == null,
-              isInSharedChatMode: _chatStore.isInSharedChatMode,
               showTextShadows: false,
+              overrideStreamTitle: _chatStore.streamTitle,
+              overrideCategory: _chatStore.streamCategory,
             ),
             flexibleSpace: BlurredContainer(
               gradientDirection: GradientDirection.up,
@@ -434,16 +437,18 @@ class _VideoChatState extends State<VideoChat>
                   visible: settingsStore.fullScreenChatOverlay,
                   maintainState: true,
                   child: Theme(
-                    data: FrostyThemes(
+                    data: KrostyThemes(
                       colorSchemeSeed: Color(settingsStore.accentColor),
                     ).dark,
                     child: DefaultTextStyle(
                       style: context.defaultTextStyle.copyWith(
                         color: context
-                            .watch<FrostyThemes>()
+                            .watch<KrostyThemes>()
                             .dark
                             .colorScheme
                             .onSurface,
+                        // Note: Chat text shadows were removed upstream as they
+                        // caused frame drops on some devices
                       ),
                       child: landscapeChat,
                     ),
@@ -647,7 +652,114 @@ class _VideoChatState extends State<VideoChat>
                                         );
                                       },
                                     ),
-                                  )
+                                ],
+                              )
+                            : SafeArea(
+                                left:
+                                    settingsStore.landscapeCutout !=
+                                        LandscapeCutoutType.left &&
+                                    settingsStore.landscapeCutout !=
+                                        LandscapeCutoutType.both,
+                                right:
+                                    settingsStore.landscapeCutout !=
+                                        LandscapeCutoutType.right &&
+                                    settingsStore.landscapeCutout !=
+                                        LandscapeCutoutType.both,
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final availableWidth = constraints.maxWidth;
+                                    final chatWidth = _chatStore.expandChat
+                                        ? 0.5
+                                        : settingsStore.chatWidth;
+
+                                    // Create the landscape chat container with proper styling
+                                    final chatContainer = AnimatedContainer(
+                                      curve: Curves.ease,
+                                      duration: _isDividerDragging
+                                          ? Duration.zero
+                                          : const Duration(milliseconds: 200),
+                                      width: availableWidth * chatWidth,
+                                      color: settingsStore.fullScreen
+                                          ? Colors.black.withValues(
+                                              alpha: settingsStore
+                                                  .fullScreenChatOverlayOpacity,
+                                            )
+                                          : context.scaffoldColor,
+                                      child: chat,
+                                    );
+
+                                    final draggableDivider = Observer(
+                                      builder: (_) => DraggableDivider(
+                                        currentWidth: chatWidth,
+                                        maxWidth: 0.6,
+                                        isResizableOnLeft:
+                                            settingsStore.landscapeChatLeftSide,
+                                        showHandle: _videoStore.overlayVisible,
+                                        onDragStart: () {
+                                          setState(() {
+                                            _isDividerDragging = true;
+                                          });
+                                        },
+                                        onDrag: (newWidth) {
+                                          if (!_chatStore.expandChat) {
+                                            settingsStore.chatWidth = newWidth;
+                                          }
+                                        },
+                                        onDragEnd: () {
+                                          setState(() {
+                                            _isDividerDragging = false;
+                                          });
+                                        },
+                                      ),
+                                    );
+
+                                    return Stack(
+                                      children: [
+                                        Row(
+                                          children:
+                                              settingsStore
+                                                  .landscapeChatLeftSide
+                                              ? [
+                                                  chatContainer,
+                                                  Expanded(
+                                                    child:
+                                                        _buildPipGestureWrapper(
+                                                          child: video,
+                                                        ),
+                                                  ),
+                                                ]
+                                              : [
+                                                  Expanded(
+                                                    child:
+                                                        _buildPipGestureWrapper(
+                                                          child: video,
+                                                        ),
+                                                  ),
+                                                  chatContainer,
+                                                ],
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          bottom: 0,
+                                          left:
+                                              settingsStore
+                                                  .landscapeChatLeftSide
+                                              ? (availableWidth * chatWidth) -
+                                                    12
+                                              : null,
+                                          right:
+                                              !settingsStore
+                                                  .landscapeChatLeftSide
+                                              ? (availableWidth * chatWidth) -
+                                                    12
+                                              : null,
+                                          child: draggableDivider,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              )
                       : SafeArea(child: chat),
                 );
               }

@@ -9,176 +9,116 @@ part of 'chat_assets_store.dart';
 // ignore_for_file: non_constant_identifier_names, unnecessary_brace_in_string_interps, unnecessary_lambdas, prefer_expression_function_bodies, lines_longer_than_80_chars, avoid_as, avoid_annotating_with_dynamic, no_leading_underscores_for_local_identifiers
 
 mixin _$ChatAssetsStore on ChatAssetsStoreBase, Store {
-  Computed<List<Emote>>? _$bttvEmotesComputed;
+  Computed<Map<String, Emote>>? _$emotesComputed;
 
   @override
-  List<Emote> get bttvEmotes => (_$bttvEmotesComputed ??= Computed<List<Emote>>(
-    () => super.bttvEmotes,
-    name: 'ChatAssetsStoreBase.bttvEmotes',
-  )).value;
-  Computed<List<Emote>>? _$ffzEmotesComputed;
-
-  @override
-  List<Emote> get ffzEmotes => (_$ffzEmotesComputed ??= Computed<List<Emote>>(
-    () => super.ffzEmotes,
-    name: 'ChatAssetsStoreBase.ffzEmotes',
-  )).value;
-  Computed<List<Emote>>? _$sevenTVEmotesComputed;
-
-  @override
-  List<Emote> get sevenTVEmotes =>
-      (_$sevenTVEmotesComputed ??= Computed<List<Emote>>(
-        () => super.sevenTVEmotes,
-        name: 'ChatAssetsStoreBase.sevenTVEmotes',
-      )).value;
-  Computed<Map<String, Emote>>? _$emoteToObjectComputed;
-
-  @override
-  Map<String, Emote> get emoteToObject =>
-      (_$emoteToObjectComputed ??= Computed<Map<String, Emote>>(
-        () => super.emoteToObject,
-        name: 'ChatAssetsStoreBase.emoteToObject',
-      )).value;
-  Computed<Map<String, ChatBadge>>? _$twitchBadgesToObjectComputed;
-
-  @override
-  Map<String, ChatBadge> get twitchBadgesToObject =>
-      (_$twitchBadgesToObjectComputed ??= Computed<Map<String, ChatBadge>>(
-        () => super.twitchBadgesToObject,
-        name: 'ChatAssetsStoreBase.twitchBadgesToObject',
+  Map<String, Emote> get emotes =>
+      (_$emotesComputed ??= Computed<Map<String, Emote>>(
+        () => super.emotes,
+        name: 'ChatAssetsStoreBase.emotes',
       )).value;
 
-  late final _$_recentEmotesAtom = Atom(
-    name: 'ChatAssetsStoreBase._recentEmotes',
+  late final _$_channelEmotesAtom = Atom(
+    name: 'ChatAssetsStoreBase._channelEmotes',
     context: context,
   );
 
-  ObservableList<Emote> get recentEmotes {
-    _$_recentEmotesAtom.reportRead();
-    return super._recentEmotes;
+  ObservableMap<String, Emote> get channelEmotes {
+    _$_channelEmotesAtom.reportRead();
+    return super._channelEmotes;
   }
 
   @override
-  ObservableList<Emote> get _recentEmotes => recentEmotes;
+  ObservableMap<String, Emote> get _channelEmotes => channelEmotes;
 
   @override
-  set _recentEmotes(ObservableList<Emote> value) {
-    _$_recentEmotesAtom.reportWrite(value, super._recentEmotes, () {
-      super._recentEmotes = value;
+  set _channelEmotes(ObservableMap<String, Emote> value) {
+    _$_channelEmotesAtom.reportWrite(value, super._channelEmotes, () {
+      super._channelEmotes = value;
     });
   }
 
-  late final _$_channelEmoteToObjectAtom = Atom(
-    name: 'ChatAssetsStoreBase._channelEmoteToObject',
+  late final _$_subscriberBadgesAtom = Atom(
+    name: 'ChatAssetsStoreBase._subscriberBadges',
     context: context,
   );
 
-  ObservableMap<String, Emote> get channelEmoteToObject {
-    _$_channelEmoteToObjectAtom.reportRead();
-    return super._channelEmoteToObject;
+  List<KickSubscriberBadge> get subscriberBadges {
+    _$_subscriberBadgesAtom.reportRead();
+    return super._subscriberBadges;
   }
 
   @override
-  ObservableMap<String, Emote> get _channelEmoteToObject =>
-      channelEmoteToObject;
+  List<KickSubscriberBadge> get _subscriberBadges => subscriberBadges;
 
   @override
-  set _channelEmoteToObject(ObservableMap<String, Emote> value) {
-    _$_channelEmoteToObjectAtom.reportWrite(
-      value,
-      super._channelEmoteToObject,
-      () {
-        super._channelEmoteToObject = value;
-      },
-    );
-  }
-
-  late final _$_channelTwitchBadgesAtom = Atom(
-    name: 'ChatAssetsStoreBase._channelTwitchBadges',
-    context: context,
-  );
-
-  Map<String, ChatBadge> get channelTwitchBadges {
-    _$_channelTwitchBadgesAtom.reportRead();
-    return super._channelTwitchBadges;
-  }
-
-  @override
-  Map<String, ChatBadge> get _channelTwitchBadges => channelTwitchBadges;
-
-  @override
-  set _channelTwitchBadges(Map<String, ChatBadge> value) {
-    _$_channelTwitchBadgesAtom.reportWrite(
-      value,
-      super._channelTwitchBadges,
-      () {
-        super._channelTwitchBadges = value;
-      },
-    );
-  }
-
-  late final _$_userEmoteToObjectAtom = Atom(
-    name: 'ChatAssetsStoreBase._userEmoteToObject',
-    context: context,
-  );
-
-  Map<String, Emote> get userEmoteToObject {
-    _$_userEmoteToObjectAtom.reportRead();
-    return super._userEmoteToObject;
-  }
-
-  @override
-  Map<String, Emote> get _userEmoteToObject => userEmoteToObject;
-
-  @override
-  set _userEmoteToObject(Map<String, Emote> value) {
-    _$_userEmoteToObjectAtom.reportWrite(value, super._userEmoteToObject, () {
-      super._userEmoteToObject = value;
+  set _subscriberBadges(List<KickSubscriberBadge> value) {
+    _$_subscriberBadgesAtom.reportWrite(value, super._subscriberBadges, () {
+      super._subscriberBadges = value;
     });
   }
 
-  late final _$_userEmoteSectionToEmotesAtom = Atom(
-    name: 'ChatAssetsStoreBase._userEmoteSectionToEmotes',
+  late final _$_isSubscribedToChannelAtom = Atom(
+    name: 'ChatAssetsStoreBase._isSubscribedToChannel',
     context: context,
   );
 
-  Map<String, List<Emote>> get userEmoteSectionToEmotes {
-    _$_userEmoteSectionToEmotesAtom.reportRead();
-    return super._userEmoteSectionToEmotes;
+  bool get isSubscribedToChannel {
+    _$_isSubscribedToChannelAtom.reportRead();
+    return super._isSubscribedToChannel;
   }
 
   @override
-  Map<String, List<Emote>> get _userEmoteSectionToEmotes =>
-      userEmoteSectionToEmotes;
+  bool get _isSubscribedToChannel => isSubscribedToChannel;
 
   @override
-  set _userEmoteSectionToEmotes(Map<String, List<Emote>> value) {
-    _$_userEmoteSectionToEmotesAtom.reportWrite(
+  set _isSubscribedToChannel(bool value) {
+    _$_isSubscribedToChannelAtom.reportWrite(
       value,
-      super._userEmoteSectionToEmotes,
+      super._isSubscribedToChannel,
       () {
-        super._userEmoteSectionToEmotes = value;
+        super._isSubscribedToChannel = value;
       },
     );
   }
 
-  late final _$_userTo7TVBadgesAtom = Atom(
-    name: 'ChatAssetsStoreBase._userTo7TVBadges',
+  late final _$_isLoadingAtom = Atom(
+    name: 'ChatAssetsStoreBase._isLoading',
     context: context,
   );
 
-  Map<String, List<ChatBadge>> get userTo7TVBadges {
-    _$_userTo7TVBadgesAtom.reportRead();
-    return super._userTo7TVBadges;
+  bool get isLoading {
+    _$_isLoadingAtom.reportRead();
+    return super._isLoading;
   }
 
   @override
-  Map<String, List<ChatBadge>> get _userTo7TVBadges => userTo7TVBadges;
+  bool get _isLoading => isLoading;
 
   @override
-  set _userTo7TVBadges(Map<String, List<ChatBadge>> value) {
-    _$_userTo7TVBadgesAtom.reportWrite(value, super._userTo7TVBadges, () {
-      super._userTo7TVBadges = value;
+  set _isLoading(bool value) {
+    _$_isLoadingAtom.reportWrite(value, super._isLoading, () {
+      super._isLoading = value;
+    });
+  }
+
+  late final _$_errorAtom = Atom(
+    name: 'ChatAssetsStoreBase._error',
+    context: context,
+  );
+
+  String? get error {
+    _$_errorAtom.reportRead();
+    return super._error;
+  }
+
+  @override
+  String? get _error => error;
+
+  @override
+  set _error(String? value) {
+    _$_errorAtom.reportWrite(value, super._error, () {
+      super._error = value;
     });
   }
 
@@ -200,122 +140,20 @@ mixin _$ChatAssetsStore on ChatAssetsStoreBase, Store {
     });
   }
 
-  late final _$initAsyncAction = AsyncAction(
-    'ChatAssetsStoreBase.init',
+  late final _$fetchAssetsAsyncAction = AsyncAction(
+    'ChatAssetsStoreBase.fetchAssets',
     context: context,
   );
 
   @override
-  Future<void> init() {
-    return _$initAsyncAction.run(() => super.init());
-  }
-
-  late final _$assetsFutureAsyncAction = AsyncAction(
-    'ChatAssetsStoreBase.assetsFuture',
-    context: context,
-  );
-
-  @override
-  Future<void> assetsFuture({
-    required String channelId,
-    required Map<String, String> headers,
-    required Function onEmoteError,
-    required Function onBadgeError,
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
+  Future<void> fetchAssets({
+    bool showKickEmotes = true,
     bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showBTTVBadges = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
   }) {
-    return _$assetsFutureAsyncAction.run(
-      () => super.assetsFuture(
-        channelId: channelId,
-        headers: headers,
-        onEmoteError: onEmoteError,
-        onBadgeError: onBadgeError,
-        showTwitchEmotes: showTwitchEmotes,
-        showTwitchBadges: showTwitchBadges,
+    return _$fetchAssetsAsyncAction.run(
+      () => super.fetchAssets(
+        showKickEmotes: showKickEmotes,
         show7TVEmotes: show7TVEmotes,
-        showBTTVEmotes: showBTTVEmotes,
-        showBTTVBadges: showBTTVBadges,
-        showFFZEmotes: showFFZEmotes,
-        showFFZBadges: showFFZBadges,
-      ),
-    );
-  }
-
-  late final _$fetchSharedChatAssetsAsyncAction = AsyncAction(
-    'ChatAssetsStoreBase.fetchSharedChatAssets',
-    context: context,
-  );
-
-  @override
-  Future<void> fetchSharedChatAssets({
-    required String channelId,
-    required Map<String, String> headers,
-    required Function onEmoteError,
-    required Function onBadgeError,
-    bool showTwitchEmotes = true,
-    bool showTwitchBadges = true,
-    bool show7TVEmotes = true,
-    bool showBTTVEmotes = true,
-    bool showFFZEmotes = true,
-    bool showFFZBadges = true,
-    bool force = false,
-  }) {
-    return _$fetchSharedChatAssetsAsyncAction.run(
-      () => super.fetchSharedChatAssets(
-        channelId: channelId,
-        headers: headers,
-        onEmoteError: onEmoteError,
-        onBadgeError: onBadgeError,
-        showTwitchEmotes: showTwitchEmotes,
-        showTwitchBadges: showTwitchBadges,
-        show7TVEmotes: show7TVEmotes,
-        showBTTVEmotes: showBTTVEmotes,
-        showFFZEmotes: showFFZEmotes,
-        showFFZBadges: showFFZBadges,
-        force: force,
-      ),
-    );
-  }
-
-  late final _$populateSharedChatParticipantsAsyncAction = AsyncAction(
-    'ChatAssetsStoreBase.populateSharedChatParticipants',
-    context: context,
-  );
-
-  @override
-  Future<List<String>> populateSharedChatParticipants({
-    required String channelId,
-    required Function onBadgeError,
-  }) {
-    return _$populateSharedChatParticipantsAsyncAction.run(
-      () => super.populateSharedChatParticipants(
-        channelId: channelId,
-        onBadgeError: onBadgeError,
-      ),
-    );
-  }
-
-  late final _$userEmotesFutureAsyncAction = AsyncAction(
-    'ChatAssetsStoreBase.userEmotesFuture',
-    context: context,
-  );
-
-  @override
-  Future<void> userEmotesFuture({
-    required List<String> emoteSets,
-    required Map<String, String> headers,
-    required Function onError,
-  }) {
-    return _$userEmotesFutureAsyncAction.run(
-      () => super.userEmotesFuture(
-        emoteSets: emoteSets,
-        headers: headers,
-        onError: onError,
       ),
     );
   }
@@ -324,11 +162,7 @@ mixin _$ChatAssetsStore on ChatAssetsStoreBase, Store {
   String toString() {
     return '''
 showEmoteMenu: ${showEmoteMenu},
-bttvEmotes: ${bttvEmotes},
-ffzEmotes: ${ffzEmotes},
-sevenTVEmotes: ${sevenTVEmotes},
-emoteToObject: ${emoteToObject},
-twitchBadgesToObject: ${twitchBadgesToObject}
+emotes: ${emotes}
     ''';
   }
 }

@@ -16,13 +16,6 @@ mixin _$ListStore on ListStoreBase, Store {
     () => super.hasMore,
     name: 'ListStoreBase.hasMore',
   )).value;
-  Computed<bool>? _$isLoadingComputed;
-
-  @override
-  bool get isLoading => (_$isLoadingComputed ??= Computed<bool>(
-    () => super.isLoading,
-    name: 'ListStoreBase.isLoading',
-  )).value;
   Computed<bool>? _$hasMoreOfflineChannelsComputed;
 
   @override
@@ -31,27 +24,34 @@ mixin _$ListStore on ListStoreBase, Store {
         () => super.hasMoreOfflineChannels,
         name: 'ListStoreBase.hasMoreOfflineChannels',
       )).value;
-  Computed<ObservableList<StreamTwitch>>? _$streamsComputed;
+  Computed<bool>? _$isLoadingComputed;
 
   @override
-  ObservableList<StreamTwitch> get streams =>
-      (_$streamsComputed ??= Computed<ObservableList<StreamTwitch>>(
+  bool get isLoading => (_$isLoadingComputed ??= Computed<bool>(
+    () => super.isLoading,
+    name: 'ListStoreBase.isLoading',
+  )).value;
+  Computed<ObservableList<KickLivestreamItem>>? _$streamsComputed;
+
+  @override
+  ObservableList<KickLivestreamItem> get streams =>
+      (_$streamsComputed ??= Computed<ObservableList<KickLivestreamItem>>(
         () => super.streams,
         name: 'ListStoreBase.streams',
       )).value;
-  Computed<List<dynamic>>? _$allPinnedChannelsComputed;
+  Computed<List<KickLivestreamItem>>? _$liveStreamsComputed;
 
   @override
-  List<dynamic> get allPinnedChannels =>
-      (_$allPinnedChannelsComputed ??= Computed<List<dynamic>>(
-        () => super.allPinnedChannels,
-        name: 'ListStoreBase.allPinnedChannels',
+  List<KickLivestreamItem> get liveStreams =>
+      (_$liveStreamsComputed ??= Computed<List<KickLivestreamItem>>(
+        () => super.liveStreams,
+        name: 'ListStoreBase.liveStreams',
       )).value;
-  Computed<ObservableList<FollowedChannel>>? _$offlineChannelsComputed;
+  Computed<List<KickFollowedChannel>>? _$offlineChannelsComputed;
 
   @override
-  ObservableList<FollowedChannel> get offlineChannels =>
-      (_$offlineChannelsComputed ??= Computed<ObservableList<FollowedChannel>>(
+  List<KickFollowedChannel> get offlineChannels =>
+      (_$offlineChannelsComputed ??= Computed<List<KickFollowedChannel>>(
         () => super.offlineChannels,
         name: 'ListStoreBase.offlineChannels',
       )).value;
@@ -61,19 +61,44 @@ mixin _$ListStore on ListStoreBase, Store {
     context: context,
   );
 
-  ObservableList<StreamTwitch> get allStreams {
+  ObservableList<KickLivestreamItem> get allStreams {
     _$_allStreamsAtom.reportRead();
     return super._allStreams;
   }
 
   @override
-  ObservableList<StreamTwitch> get _allStreams => allStreams;
+  ObservableList<KickLivestreamItem> get _allStreams => allStreams;
 
   @override
-  set _allStreams(ObservableList<StreamTwitch> value) {
+  set _allStreams(ObservableList<KickLivestreamItem> value) {
     _$_allStreamsAtom.reportWrite(value, super._allStreams, () {
       super._allStreams = value;
     });
+  }
+
+  late final _$_offlineFollowedChannelsAtom = Atom(
+    name: 'ListStoreBase._offlineFollowedChannels',
+    context: context,
+  );
+
+  ObservableList<KickFollowedChannel> get offlineFollowedChannels {
+    _$_offlineFollowedChannelsAtom.reportRead();
+    return super._offlineFollowedChannels;
+  }
+
+  @override
+  ObservableList<KickFollowedChannel> get _offlineFollowedChannels =>
+      offlineFollowedChannels;
+
+  @override
+  set _offlineFollowedChannels(ObservableList<KickFollowedChannel> value) {
+    _$_offlineFollowedChannelsAtom.reportWrite(
+      value,
+      super._offlineFollowedChannels,
+      () {
+        super._offlineFollowedChannels = value;
+      },
+    );
   }
 
   late final _$_isAllStreamsLoadingAtom = Atom(
@@ -98,114 +123,6 @@ mixin _$ListStore on ListStoreBase, Store {
         super._isAllStreamsLoading = value;
       },
     );
-  }
-
-  late final _$_pinnedStreamsAtom = Atom(
-    name: 'ListStoreBase._pinnedStreams',
-    context: context,
-  );
-
-  ObservableList<StreamTwitch> get pinnedStreams {
-    _$_pinnedStreamsAtom.reportRead();
-    return super._pinnedStreams;
-  }
-
-  @override
-  ObservableList<StreamTwitch> get _pinnedStreams => pinnedStreams;
-
-  @override
-  set _pinnedStreams(ObservableList<StreamTwitch> value) {
-    _$_pinnedStreamsAtom.reportWrite(value, super._pinnedStreams, () {
-      super._pinnedStreams = value;
-    });
-  }
-
-  late final _$_isPinnedStreamsLoadingAtom = Atom(
-    name: 'ListStoreBase._isPinnedStreamsLoading',
-    context: context,
-  );
-
-  bool get isPinnedStreamsLoading {
-    _$_isPinnedStreamsLoadingAtom.reportRead();
-    return super._isPinnedStreamsLoading;
-  }
-
-  @override
-  bool get _isPinnedStreamsLoading => isPinnedStreamsLoading;
-
-  @override
-  set _isPinnedStreamsLoading(bool value) {
-    _$_isPinnedStreamsLoadingAtom.reportWrite(
-      value,
-      super._isPinnedStreamsLoading,
-      () {
-        super._isPinnedStreamsLoading = value;
-      },
-    );
-  }
-
-  late final _$_categoryDetailsAtom = Atom(
-    name: 'ListStoreBase._categoryDetails',
-    context: context,
-  );
-
-  CategoryTwitch? get categoryDetails {
-    _$_categoryDetailsAtom.reportRead();
-    return super._categoryDetails;
-  }
-
-  @override
-  CategoryTwitch? get _categoryDetails => categoryDetails;
-
-  @override
-  set _categoryDetails(CategoryTwitch? value) {
-    _$_categoryDetailsAtom.reportWrite(value, super._categoryDetails, () {
-      super._categoryDetails = value;
-    });
-  }
-
-  late final _$_isCategoryDetailsLoadingAtom = Atom(
-    name: 'ListStoreBase._isCategoryDetailsLoading',
-    context: context,
-  );
-
-  bool get isCategoryDetailsLoading {
-    _$_isCategoryDetailsLoadingAtom.reportRead();
-    return super._isCategoryDetailsLoading;
-  }
-
-  @override
-  bool get _isCategoryDetailsLoading => isCategoryDetailsLoading;
-
-  @override
-  set _isCategoryDetailsLoading(bool value) {
-    _$_isCategoryDetailsLoadingAtom.reportWrite(
-      value,
-      super._isCategoryDetailsLoading,
-      () {
-        super._isCategoryDetailsLoading = value;
-      },
-    );
-  }
-
-  late final _$_allOfflineChannelsAtom = Atom(
-    name: 'ListStoreBase._allOfflineChannels',
-    context: context,
-  );
-
-  ObservableList<FollowedChannel> get allOfflineChannels {
-    _$_allOfflineChannelsAtom.reportRead();
-    return super._allOfflineChannels;
-  }
-
-  @override
-  ObservableList<FollowedChannel> get _allOfflineChannels => allOfflineChannels;
-
-  @override
-  set _allOfflineChannels(ObservableList<FollowedChannel> value) {
-    _$_allOfflineChannelsAtom.reportWrite(value, super._allOfflineChannels, () {
-      super._allOfflineChannels = value;
-    });
   }
 
   late final _$_isOfflineChannelsLoadingAtom = Atom(
@@ -302,25 +219,27 @@ mixin _$ListStore on ListStoreBase, Store {
     return _$getStreamsAsyncAction.run(() => super.getStreams());
   }
 
-  late final _$getPinnedStreamsAsyncAction = AsyncAction(
-    'ListStoreBase.getPinnedStreams',
+  late final _$_loadOfflineChannelsAsyncAction = AsyncAction(
+    'ListStoreBase._loadOfflineChannels',
     context: context,
   );
 
   @override
-  Future<void> getPinnedStreams() {
-    return _$getPinnedStreamsAsyncAction.run(() => super.getPinnedStreams());
+  Future<void> _loadOfflineChannels() {
+    return _$_loadOfflineChannelsAsyncAction.run(
+      () => super._loadOfflineChannels(),
+    );
   }
 
-  late final _$getOfflineChannelsAsyncAction = AsyncAction(
-    'ListStoreBase.getOfflineChannels',
+  late final _$loadMoreOfflineChannelsAsyncAction = AsyncAction(
+    'ListStoreBase.loadMoreOfflineChannels',
     context: context,
   );
 
   @override
-  Future<void> getOfflineChannels() {
-    return _$getOfflineChannelsAsyncAction.run(
-      () => super.getOfflineChannels(),
+  Future<void> loadMoreOfflineChannels() {
+    return _$loadMoreOfflineChannelsAsyncAction.run(
+      () => super.loadMoreOfflineChannels(),
     );
   }
 
@@ -334,28 +253,16 @@ mixin _$ListStore on ListStoreBase, Store {
     return _$refreshStreamsAsyncAction.run(() => super.refreshStreams());
   }
 
-  late final _$_getCategoryDetailsAsyncAction = AsyncAction(
-    'ListStoreBase._getCategoryDetails',
-    context: context,
-  );
-
-  @override
-  Future<void> _getCategoryDetails() {
-    return _$_getCategoryDetailsAsyncAction.run(
-      () => super._getCategoryDetails(),
-    );
-  }
-
   @override
   String toString() {
     return '''
 showJumpButton: ${showJumpButton},
 isOfflineChannelsExpanded: ${isOfflineChannelsExpanded},
 hasMore: ${hasMore},
-isLoading: ${isLoading},
 hasMoreOfflineChannels: ${hasMoreOfflineChannels},
+isLoading: ${isLoading},
 streams: ${streams},
-allPinnedChannels: ${allPinnedChannels},
+liveStreams: ${liveStreams},
 offlineChannels: ${offlineChannels}
     ''';
   }

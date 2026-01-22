@@ -1,35 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/home/stream_list/stream_list_store.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/home/stream_list/stream_list_store.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 
-/// A widget that displays a list of streams under the provided [categoryId].
+/// A widget that displays a list of streams under the provided category.
 class CategoryStreams extends StatefulWidget {
-  /// The category id, used for fetching the relevant streams in the [ListStore].
-  final String categoryId;
+  /// The category data (passed from categories list or stream card).
+  final KickCategory category;
 
-  const CategoryStreams({super.key, required this.categoryId});
+  const CategoryStreams({super.key, required this.category});
 
   @override
   State<CategoryStreams> createState() => _CategoryStreamsState();
 }
 
 class _CategoryStreamsState extends State<CategoryStreams> {
-  late final _listStore = ListStore(
-    listType: ListType.category,
-    categoryId: widget.categoryId,
-    authStore: context.read<AuthStore>(),
-    twitchApi: context.read<TwitchApi>(),
-    settingsStore: context.read<SettingsStore>(),
-  );
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -44,7 +33,7 @@ class _CategoryStreamsState extends State<CategoryStreams> {
           Positioned.fill(
             child: StreamsList(
               listType: ListType.category,
-              categoryId: widget.categoryId,
+              categoryId: widget.category.id,
               showJumpButton: true,
             ),
           ),
@@ -87,60 +76,8 @@ class _CategoryStreamsState extends State<CategoryStreams> {
                         ],
                       ),
                     ),
-                    // Category card section
-                    Observer(
-                      builder: (_) {
-                        if (_listStore.categoryDetails != null) {
-                          return _TransparentCategoryCard(
-                            category: _listStore.categoryDetails!,
-                          );
-                        } else {
-                          // Skeleton loader for category card
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: 16,
-                              left: 16,
-                              right: 16,
-                            ),
-                            child: Row(
-                              spacing: 12,
-                              children: [
-                                const SizedBox(
-                                  width: 80,
-                                  child: AspectRatio(
-                                    aspectRatio: 3 / 4,
-                                    child: SkeletonLoader(
-                                      borderRadius: BorderRadius.all(
-                                        Radius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    spacing: 8,
-                                    children: [
-                                      SkeletonLoader(
-                                        height: 20,
-                                        width: double.infinity,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      SkeletonLoader(
-                                        height: 16,
-                                        width: 120,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                      },
-                    ),
+                    // Category card section - use passed category data directly
+                    _TransparentCategoryCard(category: widget.category),
                   ],
                 ),
               ),
@@ -150,27 +87,18 @@ class _CategoryStreamsState extends State<CategoryStreams> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _listStore.dispose();
-    super.dispose();
-  }
 }
 
 /// A transparent version of CategoryCard for use in blurred overlays
 class _TransparentCategoryCard extends StatelessWidget {
-  final dynamic category;
+  final KickCategory category;
 
   const _TransparentCategoryCard({required this.category});
 
   @override
   Widget build(BuildContext context) {
-    // Calculate the dimensions of the box art based on the current dimensions of the screen.
-    final size = MediaQuery.of(context).size;
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final artWidth = (size.width * pixelRatio) ~/ 5;
-    final artHeight = (artWidth * (4 / 3)).toInt();
+    final theme = Theme.of(context);
+    final fontColor = theme.textTheme.bodyMedium?.color;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
@@ -183,12 +111,8 @@ class _TransparentCategoryCard extends StatelessWidget {
               borderRadius: const BorderRadius.all(Radius.circular(8)),
               child: AspectRatio(
                 aspectRatio: 3 / 4,
-                child: FrostyCachedNetworkImage(
-                  imageUrl: category.boxArtUrl.replaceRange(
-                    category.boxArtUrl.lastIndexOf('-') + 1,
-                    null,
-                    '${artWidth}x$artHeight.jpg',
-                  ),
+                child: KrostyCachedNetworkImage(
+                  imageUrl: category.banner?.url ?? '',
                   placeholder: (context, url) => const SkeletonLoader(
                     borderRadius: BorderRadius.all(Radius.circular(8)),
                   ),
@@ -200,13 +124,32 @@ class _TransparentCategoryCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 4,
               children: [
                 Text(
                   category.name,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (category.viewers != null)
+                  Row(
+                    spacing: 4,
+                    children: [
+                      Icon(
+                        Icons.visibility_rounded,
+                        size: 16,
+                        color: fontColor?.withValues(alpha: 0.7),
+                      ),
+                      Text(
+                        '${NumberFormat.compact().format(category.viewers)} viewers',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: fontColor?.withValues(alpha: 0.7),
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

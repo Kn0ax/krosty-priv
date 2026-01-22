@@ -1,12 +1,12 @@
 import 'dart:io';
 
+import 'package:aws_ivs_player/aws_ivs_player.dart';
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/channel/video/video_store.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
+import 'package:krosty/screens/channel/video/video_store.dart';
 import 'package:simple_pip_mode/simple_pip.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 
-/// Creates a [WebView] widget that shows a channel's video stream.
+/// Creates a native video player widget that shows a channel's video stream.
 class Video extends StatefulWidget {
   final VideoStore videoStore;
 
@@ -20,11 +20,6 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    if (widget.videoStore.settingsStore.showVideo) {
-      widget.videoStore.videoWebViewController.loadRequest(
-        Uri.parse(widget.videoStore.videoUrl),
-      );
-    }
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -42,28 +37,50 @@ class _VideoState extends State<Video> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
-      return WebViewWidget.fromPlatformCreationParams(
-        params: AndroidWebViewWidgetCreationParams(
-          controller: widget.videoStore.videoWebViewController.platform,
-          displayWithHybridComposition:
-              !widget.videoStore.settingsStore.useTextureRendering,
-        ),
-      );
-    } else {
-      return WebViewWidget(
-        controller: widget.videoStore.videoWebViewController,
-      );
-    }
+    return Observer(
+      builder: (_) {
+        final playbackUrl = widget.videoStore.playbackUrl;
+
+        // Show loading state while waiting for playback URL
+        if (playbackUrl == null) {
+          return const ColoredBox(
+            color: Colors.black,
+            child: Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          );
+        }
+
+        return IvsVideoPlayer(
+          url: playbackUrl,
+          controller: widget.videoStore.ivsController,
+          loadingWidget: const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+          errorWidget: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 48),
+                SizedBox(height: 8),
+                Text(
+                  'Stream unavailable',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          onError: (error) {
+            debugPrint('IVS Player error: $error');
+          },
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.videoStore.videoWebViewController.loadRequest(
-      Uri.parse('about:blank'),
-    );
-
     super.dispose();
   }
 }

@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/models/irc.dart';
+import 'package:krosty/constants.dart';
+import 'package:krosty/models/kick_message_renderer.dart';
 
 void main() {
   group('regexLink', () {
     group('URL matching', () {
       test('matches HTTPS URLs', () {
-        expect(regexLink.hasMatch('https://twitch.tv'), isTrue);
-        expect(regexLink.hasMatch('https://www.twitch.tv'), isTrue);
+        expect(regexLink.hasMatch('https://kick.com'), isTrue);
+        expect(regexLink.hasMatch('https://www.kick.com'), isTrue);
         expect(regexLink.hasMatch('https://example.com/path'), isTrue);
         expect(regexLink.hasMatch('https://sub.domain.com'), isTrue);
       });
@@ -18,13 +18,13 @@ void main() {
       });
 
       test('matches URLs without protocol', () {
-        expect(regexLink.hasMatch('twitch.tv'), isTrue);
-        expect(regexLink.hasMatch('www.twitch.tv'), isTrue);
+        expect(regexLink.hasMatch('kick.com'), isTrue);
+        expect(regexLink.hasMatch('www.kick.com'), isTrue);
         expect(regexLink.hasMatch('example.com'), isTrue);
       });
 
       test('matches URLs with paths', () {
-        expect(regexLink.hasMatch('twitch.tv/channel'), isTrue);
+        expect(regexLink.hasMatch('kick.com/channel'), isTrue);
         expect(regexLink.hasMatch('example.com/path/to/page'), isTrue);
         expect(regexLink.hasMatch('github.com/user/repo'), isTrue);
       });
@@ -113,11 +113,11 @@ void main() {
 
     group('boundary handling', () {
       test('matches URLs in sentences', () {
-        final text = 'Check out twitch.tv/channel for more';
+        final text = 'Check out kick.com/channel for more';
         expect(regexLink.hasMatch(text), isTrue);
 
         final match = regexLink.firstMatch(text);
-        expect(match?.group(0), 'twitch.tv/channel');
+        expect(match?.group(0), 'kick.com/channel');
       });
 
       test('handles URLs at start of string', () {
@@ -292,47 +292,6 @@ void main() {
     test('does not match strings with spaces', () {
       expect(regexNumbersOnly.hasMatch('123 456'), isFalse);
       expect(regexNumbersOnly.hasMatch(' 123'), isFalse);
-    });
-  });
-
-  group('zeroWidthEmotes constant', () {
-    test('contains all expected zero-width BTTV emotes', () {
-      expect(zeroWidthEmotes, contains('SoSnowy'));
-      expect(zeroWidthEmotes, contains('IceCold'));
-      expect(zeroWidthEmotes, contains('SantaHat'));
-      expect(zeroWidthEmotes, contains('TopHat'));
-      expect(zeroWidthEmotes, contains('ReinDeer'));
-      expect(zeroWidthEmotes, contains('CandyCane'));
-      expect(zeroWidthEmotes, contains('cvMask'));
-      expect(zeroWidthEmotes, contains('cvHazmat'));
-    });
-
-    test('has expected count', () {
-      expect(zeroWidthEmotes.length, 8);
-    });
-  });
-
-  group('chatColorNames and chatColorValues', () {
-    test('all color names have corresponding values', () {
-      for (final name in chatColorNames) {
-        expect(chatColorValues.containsKey(name), isTrue,
-            reason: '$name should have a color value');
-      }
-    });
-
-    test('contains expected colors', () {
-      expect(chatColorNames, contains('blue'));
-      expect(chatColorNames, contains('red'));
-      expect(chatColorNames, contains('green'));
-      expect(chatColorNames, contains('hot_pink'));
-      expect(chatColorNames, contains('golden_rod'));
-    });
-
-    test('color values are non-null', () {
-      for (final entry in chatColorValues.entries) {
-        expect(entry.value, isNotNull,
-            reason: '${entry.key} should have a valid color');
-      }
     });
   });
 }

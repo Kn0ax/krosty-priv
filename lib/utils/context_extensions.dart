@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/apis/bttv_api.dart';
-import 'package:frosty/apis/ffz_api.dart';
-import 'package:frosty/apis/seventv_api.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/stores/global_assets_store.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/apis/seventv_api.dart';
+import 'package:krosty/stores/global_assets_store.dart';
 import 'package:provider/provider.dart';
 
 /// Static utility class for orientation-related operations
@@ -64,20 +60,8 @@ extension ContextExtensions on BuildContext {
 
   // ===== PROVIDER ACCESS =====
 
-  /// Gets TwitchApi from provider
-  TwitchApi get twitchApi => read<TwitchApi>();
-
-  /// Gets AuthStore from provider
-  AuthStore get authStore => read<AuthStore>();
-
-  /// Gets SettingsStore from provider
-  SettingsStore get settingsStore => read<SettingsStore>();
-
-  /// Gets FFZApi from provider
-  FFZApi get ffzApi => read<FFZApi>();
-
-  /// Gets BTTVApi from provider
-  BTTVApi get bttvApi => read<BTTVApi>();
+  /// Gets KickApi from provider
+  KickApi get kickApi => read<KickApi>();
 
   /// Gets SevenTVApi from provider
   SevenTVApi get sevenTVApi => read<SevenTVApi>();

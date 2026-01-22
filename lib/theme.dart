@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-class FrostyThemes {
+class KrostyThemes {
   final Color colorSchemeSeed;
 
-  const FrostyThemes({required this.colorSchemeSeed});
+  const KrostyThemes({required this.colorSchemeSeed});
 
   ThemeData get light => createBaseTheme(
     colorScheme: ColorScheme.fromSeed(seedColor: colorSchemeSeed),

@@ -21,6 +21,9 @@ Future<T?> showModalBottomSheetWithProperFocus<T>({
   AnimationController? transitionAnimationController,
   Offset? anchorPoint,
 }) {
+  // Guard against deactivated widgets (e.g., recycled list items)
+  if (!context.mounted) return Future.value();
+
   // Clear focus and its history so it can't be auto-restored
   FocusScope.of(context).unfocus();
 

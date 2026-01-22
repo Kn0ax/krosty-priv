@@ -1,16 +1,20 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CustomCacheManager {
   static const key = 'libCachedImageData';
   static final _repo = CacheObjectProvider(databaseName: key);
+
+  // Reduced cache size for better memory management on Android
+  // 5000 objects is sufficient for emotes and badges
   static final instance = CacheManager(
     Config(
       key,
-      stalePeriod: const Duration(days: 30),
-      maxNrOfCacheObjects: 10000,
+      stalePeriod: const Duration(days: 14),
+      maxNrOfCacheObjects: 5000,
       repo: _repo,
     ),
   );

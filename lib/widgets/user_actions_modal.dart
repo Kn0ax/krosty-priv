@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/widgets/blurred_container.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/widgets/blurred_container.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class UserActionsModal extends StatelessWidget {
+class UserActionsModal extends StatefulWidget {
   final AuthStore authStore;
   final String name;
   final String userLogin;
@@ -25,46 +25,124 @@ class UserActionsModal extends StatelessWidget {
   });
 
   @override
+  State<UserActionsModal> createState() => _UserActionsModalState();
+}
+
+class _UserActionsModalState extends State<UserActionsModal> {
+  bool? _isFollowing;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.authStore.isLoggedIn) {
+      _checkFollowStatus();
+    }
+  }
+
+  Future<void> _checkFollowStatus() async {
+    final isFollowing = await widget.authStore.user.isFollowing(
+      channelSlug: widget.userLogin,
+    );
+    if (mounted) {
+      setState(() {
+        _isFollowing = isFollowing;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_isFollowing == null) return;
+
+    setState(() => _isLoading = true);
+
+    final bool success;
+    if (_isFollowing!) {
+      success = await widget.authStore.user.unfollow(
+        channelSlug: widget.userLogin,
+      );
+    } else {
+      success = await widget.authStore.user.follow(
+        channelSlug: widget.userLogin,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        // Only toggle follow state if the API call succeeded
+        if (success) {
+          _isFollowing = !_isFollowing!;
+        }
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView(
       primary: false,
       shrinkWrap: true,
       children: [
-        if (showPinOption)
+        if (widget.showPinOption)
           ListTile(
             leading: const Icon(Icons.push_pin_outlined),
-            title: Text('${isPinned == true ? 'Unpin' : 'Pin'} $name'),
+            title: Text(
+              '${widget.isPinned == true ? 'Unpin' : 'Pin'} ${widget.name}',
+            ),
             onTap: () {
-              if (isPinned == true) {
+              if (widget.isPinned == true) {
                 context.read<SettingsStore>().pinnedChannelIds = [
                   ...context.read<SettingsStore>().pinnedChannelIds
-                    ..remove(userId),
+                    ..remove(widget.userId),
                 ];
               } else {
                 context.read<SettingsStore>().pinnedChannelIds = [
                   ...context.read<SettingsStore>().pinnedChannelIds,
-                  userId,
+                  widget.userId,
                 ];
               }
 
               Navigator.pop(context);
             },
           ),
-        if (authStore.isLoggedIn)
+        if (widget.authStore.isLoggedIn)
+          ListTile(
+            leading: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _isFollowing == true
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_outline_rounded,
+                    color: _isFollowing == true ? Colors.red : null,
+                  ),
+            title: Text(
+              _isFollowing == true
+                  ? 'Unfollow ${widget.name}'
+                  : 'Follow ${widget.name}',
+            ),
+            onTap: _isLoading ? null : _toggleFollow,
+          ),
+        if (widget.authStore.isLoggedIn)
           ListTile(
             leading: const Icon(Icons.block_rounded),
-            onTap: () => authStore
+            onTap: () => widget.authStore
                 .showBlockDialog(
                   context,
-                  targetUser: name,
-                  targetUserId: userId,
+                  targetUser: widget.name,
+                  targetUserId: widget.userId,
                 )
                 .then((_) {
                   if (context.mounted) {
                     Navigator.pop(context);
                   }
                 }),
-            title: Text('Block $name'),
+            title: Text('Block ${widget.name}'),
           ),
         ListTile(
           leading: const Icon(Icons.outlined_flag_rounded),
@@ -95,7 +173,7 @@ class UserActionsModal extends StatelessWidget {
                       icon: Icon(Icons.adaptive.arrow_back_rounded),
                       onPressed: Navigator.of(context).pop,
                     ),
-                    title: Text('Report $name'),
+                    title: Text('Report ${widget.name}'),
                   ),
                   body: Stack(
                     children: [
@@ -112,7 +190,7 @@ class UserActionsModal extends StatelessWidget {
                               ..setJavaScriptMode(JavaScriptMode.unrestricted)
                               ..loadRequest(
                                 Uri.parse(
-                                  'https://www.twitch.tv/$userLogin/report',
+                                  'https://kick.com/${widget.userLogin}/report',
                                 ),
                               )
                               ..setNavigationDelegate(
@@ -148,7 +226,7 @@ class UserActionsModal extends StatelessWidget {
               },
             ),
           ),
-          title: Text('Report $name'),
+          title: Text('Report ${widget.name}'),
         ),
       ],
     );

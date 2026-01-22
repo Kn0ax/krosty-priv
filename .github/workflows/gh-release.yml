@@ -18,7 +18,7 @@ jobs:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       SECRET: ${{ secrets.SECRET }}
     steps:
-      - name: Checkout Frosty repo
+      - name: Checkout Krosty repo
         uses: actions/checkout@v6
       
       # Setup Java so that we can build the APK.

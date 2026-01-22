@@ -1,5 +1,6 @@
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/models/user.dart';
+import 'package:flutter/material.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/models/kick_user.dart';
 import 'package:mobx/mobx.dart';
 
 part 'user_store.g.dart';
@@ -7,64 +8,97 @@ part 'user_store.g.dart';
 class UserStore = UserStoreBase with _$UserStore;
 
 abstract class UserStoreBase with Store {
-  final TwitchApi twitchApi;
+  final KickApi kickApi;
 
   /// The current user's info.
   @readonly
-  UserTwitch? _details;
+  KickUser? _details;
 
-  /// The user's list of blocked users.
+  /// The user's list of followed channels.
   @readonly
-  var _blockedUsers = ObservableList<UserBlockedTwitch>();
+  var _followedChannels = ObservableList<String>();
+
+  /// The user's list of blocked usernames (for chat filtering).
+  @readonly
+  var _blockedUsernames = ObservableSet<String>();
 
   ReactionDisposer? _disposeReaction;
 
-  UserStoreBase({required this.twitchApi});
+  UserStoreBase({required this.kickApi});
 
   @action
   Future<void> init() async {
-    // Get and update the current user's info.
-    _details = await twitchApi.getUserInfo();
+    try {
+      // Get and update the current user's info.
+      _details = await kickApi.getCurrentUser();
 
-    // Get and update the current user's list of blocked users.
-    // Don't use await because having a huge list of blocked users will block the UI.
-    if (_details?.id != null) {
-      twitchApi
-          .getUserBlockedList(id: _details!.id)
-          .then((blockedUsers) => _blockedUsers = blockedUsers.asObservable());
-    }
+      // Fetch blocked users for chat filtering
+      await fetchBlockedUsers();
 
-    _disposeReaction = autorun(
-      (_) => _blockedUsers.sort((a, b) => a.userLogin.compareTo(b.userLogin)),
-    );
-  }
-
-  @action
-  Future<void> block({
-    required String targetId,
-    required String displayName,
-  }) async {
-    final success = await twitchApi.blockUser(userId: targetId);
-
-    if (success) {
-      _blockedUsers.add(UserBlockedTwitch(targetId, displayName, displayName));
+      debugPrint('User initialized: ${_details?.username}');
+    } catch (e) {
+      debugPrint('Failed to initialize user: $e');
+      _details = null;
     }
   }
 
+  /// Fetch blocked users and update the local list.
   @action
-  Future<void> unblock({required String targetId}) async {
-    final success = await twitchApi.unblockUser(userId: targetId);
-    if (success) await refreshBlockedUsers();
+  Future<void> fetchBlockedUsers() async {
+    try {
+      final blocked = await kickApi.getSilencedUsers();
+      _blockedUsernames.clear();
+      _blockedUsernames.addAll(blocked.map((u) => u.username.toLowerCase()));
+    } catch (e) {
+      debugPrint('Failed to fetch blocked users: $e');
+    }
   }
 
+  /// Check if the user is following a specific channel.
+  Future<bool> isFollowing({required String channelSlug}) async {
+    try {
+      return await kickApi.isFollowing(channelSlug: channelSlug);
+    } catch (e) {
+      debugPrint('Failed to check follow status: $e');
+      return false;
+    }
+  }
+
+  /// Follow a channel.
   @action
-  Future<void> refreshBlockedUsers() async => _blockedUsers =
-      (await twitchApi.getUserBlockedList(id: _details!.id)).asObservable();
+  Future<bool> follow({required String channelSlug}) async {
+    try {
+      final success = await kickApi.followChannel(channelSlug: channelSlug);
+      if (success) {
+        _followedChannels.add(channelSlug);
+      }
+      return success;
+    } catch (e) {
+      debugPrint('Failed to follow channel: $e');
+      return false;
+    }
+  }
+
+  /// Unfollow a channel.
+  @action
+  Future<bool> unfollow({required String channelSlug}) async {
+    try {
+      final success = await kickApi.unfollowChannel(channelSlug: channelSlug);
+      if (success) {
+        _followedChannels.remove(channelSlug);
+      }
+      return success;
+    } catch (e) {
+      debugPrint('Failed to unfollow channel: $e');
+      return false;
+    }
+  }
 
   @action
   void dispose() {
     _details = null;
-    _blockedUsers.clear();
+    _followedChannels.clear();
+    _blockedUsernames.clear();
     if (_disposeReaction != null) _disposeReaction!();
   }
 }

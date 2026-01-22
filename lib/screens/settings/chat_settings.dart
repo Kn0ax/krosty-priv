@@ -1,19 +1,17 @@
 import 'dart:io';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/screens/settings/stores/settings_store.dart';
-import 'package:frosty/screens/settings/widgets/settings_list_select.dart';
-import 'package:frosty/screens/settings/widgets/settings_list_slider.dart';
-import 'package:frosty/screens/settings/widgets/settings_list_switch.dart';
-import 'package:frosty/screens/settings/widgets/settings_muted_words.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/section_header.dart';
-import 'package:frosty/widgets/settings_page_layout.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:krosty/constants.dart';
+import 'package:krosty/screens/settings/stores/settings_store.dart';
+import 'package:krosty/screens/settings/widgets/settings_list_select.dart';
+import 'package:krosty/screens/settings/widgets/settings_list_slider.dart';
+import 'package:krosty/screens/settings/widgets/settings_list_switch.dart';
+import 'package:krosty/screens/settings/widgets/settings_muted_words.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/section_header.dart';
+import 'package:krosty/widgets/settings_page_layout.dart';
 
 class ChatSettings extends StatefulWidget {
   final SettingsStore settingsStore;
@@ -53,7 +51,7 @@ class _ChatSettingsState extends State<ChatSettings> {
                           children: [
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
-                              child: FrostyCachedNetworkImage(
+                              child: KrostyCachedNetworkImage(
                                 imageUrl:
                                     'https://static-cdn.jtvnw.net/badges/v1/bbbe0db0-a598-423e-86d0-f9fb98ca1933/3',
                                 height:
@@ -65,7 +63,7 @@ class _ChatSettingsState extends State<ChatSettings> {
                             const TextSpan(text: ' Badge and emote preview. '),
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
-                              child: FrostyCachedNetworkImage(
+                              child: KrostyCachedNetworkImage(
                                 imageUrl:
                                     'https://static-cdn.jtvnw.net/emoticons/v2/425618/default/dark/3.0',
                                 height:
@@ -275,66 +273,11 @@ class _ChatSettingsState extends State<ChatSettings> {
             onChanged: (newValue) => settingsStore.autocomplete = newValue,
           ),
           const SectionHeader('Emotes and badges'),
-          SettingsListSwitch(
-            title: 'Show Twitch emotes',
-            value: settingsStore.showTwitchEmotes,
-            onChanged: (newValue) => settingsStore.showTwitchEmotes = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show Twitch badges',
-            value: settingsStore.showTwitchBadges,
-            onChanged: (newValue) => settingsStore.showTwitchBadges = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show 7TV emotes',
-            value: settingsStore.show7TVEmotes,
-            onChanged: (newValue) => settingsStore.show7TVEmotes = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show BTTV emotes',
-            value: settingsStore.showBTTVEmotes,
-            onChanged: (newValue) => settingsStore.showBTTVEmotes = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show BTTV badges',
-            value: settingsStore.showBTTVBadges,
-            onChanged: (newValue) => settingsStore.showBTTVBadges = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show FFZ emotes',
-            value: settingsStore.showFFZEmotes,
-            onChanged: (newValue) => settingsStore.showFFZEmotes = newValue,
-          ),
-          SettingsListSwitch(
-            title: 'Show FFZ badges',
-            value: settingsStore.showFFZBadges,
-            onChanged: (newValue) => settingsStore.showFFZBadges = newValue,
-          ),
           const SectionHeader('Recent messages'),
           SettingsListSwitch(
-            title: 'Show historical recent messages',
-            subtitle: Text.rich(
-              TextSpan(
-                text:
-                    'Loads historical recent messages in chat through a third-party API service at ',
-                children: [
-                  TextSpan(
-                    text: 'https://recent-messages.robotty.de/',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline,
-                      decorationColor: Colors.blue,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () => launchUrl(
-                        Uri.parse('https://recent-messages.robotty.de/'),
-                        mode: settingsStore.launchUrlExternal
-                            ? LaunchMode.externalApplication
-                            : LaunchMode.inAppBrowserView,
-                      ),
-                  ),
-                ],
-              ),
+            title: 'Show recent messages',
+            subtitle: const Text(
+              'Loads recent chat history when connecting to a channel.',
             ),
             value: settingsStore.showRecentMessages,
             onChanged: (newValue) =>

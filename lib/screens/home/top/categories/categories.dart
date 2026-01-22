@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/screens/home/stream_list/streams_list.dart';
-import 'package:frosty/screens/home/top/categories/categories_store.dart';
-import 'package:frosty/screens/home/top/categories/category_card.dart';
-import 'package:frosty/screens/settings/stores/auth_store.dart';
-import 'package:frosty/widgets/alert_message.dart';
-import 'package:frosty/widgets/frosty_scrollbar.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/screens/home/stream_list/streams_list.dart';
+import 'package:krosty/screens/home/top/categories/categories_store.dart';
+import 'package:krosty/screens/home/top/categories/category_card.dart';
+import 'package:krosty/screens/settings/stores/auth_store.dart';
+import 'package:krosty/widgets/alert_message.dart';
+import 'package:krosty/widgets/krosty_scrollbar.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 import 'package:provider/provider.dart';
 
 class Categories extends StatefulWidget {
@@ -24,7 +24,7 @@ class _CategoriesState extends State<Categories>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   late final _categoriesStore = CategoriesStore(
     authStore: context.read<AuthStore>(),
-    twitchApi: context.read<TwitchApi>(),
+    kickApi: context.read<KickApi>(),
   );
 
   @override
@@ -114,7 +114,7 @@ class _CategoriesState extends State<Categories>
             );
           }
 
-          return FrostyScrollbar(
+          return KrostyScrollbar(
             controller: widget.scrollController,
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + kToolbarHeight,

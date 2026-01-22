@@ -14,38 +14,58 @@ mixin _$UserStore on UserStoreBase, Store {
     context: context,
   );
 
-  UserTwitch? get details {
+  KickUser? get details {
     _$_detailsAtom.reportRead();
     return super._details;
   }
 
   @override
-  UserTwitch? get _details => details;
+  KickUser? get _details => details;
 
   @override
-  set _details(UserTwitch? value) {
+  set _details(KickUser? value) {
     _$_detailsAtom.reportWrite(value, super._details, () {
       super._details = value;
     });
   }
 
-  late final _$_blockedUsersAtom = Atom(
-    name: 'UserStoreBase._blockedUsers',
+  late final _$_followedChannelsAtom = Atom(
+    name: 'UserStoreBase._followedChannels',
     context: context,
   );
 
-  ObservableList<UserBlockedTwitch> get blockedUsers {
-    _$_blockedUsersAtom.reportRead();
-    return super._blockedUsers;
+  ObservableList<String> get followedChannels {
+    _$_followedChannelsAtom.reportRead();
+    return super._followedChannels;
   }
 
   @override
-  ObservableList<UserBlockedTwitch> get _blockedUsers => blockedUsers;
+  ObservableList<String> get _followedChannels => followedChannels;
 
   @override
-  set _blockedUsers(ObservableList<UserBlockedTwitch> value) {
-    _$_blockedUsersAtom.reportWrite(value, super._blockedUsers, () {
-      super._blockedUsers = value;
+  set _followedChannels(ObservableList<String> value) {
+    _$_followedChannelsAtom.reportWrite(value, super._followedChannels, () {
+      super._followedChannels = value;
+    });
+  }
+
+  late final _$_blockedUsernamesAtom = Atom(
+    name: 'UserStoreBase._blockedUsernames',
+    context: context,
+  );
+
+  ObservableSet<String> get blockedUsernames {
+    _$_blockedUsernamesAtom.reportRead();
+    return super._blockedUsernames;
+  }
+
+  @override
+  ObservableSet<String> get _blockedUsernames => blockedUsernames;
+
+  @override
+  set _blockedUsernames(ObservableSet<String> value) {
+    _$_blockedUsernamesAtom.reportWrite(value, super._blockedUsernames, () {
+      super._blockedUsernames = value;
     });
   }
 
@@ -59,37 +79,37 @@ mixin _$UserStore on UserStoreBase, Store {
     return _$initAsyncAction.run(() => super.init());
   }
 
-  late final _$blockAsyncAction = AsyncAction(
-    'UserStoreBase.block',
+  late final _$fetchBlockedUsersAsyncAction = AsyncAction(
+    'UserStoreBase.fetchBlockedUsers',
     context: context,
   );
 
   @override
-  Future<void> block({required String targetId, required String displayName}) {
-    return _$blockAsyncAction.run(
-      () => super.block(targetId: targetId, displayName: displayName),
+  Future<void> fetchBlockedUsers() {
+    return _$fetchBlockedUsersAsyncAction.run(() => super.fetchBlockedUsers());
+  }
+
+  late final _$followAsyncAction = AsyncAction(
+    'UserStoreBase.follow',
+    context: context,
+  );
+
+  @override
+  Future<bool> follow({required String channelSlug}) {
+    return _$followAsyncAction.run(
+      () => super.follow(channelSlug: channelSlug),
     );
   }
 
-  late final _$unblockAsyncAction = AsyncAction(
-    'UserStoreBase.unblock',
+  late final _$unfollowAsyncAction = AsyncAction(
+    'UserStoreBase.unfollow',
     context: context,
   );
 
   @override
-  Future<void> unblock({required String targetId}) {
-    return _$unblockAsyncAction.run(() => super.unblock(targetId: targetId));
-  }
-
-  late final _$refreshBlockedUsersAsyncAction = AsyncAction(
-    'UserStoreBase.refreshBlockedUsers',
-    context: context,
-  );
-
-  @override
-  Future<void> refreshBlockedUsers() {
-    return _$refreshBlockedUsersAsyncAction.run(
-      () => super.refreshBlockedUsers(),
+  Future<bool> unfollow({required String channelSlug}) {
+    return _$unfollowAsyncAction.run(
+      () => super.unfollow(channelSlug: channelSlug),
     );
   }
 

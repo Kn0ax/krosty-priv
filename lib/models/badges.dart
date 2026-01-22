@@ -3,32 +3,6 @@ import 'package:json_annotation/json_annotation.dart';
 part 'badges.g.dart';
 
 @JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
-class BadgeInfoTwitch {
-  @JsonKey(name: 'image_url_1x')
-  final String imageUrl1x;
-  @JsonKey(name: 'image_url_2x')
-  final String imageUrl2x;
-  @JsonKey(name: 'image_url_4x')
-  final String imageUrl4x;
-
-  final String id;
-  final String title;
-  final String description;
-
-  const BadgeInfoTwitch(
-    this.imageUrl1x,
-    this.imageUrl2x,
-    this.imageUrl4x,
-    this.id,
-    this.title,
-    this.description,
-  );
-
-  factory BadgeInfoTwitch.fromJson(Map<String, dynamic> json) =>
-      _$BadgeInfoTwitchFromJson(json);
-}
-
-@JsonSerializable(createToJson: false, fieldRename: FieldRename.snake)
 class BadgeInfoFFZ {
   final int id;
   final String title;
@@ -102,12 +76,6 @@ class ChatBadge {
     this.color,
     required this.type,
   });
-
-  factory ChatBadge.fromTwitch(BadgeInfoTwitch badge) => ChatBadge(
-    name: badge.title,
-    url: badge.imageUrl4x,
-    type: BadgeType.twitch,
-  );
 
   factory ChatBadge.fromBTTV(BadgeInfoBTTV badge) => ChatBadge(
     name: badge.badge.description,

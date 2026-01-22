@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/models/irc.dart';
+import 'package:krosty/screens/channel/chat/details/chat_details_store.dart';
 
 class ChatModes extends StatelessWidget {
-  final ROOMSTATE roomState;
+  final KickRoomState roomState;
 
   const ChatModes({super.key, required this.roomState});
-
-  String pluralize(String str, String count) => count == '1' ? str : '${str}s';
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +14,7 @@ class ChatModes extends StatelessWidget {
         final activeModes = <MapEntry<String, Widget>>[];
 
         // Collect active modes with their labels for sorting
-        if (roomState.emoteOnly != '0') {
+        if (roomState.emotesMode) {
           activeModes.add(
             MapEntry(
               'Emote only',
@@ -27,13 +25,13 @@ class ChatModes extends StatelessWidget {
                 label: 'Emote only',
                 activeLabel: 'Emote only',
                 isActive: true,
-                activeColor: const Color(0xFFFFB74D), // Slightly lighter orange
+                activeColor: const Color(0xFFFFB74D),
               ),
             ),
           );
         }
 
-        if (roomState.followersOnly != '-1') {
+        if (roomState.followersMode) {
           activeModes.add(
             MapEntry(
               'Follower only',
@@ -44,14 +42,16 @@ class ChatModes extends StatelessWidget {
                 label: 'Follower only',
                 activeLabel: 'Follower only',
                 isActive: true,
-                activeColor: const Color(0xFFF44336), // Bright red
-                duration: _getFollowersDuration(),
+                activeColor: const Color(0xFFF44336),
+                duration: roomState.followingMinDuration > 0
+                    ? _formatDuration(roomState.followingMinDuration)
+                    : null,
               ),
             ),
           );
         }
 
-        if (roomState.slowMode != '0') {
+        if (roomState.slowMode) {
           activeModes.add(
             MapEntry(
               'Slow mode',
@@ -62,14 +62,16 @@ class ChatModes extends StatelessWidget {
                 label: 'Slow mode',
                 activeLabel: 'Slow mode',
                 isActive: true,
-                activeColor: const Color(0xFF2196F3), // Bright blue
-                duration: _getSlowModeDuration(),
+                activeColor: const Color(0xFF2196F3),
+                duration: roomState.messageInterval > 0
+                    ? _formatSeconds(roomState.messageInterval)
+                    : null,
               ),
             ),
           );
         }
 
-        if (roomState.subMode != '0') {
+        if (roomState.subscribersMode) {
           activeModes.add(
             MapEntry(
               'Sub only',
@@ -80,24 +82,7 @@ class ChatModes extends StatelessWidget {
                 label: 'Sub only',
                 activeLabel: 'Sub only',
                 isActive: true,
-                activeColor: const Color(0xFF4CAF50), // Bright green
-              ),
-            ),
-          );
-        }
-
-        if (roomState.r9k != '0') {
-          activeModes.add(
-            MapEntry(
-              'Unique mode',
-              _buildModeChip(
-                context: context,
-                icon: Icons.quiz_outlined,
-                activeIcon: Icons.quiz_rounded,
-                label: 'Unique mode',
-                activeLabel: 'Unique mode',
-                isActive: true,
-                activeColor: const Color(0xFFAB47BC), // Slightly lighter purple
+                activeColor: const Color(0xFF4CAF50),
               ),
             ),
           );
@@ -112,11 +97,7 @@ class ChatModes extends StatelessWidget {
     );
   }
 
-  String? _getFollowersDuration() {
-    if (roomState.followersOnly == '0') {
-      return null; // No duration for immediate followers
-    }
-    final minutes = int.parse(roomState.followersOnly);
+  String _formatDuration(int minutes) {
     if (minutes >= 60) {
       final hours = minutes ~/ 60;
       final remainingMinutes = minutes % 60;
@@ -129,8 +110,7 @@ class ChatModes extends StatelessWidget {
     return '${minutes}m';
   }
 
-  String _getSlowModeDuration() {
-    final seconds = int.parse(roomState.slowMode);
+  String _formatSeconds(int seconds) {
     if (seconds >= 60) {
       final minutes = seconds ~/ 60;
       final remainingSeconds = seconds % 60;

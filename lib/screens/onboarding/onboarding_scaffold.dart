@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScaffold extends StatelessWidget {
@@ -59,7 +58,7 @@ class OnboardingScaffold extends StatelessWidget {
                       spacing: 12,
                       children: [
                         if (showLogo) ...[
-                          SvgPicture.asset('assets/icons/logo.svg', height: 80),
+                          Image.asset('assets/icons/logo.png', height: 80),
                         ],
                         Text(
                           header,

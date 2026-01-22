@@ -8,15 +8,15 @@ part of 'chat_tabs_store.dart';
 
 PersistedChatTab _$PersistedChatTabFromJson(Map<String, dynamic> json) =>
     PersistedChatTab(
-      channelId: json['channelId'] as String,
-      channelLogin: json['channelLogin'] as String,
+      chatroomId: (json['chatroomId'] as num?)?.toInt(),
+      channelSlug: json['channelSlug'] as String,
       displayName: json['displayName'] as String,
     );
 
 Map<String, dynamic> _$PersistedChatTabToJson(PersistedChatTab instance) =>
     <String, dynamic>{
-      'channelId': instance.channelId,
-      'channelLogin': instance.channelLogin,
+      'chatroomId': instance.chatroomId,
+      'channelSlug': instance.channelSlug,
       'displayName': instance.displayName,
     };
 
@@ -114,8 +114,8 @@ mixin _$ChatTabsStore on ChatTabsStoreBase, Store {
 
   @override
   bool addTab({
-    required String channelId,
-    required String channelLogin,
+    int? chatroomId,
+    required String channelSlug,
     required String displayName,
   }) {
     final _$actionInfo = _$ChatTabsStoreBaseActionController.startAction(
@@ -123,8 +123,8 @@ mixin _$ChatTabsStore on ChatTabsStoreBase, Store {
     );
     try {
       return super.addTab(
-        channelId: channelId,
-        channelLogin: channelLogin,
+        chatroomId: chatroomId,
+        channelSlug: channelSlug,
         displayName: displayName,
       );
     } finally {

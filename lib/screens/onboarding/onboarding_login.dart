@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/screens/onboarding/login_webview.dart';
-import 'package:frosty/screens/onboarding/onboarding_scaffold.dart';
-import 'package:frosty/screens/onboarding/onboarding_setup.dart';
-import 'package:simple_icons/simple_icons.dart';
+import 'package:krosty/screens/onboarding/login_webview.dart';
+import 'package:krosty/screens/onboarding/onboarding_scaffold.dart';
+import 'package:krosty/screens/onboarding/onboarding_setup.dart';
 
 class OnboardingLogin extends StatelessWidget {
   const OnboardingLogin({super.key});
@@ -12,11 +11,11 @@ class OnboardingLogin extends StatelessWidget {
     return OnboardingScaffold(
       header: 'Log in',
       subtitle:
-          'Frosty needs your permission in order to enable the ability to chat, view followed streams, and more.',
+          'Sign in to enable chat, view followed streams, and access more features.',
       disclaimer:
-          'Frosty only asks for the necessary permissions through the official Twitch API. You\'ll be able to review them before authorizing.',
-      buttonText: 'Connect with Twitch',
-      buttonIcon: const Icon(SimpleIcons.twitch),
+          'Connect your Kick account to unlock the full app experience. Your credentials are handled securely.',
+      buttonText: 'Connect with Kick',
+      buttonIcon: const Icon(Icons.login),
       skipRoute: const OnboardingSetup(),
       route: LoginWebView(routeAfter: const OnboardingSetup()),
     );

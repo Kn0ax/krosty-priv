@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/models/category.dart';
-import 'package:frosty/screens/home/top/categories/category_streams.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
-import 'package:frosty/widgets/skeleton_loader.dart';
+import 'package:krosty/models/kick_channel.dart';
+import 'package:krosty/screens/home/top/categories/category_streams.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
+import 'package:krosty/widgets/skeleton_loader.dart';
 
 /// A tappable card widget that displays a category's box art and name under.
 class CategoryCard extends StatelessWidget {
-  final CategoryTwitch category;
+  final KickCategory category;
   final bool isTappable;
 
   const CategoryCard({
@@ -17,18 +17,15 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate the dimmensions of the box art based on the current dimmensions of the screen.
-    final size = MediaQuery.of(context).size;
-    final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final artWidth = (size.width * pixelRatio) ~/ 5;
-    final artHeight = (artWidth * (4 / 3)).toInt();
+    // Calculate the dimensions of the box art based on the current dimensions of the screen.
+    // (unused width/height were removed as the KrostyCachedNetworkImage handles sizing)
 
     return InkWell(
       onTap: isTappable
           ? () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => CategoryStreams(categoryId: category.id),
+                builder: (context) => CategoryStreams(category: category),
               ),
             )
           : null,
@@ -48,12 +45,8 @@ class CategoryCard extends StatelessWidget {
                 borderRadius: const BorderRadius.all(Radius.circular(8)),
                 child: AspectRatio(
                   aspectRatio: 3 / 4,
-                  child: FrostyCachedNetworkImage(
-                    imageUrl: category.boxArtUrl.replaceRange(
-                      category.boxArtUrl.lastIndexOf('-') + 1,
-                      null,
-                      '${artWidth}x$artHeight.jpg',
-                    ),
+                  child: KrostyCachedNetworkImage(
+                    imageUrl: category.banner?.url ?? '',
                     placeholder: (context, url) => const SkeletonLoader(
                       borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),

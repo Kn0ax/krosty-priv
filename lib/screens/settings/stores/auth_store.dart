@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:frosty/apis/base_api_client.dart';
-import 'package:frosty/apis/twitch_api.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/main.dart';
-import 'package:frosty/screens/settings/stores/user_store.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
+import 'package:krosty/apis/base_api_client.dart';
+import 'package:krosty/apis/kick_api.dart';
+import 'package:krosty/main.dart';
+import 'package:krosty/screens/settings/stores/user_store.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 import 'package:mobx/mobx.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -17,20 +18,16 @@ part 'auth_store.g.dart';
 class AuthStore = AuthBase with _$AuthStore;
 
 abstract class AuthBase with Store {
-  /// Secure storage to store tokens.
+  /// Secure storage to store auth data.
   static const _storage = FlutterSecureStorage();
 
-  /// The shared_preferences key for the default token.
-  static const _defaultTokenKey = 'default_token';
+  /// Storage keys for Kick authentication.
+  static const _xsrfTokenKey = 'kick_xsrf_token';
+  static const _sessionTokenKey = 'kick_session_token';
+  static const _userDataKey = 'kick_user_data';
 
-  /// The shared_preferences key for the user token.
-  static const _userTokenKey = 'user_token';
-
-  /// The Twitch API service for making requests.
-  final TwitchApi twitchApi;
-
-  /// Whether the token is valid or not.
-  var _tokenIsValid = false;
+  /// The Kick API service for making requests.
+  final KickApi kickApi;
 
   /// Timer used to retry authentication when offline or on transient failures.
   Timer? _reconnectTimer;
@@ -38,65 +35,116 @@ abstract class AuthBase with Store {
   /// Retry count for reconnection attempts.
   var _reconnectAttempts = 0;
 
+  /// Timer for periodically checking cookies during login flow.
+  Timer? _cookieCheckTimer;
+
+  /// Flag to track if login button has been auto-clicked.
+  var _loginButtonClicked = false;
+
   /// Maximum number of reconnection attempts before giving up.
   static const _maxReconnectAttempts = 5;
 
   /// The MobX store containing information relevant to the current user.
   final UserStore user;
 
-  /// The user token used to authenticate with the Twitch API.
+  /// XSRF token for Kick API requests.
   @readonly
-  String? _token;
+  String? _xsrfToken;
+
+  /// Session token (kick_session cookie).
+  @readonly
+  String? _sessionToken;
 
   /// Whether the user is logged in or not.
   @readonly
   var _isLoggedIn = false;
 
-  /// Authentication headers for Twitch API requests.
+  /// Connection state for UI feedback.
+  @readonly
+  var _connectionState = ConnectionState.none;
+
+  /// Authentication headers for Kick API requests.
   @computed
-  Map<String, String> get headersTwitch => {
-    'Authorization': 'Bearer $_token',
-    'Client-Id': clientId,
-  };
+  Map<String, String> get headersKick {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    debugPrint(
+      '🏗️ Building headers - sessionToken: ${_sessionToken != null ? "SET (${_sessionToken!.substring(0, 10)}...)" : "NULL"}, xsrfToken: ${_xsrfToken != null ? "SET" : "NULL"}',
+    );
+
+    // Use Bearer token authorization (matching Moblin's implementation)
+    if (_sessionToken != null) {
+      headers['Authorization'] = 'Bearer $_sessionToken';
+      debugPrint('✅ Added Authorization header');
+    } else {
+      debugPrint('⚠️ No session token available for Authorization header');
+    }
+
+    // Also include XSRF token for state-changing operations
+    if (_xsrfToken != null) {
+      headers['X-XSRF-TOKEN'] = _xsrfToken!;
+    }
+
+    return headers;
+  }
 
   /// Error flag that will be non-null and contain an error message if login failed.
   @readonly
   String? _error;
 
-  /// Navigation handler for the login webview. Fires on every navigation request (whenever the URL changes).
-  FutureOr<NavigationDecision> handleNavigation({
-    required NavigationRequest request,
-    Widget? routeAfter,
-  }) {
-    // Check if the URL is the redirect URI.
-    if (request.url.startsWith('https://twitch.tv/login')) {
-      // Extract the token from the query parameters.
-      final uri = Uri.parse(request.url.replaceFirst('#', '?'));
-      final token = uri.queryParameters['access_token'];
+  AuthBase({required this.kickApi}) : user = UserStore(kickApi: kickApi);
 
-      // Login with the provided token.
-      if (token != null) login(token: token);
-    }
+  /// Initialize by checking for stored session.
+  @action
+  Future<void> init() async {
+    try {
+      _connectionState = ConnectionState.waiting;
 
-    // Check if the the URL has been redirected to "https://www.twitch.tv/?no-reload=true".
-    // When redirected to the redirect_uri, there will be another redirect to "https://www.twitch.tv/?no-reload=true".
-    // Checking for this will ensure that the user has automatically logged in to Twitch on the WebView itself.
-    if (request.url == 'https://www.twitch.tv/?no-reload=true') {
-      if (routeAfter != null) {
-        navigatorKey.currentState?.pop();
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(builder: (context) => routeAfter),
-        );
+      // Read stored tokens
+      _xsrfToken = await _storage.read(key: _xsrfTokenKey);
+      _sessionToken = await _storage.read(key: _sessionTokenKey);
+
+      if (_sessionToken != null && _xsrfToken != null) {
+        // Try to validate session by fetching user info
+        try {
+          await user.init();
+          if (user.details != null) {
+            _isLoggedIn = true;
+            _connectionState = ConnectionState.done;
+            _stopReconnectLoop();
+          } else {
+            // Session invalid, clear tokens
+            await _clearStoredTokens();
+            _connectionState = ConnectionState.done;
+          }
+        } on ApiException catch (e) {
+          debugPrint('Session validation failed: $e');
+          if (e.statusCode == 401) {
+            await _clearStoredTokens();
+          } else {
+            // Network error, start reconnect loop
+            _startReconnectLoop();
+          }
+          _connectionState = ConnectionState.done;
+        }
       } else {
-        // Pop the WebView to return to the previous screen
-        navigatorKey.currentState?.pop();
+        _connectionState = ConnectionState.done;
       }
-    }
 
-    // Always allow navigation to the next URL.
-    return NavigationDecision.navigate;
+      _error = null;
+    } catch (e) {
+      debugPrint('Auth init error: $e');
+      _error = e.toString();
+      _connectionState = ConnectionState.done;
+    }
   }
 
+  /// Create WebViewController for Kick login.
+  /// Uses fresh WebView to let user login to Kick normally,
+  /// then extracts session cookies for API access.
   WebViewController createAuthWebViewController({Widget? routeAfter}) {
     final webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -109,209 +157,377 @@ abstract class AuthBase with Store {
             : 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
       );
 
+    // Reset state for new login flow
+    _loginButtonClicked = false;
+    _stopCookieCheckTimer();
+
     return webViewController
       ..setNavigationDelegate(
         NavigationDelegate(
-          onNavigationRequest: (request) =>
-              handleNavigation(request: request, routeAfter: routeAfter),
-          onWebResourceError: (error) {
-            debugPrint('Auth WebView error: ${error.description}');
+          onNavigationRequest: (request) {
+            debugPrint('🔐 [AUTH] Navigation request: ${request.url}');
+            return _handleNavigation(request: request, routeAfter: routeAfter);
           },
-          onPageFinished: (_) async {
-            try {
-              await webViewController.runJavaScript('''
-                {
-                  function modifyElement(element) {
-                    element.style.maxHeight = '20vh';
-                    element.style.overflow = 'auto';
-                  }
+          onWebResourceError: (error) {
+            debugPrint(
+              '🔐 [AUTH] WebView error: ${error.description} (${error.errorCode})',
+            );
+          },
+          onPageStarted: (url) {
+            debugPrint('🔐 [AUTH] Page started loading: $url');
+          },
+          onPageFinished: (url) async {
+            debugPrint('🔐 [AUTH] Page finished loading: $url');
 
-                  const observer = new MutationObserver((mutations) => {
-                    for (let mutation of mutations) {
-                      if (mutation.type === 'childList') {
-                        const element = document.querySelector('.fAVISI');
-                        if (element) {
-                          modifyElement(element);
-                          observer.disconnect();
-                          break;
-                        }
-                      }
-                    }
-                  });
-
-                  observer.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                  });
-                }
-                ''');
-            } catch (e) {
-              debugPrint('Auth WebView JavaScript error: $e');
+            // Auto-click login button if we're on the login page
+            if (url.contains('kick.com/login') && !_loginButtonClicked) {
+              debugPrint('🔐 [AUTH] On login page, attempting auto-click...');
+              await _autoClickLoginButton(webViewController);
+            }
+            // Start periodic cookie checking once page is loaded
+            if (url.contains('kick.com')) {
+              _startCookieCheckTimer(webViewController, routeAfter);
             }
           },
         ),
       )
-      ..loadRequest(
-        Uri(
-          scheme: 'https',
-          host: 'id.twitch.tv',
-          path: '/oauth2/authorize',
-          queryParameters: {
-            'client_id': clientId,
-            'redirect_uri': 'https://twitch.tv/login',
-            'response_type': 'token',
-            'scope':
-                'chat:read chat:edit user:read:follows user:read:blocked_users user:manage:blocked_users user:manage:chat_color',
-            'force_verify': 'true',
-          },
-        ),
-      );
+      ..loadRequest(Uri.parse('https://kick.com/login'));
   }
 
-  /// Shows a dialog verifying that the user is sure they want to block/unblock the target user.
-  Future<void> showBlockDialog(
-    BuildContext context, {
-    required String targetUser,
-    required String targetUserId,
+  /// Handle navigation in the auth WebView.
+  FutureOr<NavigationDecision> _handleNavigation({
+    required NavigationRequest request,
+    Widget? routeAfter,
   }) {
-    final isBlocked = user.blockedUsers
-        .where((blockedUser) => blockedUser.userId == targetUserId)
-        .isNotEmpty;
-
-    final title = isBlocked ? 'Unblock' : 'Block';
-
-    final message =
-        'Are you sure you want to ${isBlocked ? 'unblock "$targetUser"?' : 'block "$targetUser"? This will remove them from channel lists, search results, and chat messages.'}';
-
-    void onPressed() {
-      if (isBlocked) {
-        user.unblock(targetId: targetUserId);
-      } else {
-        user.block(targetId: targetUserId, displayName: targetUser);
-      }
-      Navigator.pop(context);
+    // Allow all navigation within Kick domain
+    if (request.url.contains('kick.com')) {
+      return NavigationDecision.navigate;
     }
 
-    return showDialog(
-      context: context,
-      builder: (context) => FrostyDialog(
-        title: title,
-        message: message,
-        actions: [
-          TextButton(
-            onPressed: Navigator.of(context).pop,
-            child: const Text('Cancel'),
-          ),
-          FilledButton(onPressed: onPressed, child: const Text('Yes')),
-        ],
-      ),
-    );
+    // Allow OAuth providers (Google, Apple, etc.)
+    if (request.url.contains('accounts.google.com') ||
+        request.url.contains('appleid.apple.com')) {
+      return NavigationDecision.navigate;
+    }
+
+    // Block external navigation
+    return NavigationDecision.prevent;
   }
 
-  AuthBase({required this.twitchApi}) : user = UserStore(twitchApi: twitchApi);
-
-  /// Initialize by retrieving a token if it does not already exist.
-  @action
-  Future<void> init() async {
+  /// Auto-click the login button to advance to the login form.
+  /// Inspired by Moblin's approach for better UX.
+  Future<void> _autoClickLoginButton(WebViewController controller) async {
     try {
-      // Read and set the currently stored user token, if any.
-      _token = await _storage.read(key: _userTokenKey);
+      final result = await controller.runJavaScriptReturningResult('''
+        (async function() {
+          try {
+            // Wait for 200ms for the page to load
+            await new Promise(resolve => setTimeout(resolve, 200));
+            var loginButton = document.querySelector('[data-testid="login"]');
+            if (loginButton) {
+              loginButton.click();
+              return true;
+            }
+            return false;
+          } catch (error) {
+            return false;
+          }
+        })();
+      ''');
 
-      // If the token does not exist, get the default token.
-      // Otherwise, log in.
-      if (_token == null) {
-        // Retrieve the currently stored default token if it exists.
-        _token = await _storage.read(key: _defaultTokenKey);
-        // If the token does not exist or is invalid, get a new token and store it.
-        if (_token == null || !await twitchApi.validateToken(token: _token!)) {
-          _token = await twitchApi.getDefaultToken();
-          await _storage.write(key: _defaultTokenKey, value: _token);
-        }
-      } else {
-        // Validate the existing token. If it fails, start reconnect loop.
-        try {
-          _tokenIsValid = await twitchApi.validateToken(token: _token!);
-        } on ApiException catch (e) {
-          debugPrint('Token validation failed: $e');
-          _isLoggedIn = false;
-          _startReconnectLoop();
-          return;
-        }
-
-        // If the token is invalid, logout.
-        if (!_tokenIsValid) return await logout();
-
-        // Initialize the user store.
-        await user.init();
-
-        if (user.details != null) {
-          _isLoggedIn = true;
-          _stopReconnectLoop();
-        }
+      final clicked = result.toString().toLowerCase() == 'true';
+      if (clicked) {
+        _loginButtonClicked = true;
+        debugPrint('Auto-clicked login button');
       }
-
-      _error = null;
     } catch (e) {
-      debugPrint(e.toString());
-      _error = e.toString();
+      debugPrint('Failed to auto-click login button: $e');
     }
   }
 
-  /// Logs in the user with the provided [token] and updates fields accordingly upon successful login.
-  @action
-  Future<void> login({required String token}) async {
+  /// Start periodic timer to check for authentication cookies.
+  /// Checks every 1 second, inspired by Moblin's implementation.
+  void _startCookieCheckTimer(
+    WebViewController controller,
+    Widget? routeAfter,
+  ) {
+    // Stop any existing timer
+    _stopCookieCheckTimer();
+
+    _cookieCheckTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _checkForAuthCookies(controller, routeAfter);
+    });
+  }
+
+  /// Stop the periodic cookie check timer.
+  void _stopCookieCheckTimer() {
+    _cookieCheckTimer?.cancel();
+    _cookieCheckTimer = null;
+  }
+
+  /// Check for authentication cookies in the WebView.
+  Future<void> _checkForAuthCookies(
+    WebViewController controller,
+    Widget? routeAfter,
+  ) async {
     try {
-      // Validate the custom token.
-      _tokenIsValid = await twitchApi.validateToken(token: token);
-      if (!_tokenIsValid) return;
+      // Get cookies from document.cookie
+      final result = await controller.runJavaScriptReturningResult(
+        'document.cookie',
+      );
 
-      // Replace the current default token with the new custom token.
-      _token = token;
+      final cookieString = result.toString();
+      // Remove quotes if present (JS returns quoted string)
+      final cleanCookies = cookieString.replaceAll('"', '');
 
-      // Store the user token.
-      await _storage.write(key: _userTokenKey, value: token);
+      // Check for auth cookies
+      final hasSessionToken = cleanCookies.contains('session_token=');
+      final hasKickSession = cleanCookies.contains('kick_session=');
 
-      // Initialize the user with the new token.
+      if (hasSessionToken || hasKickSession) {
+        debugPrint('🔐 [AUTH] ✅ Found auth cookie! Parsing...');
+
+        // Parse and store cookies
+        await _parseCookies(cleanCookies);
+
+        // Validate session by fetching user info
+        if (_sessionToken != null) {
+          try {
+            await user.init();
+
+            if (user.details != null) {
+              _isLoggedIn = true;
+              _error = null;
+              _stopCookieCheckTimer();
+
+              debugPrint(
+                '🔐 [AUTH] ✅ SUCCESS! User authenticated: ${user.details!.username}',
+              );
+
+              // Navigate away from login
+              if (routeAfter != null) {
+                navigatorKey.currentState?.pop();
+                navigatorKey.currentState?.push(
+                  MaterialPageRoute(builder: (context) => routeAfter),
+                );
+              } else {
+                navigatorKey.currentState?.pop();
+              }
+            } else {
+              debugPrint(
+                '🔐 [AUTH] ❌ User details is null after init - API call may have failed',
+              );
+            }
+          } catch (e, stack) {
+            debugPrint('🔐 [AUTH] ❌ Error during user.init(): $e');
+            debugPrint('🔐 [AUTH] Stack trace: $stack');
+          }
+        }
+      }
+    } catch (e, stack) {
+      debugPrint('🔐 [AUTH] ❌ Cookie check error: $e');
+      debugPrint('🔐 [AUTH] Stack: $stack');
+      // Continue checking, don't stop on errors
+    }
+  }
+
+  /// Parse and store cookies from cookie string.
+  Future<void> _parseCookies(String cookieString) async {
+    final cookies = cookieString.split(';');
+
+    for (final cookie in cookies) {
+      final trimmed = cookie.trim();
+      if (trimmed.isEmpty) continue;
+
+      final equalsIndex = trimmed.indexOf('=');
+      if (equalsIndex == -1) continue;
+
+      final name = trimmed.substring(0, equalsIndex).trim();
+      final value = trimmed.substring(equalsIndex + 1).trim();
+
+      if (name == 'XSRF-TOKEN') {
+        try {
+          _xsrfToken = Uri.decodeComponent(value);
+          await _storage.write(key: _xsrfTokenKey, value: _xsrfToken);
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode XSRF token: $e');
+        }
+      } else if (name == 'session_token') {
+        try {
+          _sessionToken = Uri.decodeComponent(value);
+          await _storage.write(key: _sessionTokenKey, value: _sessionToken);
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode session_token: $e');
+        }
+      } else if (name == 'kick_session') {
+        try {
+          _sessionToken = Uri.decodeComponent(value);
+          await _storage.write(key: _sessionTokenKey, value: _sessionToken);
+        } catch (e) {
+          debugPrint('🔐 [AUTH] ❌ Failed to decode kick_session: $e');
+        }
+      }
+    }
+  }
+
+  /// Login with extracted tokens (called after WebView login).
+  @action
+  Future<void> loginWithTokens({
+    required String xsrfToken,
+    required String sessionToken,
+  }) async {
+    try {
+      _xsrfToken = xsrfToken;
+      _sessionToken = sessionToken;
+
+      // Store tokens
+      await _storage.write(key: _xsrfTokenKey, value: xsrfToken);
+      await _storage.write(key: _sessionTokenKey, value: sessionToken);
+
+      // Initialize user
       await user.init();
 
-      // Set the login status to logged in.
       if (user.details != null) {
         _isLoggedIn = true;
         _stopReconnectLoop();
       }
     } catch (e) {
-      debugPrint('Login failed due to $e');
+      debugPrint('Login failed: $e');
+      _error = e.toString();
     }
   }
 
-  /// Logs out the current user and updates fields accordingly.
+  /// Logs out the current user.
   @action
   Future<void> logout() async {
     try {
       _stopReconnectLoop();
-      // Delete the existing user token.
-      await _storage.delete(key: _userTokenKey);
-      _token = null;
+      _stopCookieCheckTimer();
 
-      // Clear the user info.
+      // Clear stored tokens
+      await _clearStoredTokens();
+
+      // Clear user info
       user.dispose();
 
-      // If the default token already exists, set it.
-      _token = await _storage.read(key: _defaultTokenKey);
-
-      // If the default token does not already exist or it's invalid, get the new default token and store it.
-      if (_token == null || !await twitchApi.validateToken(token: _token!)) {
-        _token = await twitchApi.getDefaultToken();
-        await _storage.write(key: _defaultTokenKey, value: _token);
-      }
-
-      // Set the login status to logged out.
+      // Reset state
       _isLoggedIn = false;
 
       debugPrint('Successfully logged out');
     } catch (e) {
-      debugPrint(e.toString());
+      debugPrint('Logout error: $e');
     }
+  }
+
+  /// Handle 401 Unauthorized responses.
+  @action
+  Future<void> handleUnauthorized() async {
+    if (!_isLoggedIn) return;
+
+    // Clear session and prompt re-login
+    await _clearStoredTokens();
+    _isLoggedIn = false;
+
+    // Show login dialog
+    _showLoginRequiredDialog();
+  }
+
+  /// Clear all stored tokens.
+  Future<void> _clearStoredTokens() async {
+    _xsrfToken = null;
+    _sessionToken = null;
+    await _storage.delete(key: _xsrfTokenKey);
+    await _storage.delete(key: _sessionTokenKey);
+    await _storage.delete(key: _userDataKey);
+  }
+
+  /// Show dialog prompting user to login.
+  void _showLoginRequiredDialog() {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => KrostyDialog(
+        title: 'Session Expired',
+        message: 'Your session has expired. Please log in again.',
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to login screen
+              navigatorKey.currentState?.push(
+                MaterialPageRoute(builder: (context) => _buildLoginScreen()),
+              );
+            },
+            child: const Text('Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build login screen with WebView.
+  Widget _buildLoginScreen() {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Login to Kick')),
+      body: WebViewWidget(controller: createAuthWebViewController()),
+    );
+  }
+
+  /// Shows a dialog for blocking/unblocking users.
+  Future<void> showBlockDialog(
+    BuildContext context, {
+    required String targetUser,
+    required String targetUserId,
+  }) {
+    return showDialog(
+      context: context,
+      builder: (context) => KrostyDialog(
+        title: 'Block User',
+        message: 'Are you sure you want to block $targetUser?',
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final success = await kickApi.blockUser(username: targetUser);
+                if (success) {
+                  // Refresh global blocked list
+                  await user.fetchBlockedUsers();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Blocked $targetUser')),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to block $targetUser')),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _startReconnectLoop() {
@@ -325,28 +541,25 @@ abstract class AuthBase with Store {
           return;
         }
 
-        final stored = await _storage.read(key: _userTokenKey);
-        if (stored == null) {
+        // Check if we still have tokens
+        final storedSession = await _storage.read(key: _sessionTokenKey);
+        if (storedSession == null) {
           _stopReconnectLoop();
           return;
         }
 
-        final isValid = await twitchApi.validateToken(token: stored);
-        if (!isValid) {
-          await logout();
-          return;
-        }
-
-        // Token valid again — restore session.
-        _token = stored;
+        // Try to validate session
         await user.init();
         if (user.details != null) {
           _isLoggedIn = true;
           _error = null;
           _stopReconnectLoop();
         }
-      } on ApiException catch (_) {
-        // Continue trying
+      } on ApiException catch (e) {
+        if (e.statusCode == 401) {
+          await logout();
+        }
+        // Otherwise continue trying
       } catch (e) {
         debugPrint('Reconnect loop error: $e');
       }
@@ -359,3 +572,6 @@ abstract class AuthBase with Store {
     _reconnectAttempts = 0;
   }
 }
+
+/// Connection state enum for UI feedback.
+enum ConnectionState { none, waiting, active, done }

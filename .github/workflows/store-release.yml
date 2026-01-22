@@ -1,5 +1,5 @@
-# Builds and releases frosty on the Google Play Store and Apple App Store through fastlane.
-name: Build and release Frosty
+# Builds and releases Krosty on the Google Play Store and Apple App Store through fastlane.
+name: Build and release Krosty
 on:
   # Enable the option to manually run the workflow in the Actions tab.
   workflow_dispatch:
@@ -17,7 +17,7 @@ env:
   LANG: en_US.UTF-8
 jobs:
   android:
-    name: Build and release Frosty on Android
+    name: Build and release Krosty on Android
     runs-on: ubuntu-latest
     environment: release-android
     env:
@@ -28,7 +28,7 @@ jobs:
       PLAY_STORE_CREDENTIALS: ${{ secrets.PLAY_STORE_CREDENTIALS }}
 
     steps:
-      - name: Checkout Frosty repo
+      - name: Checkout Krosty repo
         uses: actions/checkout@v6
 
       # Install Ruby and install/cache dependencies with bundler in order to use fastlane.
@@ -71,7 +71,7 @@ jobs:
       - name: Deploy with fastlane
         run: cd android && bundle exec fastlane deploy
   ios:
-    name: Build and release Frosty on iOS
+    name: Build and release Krosty on iOS
     runs-on: macos-latest
     environment: release-ios
     env:
@@ -81,7 +81,7 @@ jobs:
       MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
     steps:
-      - name: Checkout Frosty repo
+      - name: Checkout Krosty repo
         uses: actions/checkout@v6
 
         # Always pick the newest production Xcode on the runner

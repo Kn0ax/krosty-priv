@@ -1,72 +1,117 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/models/emotes.dart';
-import 'package:frosty/screens/channel/chat/emote_menu/emote_menu_section.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/widgets/frosty_page_view.dart';
+import 'package:krosty/models/emotes.dart';
+import 'package:krosty/screens/channel/chat/emote_menu/emote_menu_section.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/widgets/krosty_page_view.dart';
 
+/// Emote menu panel that shows emotes in categorized subtabs.
+/// Detects whether it's displaying Kick or 7TV emotes based on the passed
+/// emotes list, then shows appropriate subtabs:
+/// - Kick: Channel / Global / [SubChannel1] / [SubChannel2] / ...
+/// - 7TV: Channel / Global
 class EmoteMenuPanel extends StatelessWidget {
   final ChatStore chatStore;
   final List<Emote>? emotes;
-  final Map<String, List<Emote>>? twitchEmotes;
 
-  const EmoteMenuPanel({
-    super.key,
-    required this.chatStore,
-    this.emotes,
-    this.twitchEmotes,
-  });
+  const EmoteMenuPanel({super.key, required this.chatStore, this.emotes});
 
   @override
   Widget build(BuildContext context) {
-    if (emotes != null) {
-      final globalEmotes = emotes!
-          .where(
-            (emote) =>
-                emote.type == EmoteType.bttvGlobal ||
-                emote.type == EmoteType.ffzGlobal ||
-                emote.type == EmoteType.sevenTVGlobal,
-          )
-          .toList();
+    if (emotes == null || emotes!.isEmpty) {
+      return const Center(child: Text('No emotes available'));
+    }
 
-      final channelEmotes = emotes!
-          .where(
-            (emote) =>
-                emote.type == EmoteType.bttvChannel ||
-                emote.type == EmoteType.bttvShared ||
-                emote.type == EmoteType.ffzChannel ||
-                emote.type == EmoteType.sevenTVChannel,
-          )
-          .toList();
+    final assetsStore = chatStore.assetsStore;
 
-      return FrostyPageView(
-        headers: [if (channelEmotes.isNotEmpty) 'Channel', 'Global'],
-        children: [
-          if (channelEmotes.isNotEmpty)
+    // Detect if this is a Kick panel or 7TV panel based on passed emotes
+    final isKickPanel = emotes!.any(
+      (e) => e.type == EmoteType.kickGlobal || e.type == EmoteType.kickChannel,
+    );
+
+    if (isKickPanel) {
+      // Build Kick subtabs: Channel / Global / [SubChannel1] / [SubChannel2] / ...
+      final kickChannelEmotes = assetsStore.kickChannelEmotesList;
+      final kickGlobalEmotes = assetsStore.kickGlobalEmotesList;
+      final userSubEmotesByChannel = assetsStore.userSubEmotesByChannel;
+
+      final headers = <String>[];
+      final children = <Widget>[];
+
+      // 1. Channel emotes (current channel)
+      if (kickChannelEmotes.isNotEmpty) {
+        headers.add('Channel');
+        children.add(
+          EmoteMenuSection(chatStore: chatStore, emotes: kickChannelEmotes),
+        );
+      }
+
+      // 2. Global emotes
+      if (kickGlobalEmotes.isNotEmpty) {
+        headers.add('Global');
+        children.add(
+          EmoteMenuSection(chatStore: chatStore, emotes: kickGlobalEmotes),
+        );
+      }
+
+      // 3. User's subscribed channel emotes (each channel as separate tab)
+      // Skip the current channel - it's already shown in "Channel" tab
+      final currentChannelSlug = chatStore.channelSlug.toLowerCase();
+      for (final entry in userSubEmotesByChannel.entries) {
+        final channelName = entry.key;
+        final channelEmotes = entry.value;
+        // Skip if this is the current channel (case-insensitive comparison)
+        if (channelName.toLowerCase() == currentChannelSlug) {
+          continue;
+        }
+        if (channelEmotes.isNotEmpty) {
+          headers.add(channelName);
+          children.add(
             EmoteMenuSection(chatStore: chatStore, emotes: channelEmotes),
-          EmoteMenuSection(chatStore: chatStore, emotes: globalEmotes),
-        ],
-      );
+          );
+        }
+      }
+
+      if (children.isEmpty) {
+        return const Center(child: Text('No Kick emotes available'));
+      }
+
+      // If only one category has emotes, show it directly without tabs
+      if (children.length == 1) {
+        return children.first;
+      }
+
+      return KrostyPageView(headers: headers, children: children);
     } else {
-      final isSubbed = chatStore.userState.subscriber;
+      // Build 7TV subtabs: Channel / Global
+      final sevenTVChannelEmotes = assetsStore.sevenTVChannelEmotesList;
+      final sevenTVGlobalEmotes = assetsStore.sevenTVGlobalEmotesList;
 
-      twitchEmotes?.removeWhere(
-        (key, value) => key.toLowerCase() == chatStore.channelName,
-      );
+      final headers = <String>[];
+      final children = <Widget>[];
 
-      return FrostyPageView(
-        headers: twitchEmotes!.keys
-            .map((header) => header.split(' ')[0])
-            .toList(),
-        children: twitchEmotes!.entries
-            .map(
-              (e) => EmoteMenuSection(
-                chatStore: chatStore,
-                emotes: e.value,
-                disabled: e.key.contains('Channel') && !isSubbed,
-              ),
-            )
-            .toList(),
-      );
+      if (sevenTVChannelEmotes.isNotEmpty) {
+        headers.add('Channel');
+        children.add(
+          EmoteMenuSection(chatStore: chatStore, emotes: sevenTVChannelEmotes),
+        );
+      }
+      if (sevenTVGlobalEmotes.isNotEmpty) {
+        headers.add('Global');
+        children.add(
+          EmoteMenuSection(chatStore: chatStore, emotes: sevenTVGlobalEmotes),
+        );
+      }
+
+      if (children.isEmpty) {
+        return const Center(child: Text('No 7TV emotes available'));
+      }
+
+      // If only one category has emotes, show it directly without tabs
+      if (children.length == 1) {
+        return children.first;
+      }
+
+      return KrostyPageView(headers: headers, children: children);
     }
   }
 }

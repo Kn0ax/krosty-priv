@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frosty/utils/context_extensions.dart';
+import 'package:krosty/utils/context_extensions.dart';
 
 class SectionHeader extends StatelessWidget {
   final String text;

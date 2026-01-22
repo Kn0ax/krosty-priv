@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:frosty/widgets/frosty_dialog.dart';
+import 'package:krosty/widgets/krosty_dialog.dart';
 
 class AccentColorPickerDialog extends StatefulWidget {
   final Color initialColor;
@@ -44,7 +44,7 @@ class _AccentColorPickerDialogState extends State<AccentColorPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return FrostyDialog(
+    return KrostyDialog(
       title: 'Accent color',
       content: SingleChildScrollView(
         child: Column(

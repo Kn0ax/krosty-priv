@@ -1,1 +1,1 @@
-See full release notes at https://github.com/tommyxchow/frosty/releases
+See full release notes at https://krosty.kn0.dev

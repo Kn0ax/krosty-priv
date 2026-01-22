@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:frosty/constants.dart';
+import 'package:krosty/constants.dart';
 
 // --- Contrast helpers ---
 double _linearize(double c) =>

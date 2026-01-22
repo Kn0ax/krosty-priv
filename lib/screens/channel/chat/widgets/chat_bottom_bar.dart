@@ -2,15 +2,15 @@ import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:frosty/constants.dart';
-import 'package:frosty/models/irc.dart';
-import 'package:frosty/screens/channel/chat/details/chat_details.dart';
-import 'package:frosty/screens/channel/chat/stores/chat_store.dart';
-import 'package:frosty/utils/context_extensions.dart';
-import 'package:frosty/utils/modal_bottom_sheet.dart';
-import 'package:frosty/widgets/blurred_container.dart';
-import 'package:frosty/widgets/chat_input/emote_text_span_builder.dart';
-import 'package:frosty/widgets/frosty_cached_network_image.dart';
+import 'package:krosty/constants.dart';
+import 'package:krosty/models/kick_message_renderer.dart';
+import 'package:krosty/screens/channel/chat/details/chat_details.dart';
+import 'package:krosty/screens/channel/chat/stores/chat_store.dart';
+import 'package:krosty/utils/context_extensions.dart';
+import 'package:krosty/utils/modal_bottom_sheet.dart';
+import 'package:krosty/widgets/blurred_container.dart';
+import 'package:krosty/widgets/chat_input/emote_text_span_builder.dart';
+import 'package:krosty/widgets/krosty_cached_network_image.dart';
 
 class ChatBottomBar extends StatelessWidget {
   final ChatStore chatStore;
@@ -28,10 +28,7 @@ class ChatBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEmotesEnabled =
-        chatStore.settings.showTwitchEmotes ||
-        chatStore.settings.show7TVEmotes ||
-        chatStore.settings.showBTTVEmotes ||
-        chatStore.settings.showFFZEmotes;
+        chatStore.settings.showKickEmotes || chatStore.settings.show7TVEmotes;
 
     final emoteMenuButton = isEmotesEnabled
         ? Tooltip(
@@ -69,6 +66,102 @@ class ChatBottomBar extends StatelessWidget {
 
         const loginTooltipMessage = 'Log in to chat';
 
+        final isCollapsedMode =
+            !chatStore.expandChat &&
+            chatStore.settings.chatWidth < 0.3 &&
+            chatStore.settings.showVideo &&
+            context.isLandscape;
+
+        final sendOrMoreButton = TextFieldTapRegion(
+          child:
+              chatStore.showSendButton &&
+                  (chatStore.settings.chatWidth >= 0.3 ||
+                      chatStore.expandChat ||
+                      context.isPortrait)
+              ? Observer(
+                  builder: (context) {
+                    final canSend = chatStore.auth.isLoggedIn &&
+                        !chatStore.isWaitingForAck &&
+                        chatStore.isConnected &&
+                        !chatStore.isChatBlocked &&
+                        !chatStore.isSlowModeActive;
+
+                    String getTooltip() {
+                      if (chatStore.isWaitingForAck) return 'Sending...';
+                      if (chatStore.isChatBlocked) {
+                        return chatStore.chatBlockedReason ?? 'Chat blocked';
+                      }
+                      if (chatStore.isSlowModeActive) {
+                        return 'Slow mode (${chatStore.slowModeSecondsRemaining}s)';
+                      }
+                      return 'Send';
+                    }
+
+                    return IconButton(
+                      tooltip: getTooltip(),
+                      icon: chatStore.isWaitingForAck
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : chatStore.isSlowModeActive
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    const Icon(Icons.send_rounded),
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${chatStore.slowModeSecondsRemaining}',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Icon(Icons.send_rounded),
+                      onPressed: canSend
+                          ? () => chatStore.sendMessage(
+                                chatStore.textController.text,
+                              )
+                          : null,
+                    );
+                  },
+                )
+              : IconButton(
+                  icon: Icon(Icons.adaptive.more_rounded),
+                  tooltip: 'More',
+                  onPressed: () => showModalBottomSheetWithProperFocus(
+                    isScrollControlled: true,
+                    context: context,
+                    builder: (_) => ChatDetails(
+                      chatDetailsStore: chatStore.chatDetailsStore,
+                      chatStore: chatStore,
+                      userLogin: chatStore.channelSlug,
+                      onAddChat: onAddChat,
+                    ),
+                  ),
+                ),
+        );
+
         final bottomBarContent = Column(
           children: [
             if (chatStore.replyingToMessage != null) ...[
@@ -92,7 +185,7 @@ class ChatBottomBar extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Tooltip(
-                          message: chatStore.replyingToMessage!.message ?? '',
+                          message: chatStore.replyingToMessage!.content,
                           preferBelow: false,
                           child: Text.rich(
                             TextSpan(
@@ -105,7 +198,6 @@ class ChatBottomBar extends StatelessWidget {
                                     launchExternal:
                                         chatStore.settings.launchUrlExternal,
                                     timestamp: chatStore.settings.timestampType,
-                                    currentChannelId: chatStore.channelId,
                                   ),
                             ),
                             maxLines: 1,
@@ -148,7 +240,7 @@ class ChatBottomBar extends StatelessWidget {
                       onLongPress: () {
                         HapticFeedback.lightImpact();
 
-                        IRCMessage.showEmoteDetailsBottomSheet(
+                        showEmoteDetailsBottomSheet(
                           context,
                           emote: matchingEmotes[index],
                           launchExternal: chatStore.settings.launchUrlExternal,
@@ -157,7 +249,7 @@ class ChatBottomBar extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Center(
-                          child: FrostyCachedNetworkImage(
+                          child: KrostyCachedNetworkImage(
                             imageUrl: matchingEmotes[index].url,
                             useFade: false,
                             height:
@@ -210,34 +302,36 @@ class ChatBottomBar extends StatelessWidget {
               padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
               child: Row(
                 children: [
-                  if (!chatStore.expandChat &&
-                      chatStore.settings.chatWidth < 0.3 &&
-                      chatStore.settings.showVideo &&
-                      context.isLandscape)
-                    Builder(
-                      builder: (context) {
-                        final isDisabled = !chatStore.auth.isLoggedIn;
+                  if (isCollapsedMode)
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Builder(
+                          builder: (context) {
+                            final isDisabled = !chatStore.auth.isLoggedIn;
 
-                        return GestureDetector(
-                          onTap: isDisabled
-                              ? () {
-                                  chatStore.updateNotification(
-                                    loginTooltipMessage,
-                                  );
-                                }
-                              : null,
-                          child: IconButton(
-                            tooltip: 'Enter a message',
-                            onPressed: isDisabled
-                                ? null
-                                : () {
-                                    chatStore.expandChat = true;
-                                    chatStore.safeRequestFocus();
-                                  },
-                            icon: const Icon(Icons.edit),
-                          ),
-                        );
-                      },
+                            return GestureDetector(
+                              onTap: isDisabled
+                                  ? () {
+                                      chatStore.updateNotification(
+                                        loginTooltipMessage,
+                                      );
+                                    }
+                                  : null,
+                              child: IconButton(
+                                tooltip: 'Enter a message',
+                                onPressed: isDisabled
+                                    ? null
+                                    : () {
+                                        chatStore.expandChat = true;
+                                        chatStore.safeRequestFocus();
+                                      },
+                                icon: const Icon(Icons.edit),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     )
                   else
                     Expanded(
@@ -247,8 +341,38 @@ class ChatBottomBar extends StatelessWidget {
                           final isWaitingForAck = chatStore.isWaitingForAck;
                           final isConnected = chatStore.isConnected;
                           final hasConnected = chatStore.hasConnected;
-                          final isEnabled =
-                              isLoggedIn && !isWaitingForAck && isConnected;
+                          final isChatBlocked = chatStore.isChatBlocked;
+                          final chatBlockedReason = chatStore.chatBlockedReason;
+                          final isSlowModeActive = chatStore.isSlowModeActive;
+                          final slowModeSeconds =
+                              chatStore.slowModeSecondsRemaining;
+                          final isEnabled = isLoggedIn &&
+                              !isWaitingForAck &&
+                              isConnected &&
+                              !isChatBlocked;
+
+                          String getHintText() {
+                            if (!isLoggedIn) return loginTooltipMessage;
+                            if (!isConnected) {
+                              return hasConnected
+                                  ? 'Chat disconnected'
+                                  : 'Connecting...';
+                            }
+                            if (chatBlockedReason != null) {
+                              return chatBlockedReason;
+                            }
+                            if (isWaitingForAck) return 'Sending...';
+                            if (isSlowModeActive) {
+                              return 'Slow mode (${slowModeSeconds}s)';
+                            }
+                            if (chatStore.replyingToMessage != null) {
+                              return 'Reply';
+                            }
+                            if (hasChatDelay) {
+                              return 'Chat (${chatStore.settings.chatDelay.toInt()}s delay)';
+                            }
+                            return 'Chat';
+                          }
 
                           return GestureDetector(
                             onTap: !isLoggedIn
@@ -257,7 +381,13 @@ class ChatBottomBar extends StatelessWidget {
                                       loginTooltipMessage,
                                     );
                                   }
-                                : null,
+                                : isChatBlocked && chatBlockedReason != null
+                                    ? () {
+                                        chatStore.updateNotification(
+                                          chatBlockedReason,
+                                        );
+                                      }
+                                    : null,
                             child: ExtendedTextField(
                               textInputAction: TextInputAction.send,
                               focusNode: chatStore.textFieldFocusNode,
@@ -276,33 +406,20 @@ class ChatBottomBar extends StatelessWidget {
                               decoration: InputDecoration(
                                 prefixIcon:
                                     chatStore.settings.emoteMenuButtonOnLeft
-                                    ? emoteMenuButton
-                                    : null,
+                                        ? emoteMenuButton
+                                        : null,
                                 suffixIcon: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   spacing: 8,
                                   children: [
                                     if (!chatStore
-                                            .settings
-                                            .emoteMenuButtonOnLeft &&
+                                            .settings.emoteMenuButtonOnLeft &&
                                         emoteMenuButton != null)
                                       emoteMenuButton,
                                   ],
                                 ),
                                 hintMaxLines: 1,
-                                hintText: !isLoggedIn
-                                    ? loginTooltipMessage
-                                    : !isConnected
-                                    ? (hasConnected
-                                          ? 'Chat disconnected'
-                                          : 'Connecting...')
-                                    : isWaitingForAck
-                                    ? 'Sending...'
-                                    : chatStore.replyingToMessage != null
-                                    ? 'Reply'
-                                    : hasChatDelay
-                                    ? 'Chat (${chatStore.settings.chatDelay.toInt()}s delay)'
-                                    : 'Chat',
+                                hintText: getHintText(),
                               ),
                               controller: chatStore.textController,
                               onSubmitted: chatStore.sendMessage,
@@ -314,53 +431,15 @@ class ChatBottomBar extends StatelessWidget {
                         },
                       ),
                     ),
-                  TextFieldTapRegion(
-                    child:
-                        chatStore.showSendButton &&
-                            (chatStore.settings.chatWidth >= 0.3 ||
-                                chatStore.expandChat ||
-                                context.isPortrait)
-                        ? Observer(
-                            builder: (context) => IconButton(
-                              tooltip: chatStore.isWaitingForAck
-                                  ? 'Sending...'
-                                  : 'Send',
-                              icon: chatStore.isWaitingForAck
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send_rounded),
-                              onPressed:
-                                  chatStore.auth.isLoggedIn &&
-                                      !chatStore.isWaitingForAck &&
-                                      chatStore.isConnected
-                                  ? () => chatStore.sendMessage(
-                                      chatStore.textController.text,
-                                    )
-                                  : null,
-                            ),
-                          )
-                        : IconButton(
-                            icon: Icon(Icons.adaptive.more_rounded),
-                            tooltip: 'More',
-                            onPressed: () =>
-                                showModalBottomSheetWithProperFocus(
-                                  isScrollControlled: true,
-                                  context: context,
-                                  builder: (_) => ChatDetails(
-                                    chatDetailsStore:
-                                        chatStore.chatDetailsStore,
-                                    chatStore: chatStore,
-                                    userLogin: chatStore.channelName,
-                                    onAddChat: onAddChat,
-                                  ),
-                                ),
-                          ),
-                  ),
+                  if (isCollapsedMode)
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: sendOrMoreButton,
+                      ),
+                    )
+                  else
+                    sendOrMoreButton,
                 ],
               ),
             ),

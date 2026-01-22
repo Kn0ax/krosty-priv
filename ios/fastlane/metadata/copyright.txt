@@ -1,1 +1,3 @@
-2026 Tommy Chow
+Copyright (c) 2026 Kn0ax
+
+This project is forked from Frosty by Tommy Chow.
